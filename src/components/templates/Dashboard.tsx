@@ -1,5 +1,9 @@
 import { useMemo } from "react";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Card,
   CardContent,
   CardHeader,
@@ -8,6 +12,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Button,
 } from "@/components/atoms";
 import { StatCard } from "@/components/molecules";
 import {
@@ -19,6 +24,7 @@ import {
   DateRangeFilter,
 } from "@/components/organisms";
 import { formatCurrency } from "@/lib/utils";
+import { Eye, EyeOff, Wallet } from "lucide-react";
 import type {
   Transaction,
   CategorySpending,
@@ -26,11 +32,19 @@ import type {
   SpendingBottleneck,
 } from "@/types";
 
+interface WalletBalance {
+  account: string;
+  balance: number;
+  totalIncome: number;
+  totalExpense: number;
+}
+
 export interface DashboardProps {
   transactions: Transaction[];
   categorySpending: CategorySpending[];
   monthlyAnalysis: MonthlyAnalysis[];
   bottlenecks: SpendingBottleneck[];
+  walletBalances: WalletBalance[];
   stats: {
     transactionCount: number;
     categoryCount: number;
@@ -50,6 +64,8 @@ export interface DashboardProps {
   onCategorySelect: (category: string | null) => void;
   onFilterApply: (dateRange: { startDate: Date; endDate: Date }) => void;
   onFilterClear: () => void;
+  valuesHidden: boolean;
+  onToggleValuesHidden: () => void;
 }
 
 export function Dashboard({
@@ -57,16 +73,22 @@ export function Dashboard({
   categorySpending,
   monthlyAnalysis,
   bottlenecks,
+  walletBalances,
   stats,
   selectedCategory,
   filter,
   onCategorySelect,
   onFilterApply,
   onFilterClear,
+  valuesHidden,
+  onToggleValuesHidden,
 }: DashboardProps) {
   const selectedCategoryData = useMemo(() => {
     return categorySpending.find((cat) => cat.category === selectedCategory);
   }, [categorySpending, selectedCategory]);
+
+  // Mask value with asterisks matching the original length
+  const maskValue = (value: string) => "*".repeat(value.length);
 
   if (transactions.length === 0) {
     return null;
@@ -97,20 +119,51 @@ export function Dashboard({
         </div>
 
         {/* Quick Stats */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium" style={{ color: "#6B7280" }}>
+            Financial Summary
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleValuesHidden}
+            className="h-8 w-8 p-0"
+            title={valuesHidden ? "Show values" : "Hide values"}
+          >
+            {valuesHidden ? (
+              <EyeOff className="h-4 w-4" style={{ color: "#6B7280" }} />
+            ) : (
+              <Eye className="h-4 w-4" style={{ color: "#6B7280" }} />
+            )}
+          </Button>
+        </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Total Expenses"
-            value={formatCurrency(stats?.totalExpense || 0)}
-            subtitle={`Avg: ${formatCurrency(stats?.avgTransaction || 0)}/transaction`}
+            value={(() => {
+              const formatted = formatCurrency(stats?.totalExpense || 0);
+              return valuesHidden ? maskValue(formatted) : formatted;
+            })()}
+            subtitle={
+              valuesHidden
+                ? undefined
+                : `Avg: ${formatCurrency(stats?.avgTransaction || 0)}/transaction`
+            }
           />
           <StatCard
             title="Total Income"
-            value={formatCurrency(stats?.totalIncome || 0)}
+            value={(() => {
+              const formatted = formatCurrency(stats?.totalIncome || 0);
+              return valuesHidden ? maskValue(formatted) : formatted;
+            })()}
             valueColor="#059669"
           />
           <StatCard
             title="Net Savings"
-            value={formatCurrency(stats?.netSavings || 0)}
+            value={(() => {
+              const formatted = formatCurrency(stats?.netSavings || 0);
+              return valuesHidden ? maskValue(formatted) : formatted;
+            })()}
             valueColor={(stats?.netSavings || 0) >= 0 ? "#059669" : "#DC2626"}
           />
           <StatCard
@@ -121,6 +174,89 @@ export function Dashboard({
             }
           />
         </div>
+
+        {/* Wallet Balances */}
+        {walletBalances.length > 0 && (
+          <Card>
+            <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
+              <div className="flex items-center gap-2">
+                <Wallet className="h-5 w-5" style={{ color: "#6B7280" }} />
+                <CardTitle
+                  className="text-base sm:text-lg font-heading"
+                  style={{ color: "#111827" }}
+                >
+                  Wallet Balances
+                </CardTitle>
+              </div>
+              <div className="mt-2">
+                <span className="text-sm" style={{ color: "#6B7280" }}>
+                  Total Balance
+                </span>
+                <p
+                  className="text-xl sm:text-2xl font-bold font-heading"
+                  style={{
+                    color:
+                      walletBalances.reduce((sum, w) => sum + w.balance, 0) >= 0
+                        ? "#059669"
+                        : "#DC2626",
+                  }}
+                >
+                  {(() => {
+                    const totalBalance = walletBalances.reduce(
+                      (sum, w) => sum + w.balance,
+                      0,
+                    );
+                    const formatted = formatCurrency(totalBalance);
+                    return valuesHidden ? maskValue(formatted) : formatted;
+                  })()}
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 pt-0">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="wallets" className="border-b-0">
+                  <AccordionTrigger className="text-sm hover:no-underline py-2">
+                    <span style={{ color: "#6B7280" }}>
+                      View {walletBalances.length} wallet
+                      {walletBalances.length > 1 ? "s" : ""}
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 pt-2">
+                      {walletBalances.map((wallet) => {
+                        const formattedBalance = formatCurrency(wallet.balance);
+                        return (
+                          <div
+                            key={wallet.account}
+                            className="flex items-center justify-between py-2 border-b border-[#E5E7EB] last:border-b-0"
+                          >
+                            <span
+                              className="text-sm font-medium"
+                              style={{ color: "#374151" }}
+                            >
+                              {wallet.account}
+                            </span>
+                            <span
+                              className="text-sm font-semibold"
+                              style={{
+                                color:
+                                  wallet.balance >= 0 ? "#059669" : "#DC2626",
+                              }}
+                            >
+                              {valuesHidden
+                                ? maskValue(formattedBalance)
+                                : formattedBalance}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Spending Insights */}
         <BottleneckAlerts

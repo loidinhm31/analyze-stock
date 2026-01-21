@@ -17,15 +17,18 @@ export function DashboardPage() {
     categorySpending,
     monthlyAnalysis,
     bottlenecks,
+    walletBalances,
     statistics,
     selectedCategory,
     filter,
     isDbReady,
+    valuesHidden,
     importFromCSV,
     addTransaction,
     selectCategory,
     setFilter,
     clearFilter,
+    toggleValuesHidden,
   } = useSpendingStore();
 
   // Handle CSV file processing
@@ -100,12 +103,15 @@ export function DashboardPage() {
       categorySpending={categorySpending}
       monthlyAnalysis={monthlyAnalysis}
       bottlenecks={bottlenecks}
+      walletBalances={walletBalances}
       stats={statistics}
       selectedCategory={selectedCategory}
       filter={dashboardFilter}
       onCategorySelect={selectCategory}
       onFilterApply={handleFilterApply}
       onFilterClear={clearFilter}
+      valuesHidden={valuesHidden}
+      onToggleValuesHidden={toggleValuesHidden}
     />
   );
 }

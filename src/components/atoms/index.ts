@@ -1,6 +1,12 @@
 // Atoms - Basic building blocks using shadcn/ui
 // These are the smallest, most reusable components
 
+export {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "./accordion";
 export { Button, buttonVariants, type ButtonProps } from "./button";
 export { Badge, badgeVariants, type BadgeProps } from "./badge";
 export { Alert, AlertTitle, AlertDescription } from "./alert";

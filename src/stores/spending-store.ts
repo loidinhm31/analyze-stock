@@ -45,6 +45,13 @@ interface Statistics {
   dateRange: { start: Date | undefined; end: Date | undefined };
 }
 
+interface WalletBalance {
+  account: string;
+  balance: number;
+  totalIncome: number;
+  totalExpense: number;
+}
+
 interface SpendingStore {
   // Data
   transactions: Transaction[];
@@ -61,6 +68,7 @@ interface SpendingStore {
   monthlyAnalysis: MonthlyAnalysis[];
   yearlyAnalysis: YearlyAnalysis[];
   bottlenecks: SpendingBottleneck[];
+  walletBalances: WalletBalance[];
 
   // Selected items for drill-down
   selectedCategory: string | null;
@@ -71,6 +79,7 @@ interface SpendingStore {
   isLoading: boolean;
   error: string | null;
   isDbReady: boolean;
+  valuesHidden: boolean;
 
   // Actions
   initFromDatabase: () => Promise<void>;
@@ -89,6 +98,7 @@ interface SpendingStore {
   selectYear: (year: number | null) => void;
   refreshAnalysis: () => void;
   reset: () => void;
+  toggleValuesHidden: () => void;
 }
 
 const initialFilter: FilterState = {
@@ -109,12 +119,14 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
   monthlyAnalysis: [],
   yearlyAnalysis: [],
   bottlenecks: [],
+  walletBalances: [],
   selectedCategory: null,
   selectedMonth: null,
   selectedYear: null,
   isLoading: false,
   error: null,
   isDbReady: false,
+  valuesHidden: false,
 
   // Initialize from database
   initFromDatabase: async () => {
@@ -342,6 +354,30 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
         );
       }
 
+      // Calculate wallet balances (using all transactions, not filtered)
+      const walletMap = new Map<
+        string,
+        { totalIncome: number; totalExpense: number }
+      >();
+      for (const tx of transactions) {
+        const current = walletMap.get(tx.account) || {
+          totalIncome: 0,
+          totalExpense: 0,
+        };
+        walletMap.set(tx.account, {
+          totalIncome: current.totalIncome + tx.income,
+          totalExpense: current.totalExpense + tx.expense,
+        });
+      }
+      const walletBalances: WalletBalance[] = Array.from(walletMap.entries())
+        .map(([account, data]) => ({
+          account,
+          balance: data.totalIncome - data.totalExpense,
+          totalIncome: data.totalIncome,
+          totalExpense: data.totalExpense,
+        }))
+        .sort((a, b) => b.balance - a.balance);
+
       set({
         statistics,
         filteredTransactions,
@@ -349,6 +385,7 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
         monthlyAnalysis,
         yearlyAnalysis,
         bottlenecks,
+        walletBalances,
         isLoading: false,
         error: null,
       });
@@ -373,6 +410,7 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
       monthlyAnalysis: [],
       yearlyAnalysis: [],
       bottlenecks: [],
+      walletBalances: [],
       selectedCategory: null,
       selectedMonth: null,
       selectedYear: null,
@@ -380,5 +418,10 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
       error: null,
       isDbReady: false,
     });
+  },
+
+  // Toggle values visibility
+  toggleValuesHidden: () => {
+    set((state) => ({ valuesHidden: !state.valuesHidden }));
   },
 }));
