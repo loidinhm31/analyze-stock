@@ -76,6 +76,7 @@ export interface FilterState {
   accounts: string[];
   minAmount?: number;
   maxAmount?: number;
+  search?: string;
 }
 
 // Transaction source type

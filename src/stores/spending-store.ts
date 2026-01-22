@@ -11,6 +11,7 @@ import type {
 } from "@/types";
 import { SpendingAnalyzer } from "@/lib/analysis";
 import { databaseService } from "@/lib/database-service";
+import { matchesSearch } from "@/lib/utils";
 
 // Convert Transaction (from DB) to ProcessedTransaction (for analysis)
 function toProcessedTransaction(tx: Transaction): ProcessedTransaction {
@@ -105,6 +106,7 @@ const initialFilter: FilterState = {
   dateRange: null,
   categories: [],
   accounts: [],
+  search: "",
 };
 
 export const useSpendingStore = create<SpendingStore>()((set, get) => ({
@@ -351,6 +353,11 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
       if (filter.accounts.length > 0) {
         filteredTransactions = filteredTransactions.filter((t) =>
           filter.accounts.includes(t.account),
+        );
+      }
+      if (filter.search?.trim()) {
+        filteredTransactions = filteredTransactions.filter((t) =>
+          matchesSearch(t, filter.search!),
         );
       }
 

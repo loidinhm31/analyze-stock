@@ -25,3 +25,4 @@ export {
   type MonthlyTrendChartProps,
 } from "./MonthlyTrendChart";
 export { DisconnectedOverlay } from "./DisconnectedOverlay";
+export { SearchInput, type SearchInputProps } from "./SearchInput";

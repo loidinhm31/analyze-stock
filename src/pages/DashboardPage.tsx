@@ -59,6 +59,14 @@ export function DashboardPage() {
     [setFilter],
   );
 
+  // Handle search change
+  const handleSearchChange = useCallback(
+    (search: string) => {
+      setFilter({ search });
+    },
+    [setFilter],
+  );
+
   // Get categories and accounts for form
   const getCategories = useCallback(() => databaseService.getCategories(), []);
   const getAccounts = useCallback(() => databaseService.getAccounts(), []);
@@ -72,8 +80,9 @@ export function DashboardPage() {
             endDate: filter.dateRange.endDate,
           }
         : undefined,
+      search: filter.search,
     }),
-    [filter.dateRange],
+    [filter.dateRange, filter.search],
   );
 
   // Show initial upload if no transactions
@@ -93,7 +102,8 @@ export function DashboardPage() {
   const displayTransactions =
     filter.dateRange ||
     filter.categories.length > 0 ||
-    filter.accounts.length > 0
+    filter.accounts.length > 0 ||
+    filter.search?.trim()
       ? filteredTransactions
       : transactions;
 
@@ -108,6 +118,7 @@ export function DashboardPage() {
       selectedCategory={selectedCategory}
       filter={dashboardFilter}
       onCategorySelect={selectCategory}
+      onSearchChange={handleSearchChange}
       onFilterApply={handleFilterApply}
       onFilterClear={clearFilter}
       valuesHidden={valuesHidden}

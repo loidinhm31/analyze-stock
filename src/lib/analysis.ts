@@ -6,6 +6,7 @@ import type {
   SpendingBottleneck,
   FilterState,
 } from "@/types";
+import { matchesSearch } from "@/lib/utils";
 
 export class SpendingAnalyzer {
   private transactions: ProcessedTransaction[];
@@ -40,6 +41,10 @@ export class SpendingAnalyzer {
 
     if (filter.maxAmount !== undefined) {
       filtered = filtered.filter((t) => t.expense <= filter.maxAmount!);
+    }
+
+    if (filter.search?.trim()) {
+      filtered = filtered.filter((t) => matchesSearch(t, filter.search!));
     }
 
     return filtered;

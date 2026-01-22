@@ -22,6 +22,7 @@ import {
   TransactionList,
   TransactionDetailModal,
   DateRangeFilter,
+  SearchInput,
 } from "@/components/organisms";
 import { formatCurrency } from "@/lib/utils";
 import { Eye, EyeOff, Wallet } from "lucide-react";
@@ -60,8 +61,10 @@ export interface DashboardProps {
       startDate: Date | undefined;
       endDate: Date | undefined;
     };
+    search?: string;
   };
   onCategorySelect: (category: string | null) => void;
+  onSearchChange: (search: string) => void;
   onFilterApply: (dateRange: { startDate: Date; endDate: Date }) => void;
   onFilterClear: () => void;
   valuesHidden: boolean;
@@ -78,6 +81,7 @@ export function Dashboard({
   selectedCategory,
   filter,
   onCategorySelect,
+  onSearchChange,
   onFilterApply,
   onFilterClear,
   valuesHidden,
@@ -109,13 +113,20 @@ export function Dashboard({
             <p className="text-sm sm:text-base" style={{ color: "#6B7280" }}>
               {stats?.transactionCount} transactions • {stats?.categoryCount}{" "}
               categories
+              {filter.search && ` • Searching: "${filter.search}"`}
             </p>
           </div>
-          <DateRangeFilter
-            dateRange={filter.dateRange}
-            onApply={onFilterApply}
-            onClear={onFilterClear}
-          />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            <SearchInput
+              value={filter.search || ""}
+              onChange={onSearchChange}
+            />
+            <DateRangeFilter
+              dateRange={filter.dateRange}
+              onApply={onFilterApply}
+              onClear={onFilterClear}
+            />
+          </div>
         </div>
 
         {/* Quick Stats */}
