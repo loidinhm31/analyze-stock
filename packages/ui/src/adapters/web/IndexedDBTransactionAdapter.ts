@@ -7,15 +7,15 @@ import type {
   Account,
   TransferParams,
 } from "@money-insight/ui/types";
-import { db, generateId } from "./database";
+import { getDb, generateId } from "./database";
 import { trackDelete } from "./indexedDbHelpers";
 import { createTransferTransactions } from "../../services/transferService";
 export class IndexedDBTransactionAdapter implements ITransactionService {
   async getTransactions(filter?: TransactionFilter): Promise<Transaction[]> {
-    let collection = db.transactions.toCollection();
+    let collection = getDb().transactions.toCollection();
 
     if (filter?.categories?.length) {
-      collection = db.transactions.where("category").anyOf(filter.categories);
+      collection = getDb().transactions.where("category").anyOf(filter.categories);
     }
 
     let results = await collection.toArray();
@@ -88,12 +88,12 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
       syncedAt: null,
     };
 
-    await db.transactions.add(transaction);
+    await getDb().transactions.add(transaction);
     return transaction;
   }
 
   async updateTransaction(tx: Transaction): Promise<Transaction> {
-    const existing = await db.transactions.get(tx.id);
+    const existing = await getDb().transactions.get(tx.id);
 
     // Dev-only guard: warn if a transfer leg is updated without its counterpart.
     // Type cast is intentional: packages/ui tsconfig uses react-library (no vite/client types).
@@ -106,7 +106,7 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
     ) {
       const transferId = tx.transferId ?? existing?.transferId;
       if (transferId) {
-        const pairCount = await db.transactions
+        const pairCount = await getDb().transactions
           .where("transferId")
           .equals(transferId)
           .count();
@@ -125,16 +125,16 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
       syncVersion: (existing?.syncVersion || 0) + 1,
       syncedAt: null,
     };
-    await db.transactions.put(updated);
+    await getDb().transactions.put(updated);
     return updated;
   }
 
   async deleteTransaction(id: string): Promise<void> {
-    const existing = await db.transactions.get(id);
+    const existing = await getDb().transactions.get(id);
     if (existing) {
       await trackDelete("transactions", id, existing.syncVersion || 0);
     }
-    await db.transactions.delete(id);
+    await getDb().transactions.delete(id);
   }
 
   async importTransactions(
@@ -145,11 +145,11 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
     let importedCount = 0;
     let skippedCount = 0;
 
-    await db.transaction(
+    await getDb().transaction(
       "rw",
-      db.transactions,
-      db.importBatches,
-      db.accounts,
+      getDb().transactions,
+      getDb().importBatches,
+      getDb().accounts,
       async () => {
         // Auto-create missing accounts from imported transactions
         await this.ensureAccountsExist(transactions);
@@ -168,7 +168,7 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
           }
         }
 
-        await db.importBatches.add({
+        await getDb().importBatches.add({
           id: batchId,
           filename,
           recordCount: importedCount,
@@ -200,7 +200,7 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
     }
 
     // Get existing accounts
-    const existingAccounts = await db.accounts.toArray();
+    const existingAccounts = await getDb().accounts.toArray();
     const existingNames = new Set(existingAccounts.map((a) => a.name));
 
     // Create missing accounts
@@ -223,7 +223,7 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
           syncedAt: null,
         };
 
-        await db.accounts.add(newAccount);
+        await getDb().accounts.add(newAccount);
       }
     }
   }
@@ -237,7 +237,7 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
       transferId,
     });
 
-    return db.transaction("rw", db.transactions, db.accounts, async () => {
+    return getDb().transaction("rw", getDb().transactions, getDb().accounts, async () => {
       await this.ensureAccountsExist([outTx, inTx]);
       const outgoing = await this.addTransaction(outTx);
       const incoming = await this.addTransaction(inTx);
@@ -252,8 +252,8 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
     const { outgoing: newOutTx, incoming: newInTx } =
       createTransferTransactions({ ...params, transferId });
 
-    return db.transaction("rw", db.transactions, db.accounts, async () => {
-      const pair = await db.transactions
+    return getDb().transaction("rw", getDb().transactions, getDb().accounts, async () => {
+      const pair = await getDb().transactions
         .where("transferId")
         .equals(transferId)
         .toArray();
@@ -301,12 +301,12 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
   }
 
   async deleteTransfer(transferId: string): Promise<void> {
-    await db.transaction(
+    await getDb().transaction(
       "rw",
-      db.transactions,
-      db._pendingChanges,
+      getDb().transactions,
+      getDb()._pendingChanges,
       async () => {
-        const pair = await db.transactions
+        const pair = await getDb().transactions
           .where("transferId")
           .equals(transferId)
           .toArray();
@@ -320,14 +320,14 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
 
         for (const tx of pair) {
           await trackDelete("transactions", tx.id, tx.syncVersion || 0);
-          await db.transactions.delete(tx.id);
+          await getDb().transactions.delete(tx.id);
         }
       },
     );
   }
 
   async getTransferPair(transferId: string): Promise<Transaction[]> {
-    return db.transactions.where("transferId").equals(transferId).toArray();
+    return getDb().transactions.where("transferId").equals(transferId).toArray();
   }
 
   /**

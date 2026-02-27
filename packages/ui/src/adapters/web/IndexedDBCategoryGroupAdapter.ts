@@ -1,15 +1,15 @@
 import type { ICategoryGroupService } from "@money-insight/ui/adapters/factory/interfaces";
 import type { CategoryGroup, CategoryMapping } from "@money-insight/ui/types";
-import { db, generateId } from "./database";
+import { getDb, generateId } from "./database";
 import { trackDelete } from "./indexedDbHelpers";
 
 export class IndexedDBCategoryGroupAdapter implements ICategoryGroupService {
   async getCategoryGroups(): Promise<CategoryGroup[]> {
-    return db.categoryGroups.toArray();
+    return getDb().categoryGroups.toArray();
   }
 
   async getCategoryGroup(id: string): Promise<CategoryGroup | undefined> {
-    return db.categoryGroups.get(id);
+    return getDb().categoryGroups.get(id);
   }
 
   async addCategoryGroup(
@@ -21,29 +21,29 @@ export class IndexedDBCategoryGroupAdapter implements ICategoryGroupService {
       syncVersion: 1,
       syncedAt: null,
     };
-    await db.categoryGroups.add(newGroup);
+    await getDb().categoryGroups.add(newGroup);
     return newGroup;
   }
 
   async updateCategoryGroup(group: CategoryGroup): Promise<CategoryGroup> {
-    const existing = await db.categoryGroups.get(group.id);
+    const existing = await getDb().categoryGroups.get(group.id);
     const updated: CategoryGroup = {
       ...group,
       syncVersion: (existing?.syncVersion || 0) + 1,
       syncedAt: null,
     };
-    await db.categoryGroups.put(updated);
+    await getDb().categoryGroups.put(updated);
     return updated;
   }
 
   async deleteCategoryGroup(id: string): Promise<void> {
-    const existing = await db.categoryGroups.get(id);
+    const existing = await getDb().categoryGroups.get(id);
     if (existing) {
       await trackDelete("categoryGroups", id, existing.syncVersion || 0);
     }
 
     // Cascade delete all mappings for this group
-    const mappings = await db.categoryMappings
+    const mappings = await getDb().categoryMappings
       .where("parentGroupId")
       .equals(id)
       .toArray();
@@ -56,16 +56,16 @@ export class IndexedDBCategoryGroupAdapter implements ICategoryGroupService {
       );
     }
 
-    await db.categoryMappings.where("parentGroupId").equals(id).delete();
-    await db.categoryGroups.delete(id);
+    await getDb().categoryMappings.where("parentGroupId").equals(id).delete();
+    await getDb().categoryGroups.delete(id);
   }
 
   async getCategoryMappings(): Promise<CategoryMapping[]> {
-    return db.categoryMappings.toArray();
+    return getDb().categoryMappings.toArray();
   }
 
   async getMappingsForGroup(parentGroupId: string): Promise<CategoryMapping[]> {
-    return db.categoryMappings
+    return getDb().categoryMappings
       .where("parentGroupId")
       .equals(parentGroupId)
       .toArray();
@@ -76,7 +76,7 @@ export class IndexedDBCategoryGroupAdapter implements ICategoryGroupService {
     parentGroupId: string,
   ): Promise<CategoryMapping> {
     // Check if mapping already exists for this subCategory
-    const existing = await db.categoryMappings
+    const existing = await getDb().categoryMappings
       .where("subCategory")
       .equals(subCategory)
       .first();
@@ -89,7 +89,7 @@ export class IndexedDBCategoryGroupAdapter implements ICategoryGroupService {
         syncVersion: existing.syncVersion + 1,
         syncedAt: null,
       };
-      await db.categoryMappings.put(updated);
+      await getDb().categoryMappings.put(updated);
       return updated;
     }
 
@@ -101,12 +101,12 @@ export class IndexedDBCategoryGroupAdapter implements ICategoryGroupService {
       syncVersion: 1,
       syncedAt: null,
     };
-    await db.categoryMappings.add(newMapping);
+    await getDb().categoryMappings.add(newMapping);
     return newMapping;
   }
 
   async unmapSubCategory(subCategory: string): Promise<void> {
-    const existing = await db.categoryMappings
+    const existing = await getDb().categoryMappings
       .where("subCategory")
       .equals(subCategory)
       .first();
@@ -117,7 +117,7 @@ export class IndexedDBCategoryGroupAdapter implements ICategoryGroupService {
         existing.id,
         existing.syncVersion || 0,
       );
-      await db.categoryMappings.delete(existing.id);
+      await getDb().categoryMappings.delete(existing.id);
     }
   }
 

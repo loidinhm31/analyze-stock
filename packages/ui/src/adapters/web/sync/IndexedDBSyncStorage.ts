@@ -4,7 +4,7 @@ import type {
   SyncRecord,
 } from "@money-insight/shared/types";
 import {
-  db,
+  getDb,
   getCurrentTimestamp,
   SYNC_META_KEYS,
 } from "@money-insight/ui/adapters/web";
@@ -14,7 +14,7 @@ export class IndexedDBSyncStorage {
     const records: SyncRecord[] = [];
 
     // Unsynced transactions
-    const transactions = await db.transactions.toArray();
+    const transactions = await getDb().transactions.toArray();
     for (const tx of transactions) {
       if (tx.syncedAt === undefined || tx.syncedAt === null) {
         records.push({
@@ -45,7 +45,7 @@ export class IndexedDBSyncStorage {
     }
 
     // Unsynced categories
-    const categories = await db.categories.toArray();
+    const categories = await getDb().categories.toArray();
     for (const cat of categories) {
       if (cat.syncedAt === undefined || cat.syncedAt === null) {
         records.push({
@@ -64,7 +64,7 @@ export class IndexedDBSyncStorage {
     }
 
     // Unsynced accounts
-    const accounts = await db.accounts.toArray();
+    const accounts = await getDb().accounts.toArray();
     for (const acc of accounts) {
       if (acc.syncedAt === undefined || acc.syncedAt === null) {
         records.push({
@@ -82,7 +82,7 @@ export class IndexedDBSyncStorage {
     }
 
     // Pending deletes
-    const pendingDeletes = await db._pendingChanges
+    const pendingDeletes = await getDb()._pendingChanges
       .filter((change) => change.operation === "delete")
       .toArray();
     for (const change of pendingDeletes) {
@@ -101,22 +101,22 @@ export class IndexedDBSyncStorage {
   async getPendingChangesCount(): Promise<number> {
     let count = 0;
 
-    const transactions = await db.transactions.toArray();
+    const transactions = await getDb().transactions.toArray();
     count += transactions.filter(
       (t) => t.syncedAt === undefined || t.syncedAt === null,
     ).length;
 
-    const categories = await db.categories.toArray();
+    const categories = await getDb().categories.toArray();
     count += categories.filter(
       (c) => c.syncedAt === undefined || c.syncedAt === null,
     ).length;
 
-    const accounts = await db.accounts.toArray();
+    const accounts = await getDb().accounts.toArray();
     count += accounts.filter(
       (a) => a.syncedAt === undefined || a.syncedAt === null,
     ).length;
 
-    count += await db._pendingChanges
+    count += await getDb()._pendingChanges
       .filter((change) => change.operation === "delete")
       .count();
 
@@ -128,12 +128,12 @@ export class IndexedDBSyncStorage {
   ): Promise<void> {
     const now = getCurrentTimestamp();
 
-    await db.transaction(
+    await getDb().transaction(
       "rw",
-      [db._pendingChanges, db.transactions, db.categories, db.accounts],
+      [getDb()._pendingChanges, getDb().transactions, getDb().categories, getDb().accounts],
       async () => {
         for (const { tableName, rowId } of recordIds) {
-          await db._pendingChanges.where({ tableName, rowId }).delete();
+          await getDb()._pendingChanges.where({ tableName, rowId }).delete();
 
           const table = this.getTable(tableName);
           if (table) {
@@ -163,9 +163,9 @@ export class IndexedDBSyncStorage {
         this.getTableOrder(b.tableName) - this.getTableOrder(a.tableName),
     );
 
-    await db.transaction(
+    await getDb().transaction(
       "rw",
-      [db.transactions, db.categories, db.accounts],
+      [getDb().transactions, getDb().categories, getDb().accounts],
       async () => {
         for (const record of nonDeleted) {
           await this.upsertRecord(record, now);
@@ -209,7 +209,7 @@ export class IndexedDBSyncStorage {
   }
 
   async getCheckpoint(): Promise<Checkpoint | undefined> {
-    const checkpointJson = await db.getSyncMeta(SYNC_META_KEYS.CHECKPOINT);
+    const checkpointJson = await getDb().getSyncMeta(SYNC_META_KEYS.CHECKPOINT);
     if (!checkpointJson) return undefined;
     try {
       return JSON.parse(checkpointJson) as Checkpoint;
@@ -219,30 +219,30 @@ export class IndexedDBSyncStorage {
   }
 
   async saveCheckpoint(checkpoint: Checkpoint): Promise<void> {
-    await db.setSyncMeta(SYNC_META_KEYS.CHECKPOINT, JSON.stringify(checkpoint));
+    await getDb().setSyncMeta(SYNC_META_KEYS.CHECKPOINT, JSON.stringify(checkpoint));
   }
 
   async getLastSyncAt(): Promise<number | undefined> {
-    const value = await db.getSyncMeta(SYNC_META_KEYS.LAST_SYNC_AT);
+    const value = await getDb().getSyncMeta(SYNC_META_KEYS.LAST_SYNC_AT);
     return value ? parseInt(value, 10) : undefined;
   }
 
   async saveLastSyncAt(timestamp: number): Promise<void> {
-    await db.setSyncMeta(SYNC_META_KEYS.LAST_SYNC_AT, timestamp.toString());
+    await getDb().setSyncMeta(SYNC_META_KEYS.LAST_SYNC_AT, timestamp.toString());
   }
 
   async clearPendingChanges(): Promise<void> {
-    await db._pendingChanges.clear();
+    await getDb()._pendingChanges.clear();
   }
 
   private getTable(tableName: string) {
     switch (tableName) {
       case "transactions":
-        return db.transactions;
+        return getDb().transactions;
       case "categories":
-        return db.categories;
+        return getDb().categories;
       case "accounts":
-        return db.accounts;
+        return getDb().accounts;
       default:
         return undefined;
     }

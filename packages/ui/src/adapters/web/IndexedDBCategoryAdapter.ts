@@ -1,11 +1,11 @@
 import type { ICategoryService } from "@money-insight/ui/adapters/factory/interfaces";
 import type { Category } from "@money-insight/ui/types";
-import { db, generateId, getCurrentTimestamp } from "./database";
+import { getDb, generateId, getCurrentTimestamp } from "./database";
 
 export class IndexedDBCategoryAdapter implements ICategoryService {
   async getCategories(): Promise<Category[]> {
     // Derive categories from existing transactions
-    const transactions = await db.transactions.toArray();
+    const transactions = await getDb().transactions.toArray();
     const categoryMap = new Map<string, { isExpense: boolean }>();
 
     for (const tx of transactions) {
@@ -17,7 +17,7 @@ export class IndexedDBCategoryAdapter implements ICategoryService {
     }
 
     // Also include any manually created categories
-    const storedCategories = await db.categories.toArray();
+    const storedCategories = await getDb().categories.toArray();
     for (const cat of storedCategories) {
       if (!categoryMap.has(cat.name)) {
         categoryMap.set(cat.name, { isExpense: cat.isExpense });
@@ -49,7 +49,7 @@ export class IndexedDBCategoryAdapter implements ICategoryService {
       syncedAt: null,
     };
 
-    await db.categories.add(category);
+    await getDb().categories.add(category);
     return category;
   }
 
@@ -60,25 +60,25 @@ export class IndexedDBCategoryAdapter implements ICategoryService {
       syncedAt: null,
     };
 
-    await db.categories.put(updated);
+    await getDb().categories.put(updated);
     return updated;
   }
 
   async deleteCategory(id: string): Promise<void> {
-    await db.categories.delete(id);
+    await getDb().categories.delete(id);
   }
 
   async renameCategory(oldName: string, newName: string): Promise<void> {
     // Update all transactions with the old category name
-    await db.transaction("rw", db.transactions, db.categories, async () => {
+    await getDb().transaction("rw", getDb().transactions, getDb().categories, async () => {
       // Update transactions
-      const transactionsToUpdate = await db.transactions
+      const transactionsToUpdate = await getDb().transactions
         .where("category")
         .equals(oldName)
         .toArray();
 
       for (const tx of transactionsToUpdate) {
-        await db.transactions.update(tx.id, {
+        await getDb().transactions.update(tx.id, {
           category: newName,
           syncVersion: getCurrentTimestamp(),
           syncedAt: null,
@@ -86,12 +86,12 @@ export class IndexedDBCategoryAdapter implements ICategoryService {
       }
 
       // Update the category record if it exists
-      const storedCategory = await db.categories
+      const storedCategory = await getDb().categories
         .filter((c) => c.name === oldName)
         .first();
 
       if (storedCategory) {
-        await db.categories.update(storedCategory.id, {
+        await getDb().categories.update(storedCategory.id, {
           name: newName,
           syncVersion: getCurrentTimestamp(),
           syncedAt: null,

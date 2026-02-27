@@ -1,4 +1,4 @@
-import { db, generateId, getCurrentTimestamp } from "./database";
+import { getDb, generateId, getCurrentTimestamp } from "./database";
 
 interface SyncTracked {
   id?: string;
@@ -21,7 +21,7 @@ export async function trackDelete(
   id: string,
   syncVersion: number,
 ): Promise<void> {
-  await db._pendingChanges.add({
+  await getDb()._pendingChanges.add({
     tableName,
     rowId: id,
     operation: "delete",

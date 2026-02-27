@@ -13,6 +13,7 @@ import {
   setSyncService,
   setTransactionService,
 } from "@money-insight/ui/adapters";
+import { initDb } from "@money-insight/ui/adapters/web";
 import { QmServerAuthAdapter } from "@money-insight/ui/adapters/shared";
 import { TauriAuthAdapter } from "@money-insight/ui/adapters/tauri";
 import { isTauri } from "@money-insight/ui/utils";
@@ -52,25 +53,40 @@ export function MoneyInsightApp({
   className,
   onLogoutRequest,
 }: MoneyInsightAppProps) {
+  // Gate rendering on DB ready to prevent getDb() throws before initDb() completes
+  const [dbReady, setDbReady] = useState(false);
+
+  useEffect(() => {
+    // Embedded: use userId from hub. Standalone: userId=undefined → legacy "MoneyInsightDB"
+    setDbReady(false);
+    initDb(authTokens?.userId)
+      .then(() => setDbReady(true))
+      .catch(console.error);
+  }, [authTokens?.userId]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null,
   );
 
   useEffect(() => {
-    if (containerRef.current) {
-      setPortalContainer(containerRef.current);
-    }
-  }, []);
+    if (containerRef.current) setPortalContainer(containerRef.current);
+  }, [dbReady]);
 
-  // Initialize services synchronously before first render
+  // Initialize services only after DB is ready
   const services: IPlatformServices = useMemo(() => {
+    if (!dbReady) return {} as IPlatformServices;
     // Initialize data services
-    setTransactionService(new IndexedDBTransactionAdapter());
-    setCategoryService(new IndexedDBCategoryAdapter());
-    setCategoryGroupService(new IndexedDBCategoryGroupAdapter());
-    setAccountService(new IndexedDBAccountAdapter());
-    setStatisticsService(new IndexedDBStatisticsAdapter());
+    const transaction = new IndexedDBTransactionAdapter();
+    const category = new IndexedDBCategoryAdapter();
+    const categoryGroup = new IndexedDBCategoryGroupAdapter();
+    const account = new IndexedDBAccountAdapter();
+    const statistics = new IndexedDBStatisticsAdapter();
+    setTransactionService(transaction);
+    setCategoryService(category);
+    setCategoryGroupService(categoryGroup);
+    setAccountService(account);
+    setStatisticsService(statistics);
 
     // Initialize auth service based on platform
     const auth = isTauri() ? new TauriAuthAdapter() : new QmServerAuthAdapter();
@@ -88,21 +104,15 @@ export function MoneyInsightApp({
     });
     setSyncService(sync);
 
-    return {
-      transaction: new IndexedDBTransactionAdapter(),
-      category: new IndexedDBCategoryAdapter(),
-      account: new IndexedDBAccountAdapter(),
-      statistics: new IndexedDBStatisticsAdapter(),
-      auth,
-      sync,
-    };
-  }, []);
+    return { transaction, category, account, statistics, auth, sync };
+  }, [dbReady]);
 
   // If external auth tokens are provided, save them to the auth service
   useEffect(() => {
     if (
       authTokens?.accessToken &&
       authTokens?.refreshToken &&
+      services.auth &&
       "saveTokensExternal" in services.auth &&
       services.auth.saveTokensExternal
     ) {
@@ -117,6 +127,8 @@ export function MoneyInsightApp({
   }, [authTokens, services.auth]);
 
   const skipAuth = !!(authTokens?.accessToken && authTokens?.refreshToken);
+
+  if (!dbReady) return null;
 
   const content = (
     <AppShell

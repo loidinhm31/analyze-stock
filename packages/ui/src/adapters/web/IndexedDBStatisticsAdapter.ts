@@ -1,10 +1,10 @@
 import type { IStatisticsService } from "@money-insight/ui/adapters/factory/interfaces";
 import type { Statistics, TransactionFilter } from "@money-insight/ui/types";
-import { db } from "./database";
+import { getDb } from "./database";
 
 export class IndexedDBStatisticsAdapter implements IStatisticsService {
   async getStatistics(filter?: TransactionFilter): Promise<Statistics> {
-    let transactions = await db.transactions.toArray();
+    let transactions = await getDb().transactions.toArray();
 
     if (filter?.startDate) {
       transactions = transactions.filter((t) => t.date >= filter.startDate!);
