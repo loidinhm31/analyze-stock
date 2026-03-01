@@ -56,17 +56,6 @@ const svg = (children: ReactNode, props: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-// Temporary monochrome stroke wrapper — batch 2 icons pending Phase 2 colorization
-const strokeSvg = (children: ReactNode, props: SVGProps<SVGSVGElement>) =>
-  svg(children, {
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 2,
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-    ...props,
-  });
-
 // ─── BATCH 1: Colorful icons (Phase 1) ────────────────────────────────────────
 // food, coffee, grocery, transport, car, bus, home, electricity, wifi, water,
 // shopping, clothing, health, pill, gym, entertainment, movie, music
@@ -326,166 +315,258 @@ const Music: IconComponent = (p) =>
     p,
   );
 
-// ─── BATCH 2: Monochrome stroke icons (pending Phase 2 colorization) ──────────
+// ─── BATCH 2: Colorful icons (Phase 2) ────────────────────────────────────────
 // game, education, book, travel, plane, hotel, gift, pet, baby,
 // salary, investment, savings, insurance, tax, donation, repair, wallet
 
 const Game: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <line x1="6" y1="11" x2="10" y2="11" />
-      <line x1="8" y1="9" x2="8" y2="13" />
-      <line x1="15" y1="12" x2="15.01" y2="12" />
-      <line x1="18" y1="10" x2="18.01" y2="10" />
-      <path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" />
+      {/* Controller body */}
+      <path fill="#7C3AED" d="M17.32 6H6.68A3 3 0 0 0 3.7 8.69C3.26 11.5 2 16 2 16.5A2.5 2.5 0 0 0 6.5 17c.6 0 1-.3 1.5-.8l1.2-1.2A1.5 1.5 0 0 1 10.27 14.5h3.46a1.5 1.5 0 0 1 1.06.44L16 16.2c.5.5.9.8 1.5.8a2.5 2.5 0 0 0 2.5-2.5c0-.5-1.26-5-1.7-7.81A3 3 0 0 0 17.32 6z" />
+      {/* D-pad horizontal */}
+      <rect fill="#5B21B6" x="5.5" y="10.5" width="4" height="1.5" rx=".75" />
+      {/* D-pad vertical */}
+      <rect fill="#5B21B6" x="7" y="9" width="1.5" height="4" rx=".75" />
+      {/* Buttons */}
+      <circle fill="#A78BFA" cx="15" cy="11.5" r="1" />
+      <circle fill="#A78BFA" cx="17.5" cy="10" r="1" />
     </>,
     p,
   );
 
 const Education: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-      <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
+      {/* Graduation cap top */}
+      <polygon fill="#2980B9" points="12,4 22,9 12,14 2,9" />
+      {/* Left side of mortarboard brim */}
+      <path fill="#1A6FA0" d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5l-6 3-6-3z" />
+      {/* Tassel string */}
+      <rect fill="#2980B9" x="21" y="9" width="1.5" height="5" rx=".75" />
+      {/* Tassel end */}
+      <circle fill="#5DADE2" cx="21.75" cy="15" r="1.25" />
     </>,
     p,
   );
 
 const Book: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      {/* Back cover */}
+      <rect fill="#8B4513" x="4" y="2" width="14" height="20" rx="1.5" />
+      {/* Pages block */}
+      <rect fill="#F5E6D0" x="6" y="3" width="11" height="18" rx=".5" />
+      {/* Spine highlight */}
+      <rect fill="#6B3410" x="4" y="2" width="3" height="20" rx="1.5" />
+      {/* Bookmark ribbon */}
+      <path fill="#A0522D" d="M14 3v6l-1.5-1.5L11 9V3h3z" />
     </>,
     p,
   );
 
 const Travel: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <circle cx="12" cy="12" r="10" />
-      <line x1="2" y1="12" x2="22" y2="12" />
-      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+      {/* Globe */}
+      <circle fill="#1ABC9C" cx="12" cy="12" r="9.5" />
+      {/* Equator */}
+      <ellipse fill="none" stroke="#16A085" strokeWidth="1.5" cx="12" cy="12" rx="9.5" ry="4.5" />
+      {/* Prime meridian */}
+      <line x1="12" y1="2.5" x2="12" y2="21.5" stroke="#16A085" strokeWidth="1.5" />
+      {/* Top latitude */}
+      <path fill="none" stroke="#16A085" strokeWidth="1" d="M4.5 8.5a15 15 0 0 1 15 0" />
+      {/* Bottom latitude */}
+      <path fill="none" stroke="#16A085" strokeWidth="1" d="M4.5 15.5a15 15 0 0 0 15 0" />
     </>,
     p,
   );
 
 const Plane: IconComponent = (p) =>
-  strokeSvg(
-    <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />,
+  svg(
+    <>
+      {/* Fuselage */}
+      <path fill="#5DADE2" d="M21 3c.5 1 0 3-1.5 4.5L16 11l1.8 8.2c.1.5-.1.9-.5 1.1l-.5.2c-.5.2-1-.1-1.3-.5L12 15l-3 2v3l-1 1-2-3-3-2 1-1h3l2-3-4.7-3.2c-.4-.3-.5-.8-.3-1.3l.3-.5c.2-.4.6-.6 1.1-.5L13 8l3.5-3.5C18 3 20 2.5 21 3z" />
+    </>,
     p,
   );
 
 const Hotel: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" />
-      <path d="M9 22v-4h6v4" />
-      <rect x="8" y="6" width="3" height="3" />
-      <rect x="13" y="6" width="3" height="3" />
-      <rect x="8" y="12" width="3" height="3" />
-      <rect x="13" y="12" width="3" height="3" />
+      {/* Building */}
+      <rect fill="#16A085" x="4" y="2" width="16" height="20" rx="1.5" />
+      {/* Roof accent */}
+      <rect fill="#0E7566" x="4" y="2" width="16" height="3" rx="1.5" />
+      {/* Windows row 1 */}
+      <rect fill="#A8E6DC" x="7" y="6" width="3" height="3" rx=".5" />
+      <rect fill="#A8E6DC" x="14" y="6" width="3" height="3" rx=".5" />
+      {/* Windows row 2 */}
+      <rect fill="#A8E6DC" x="7" y="12" width="3" height="3" rx=".5" />
+      <rect fill="#A8E6DC" x="14" y="12" width="3" height="3" rx=".5" />
+      {/* Door */}
+      <rect fill="#0E7566" x="9.5" y="17" width="5" height="5" rx=".5" />
     </>,
     p,
   );
 
 const Gift: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <polyline points="20 12 20 22 4 22 4 12" />
-      <rect x="2" y="7" width="20" height="5" />
-      <line x1="12" y1="22" x2="12" y2="7" />
-      <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-      <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+      {/* Box body */}
+      <rect fill="#E74C3C" x="4" y="12" width="16" height="10" rx="1" />
+      {/* Ribbon band */}
+      <rect fill="#C0392B" x="10.5" y="12" width="3" height="10" />
+      {/* Box lid */}
+      <rect fill="#C0392B" x="2" y="8" width="20" height="4" rx="1" />
+      {/* Lid stripe */}
+      <rect fill="#E74C3C" x="10.5" y="8" width="3" height="4" />
+      {/* Left bow loop */}
+      <path fill="#E74C3C" d="M12 8C12 8 9 5 7.5 3.5A2.5 2.5 0 0 1 11 7L12 8z" />
+      {/* Right bow loop */}
+      <path fill="#E74C3C" d="M12 8C12 8 15 5 16.5 3.5A2.5 2.5 0 0 0 13 7L12 8z" />
     </>,
     p,
   );
 
 const Pet: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <circle cx="11" cy="4" r="2" />
-      <circle cx="18" cy="8" r="2" />
-      <circle cx="20" cy="16" r="2" />
-      <path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z" />
+      {/* Body */}
+      <path fill="#D35400" d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.05Q6.5 17.5 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z" />
+      {/* Left ear (paw) */}
+      <circle fill="#D35400" cx="11" cy="4" r="2" />
+      {/* Right ear (paw) */}
+      <circle fill="#D35400" cx="18" cy="8" r="2" />
+      {/* Tail tip */}
+      <circle fill="#D35400" cx="20" cy="16" r="2" />
+      {/* Nose dot */}
+      <circle fill="#A04000" cx="9.5" cy="14" r="1" />
     </>,
     p,
   );
 
 const Baby: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <path d="M9 12h.01" />
-      <path d="M15 12h.01" />
-      <path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5" />
-      <path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1" />
+      {/* Head */}
+      <circle fill="#FD79A8" cx="12" cy="11" r="7.5" />
+      {/* Left eye */}
+      <circle fill="#C0539E" cx="9.5" cy="11" r="1" />
+      {/* Right eye */}
+      <circle fill="#C0539E" cx="14.5" cy="11" r="1" />
+      {/* Smile */}
+      <path fill="none" stroke="#C0539E" strokeWidth="1.5" d="M10 14.5c.5.5 1.2.8 2 .8s1.5-.3 2-.8" />
+      {/* Hair curl */}
+      <path fill="#C0539E" d="M12 3.5c1 0 2 .5 2 1.5 0 .5-.4 1-1 1s-1-.5-1-1" />
     </>,
     p,
   );
 
 const Salary: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <line x1="12" y1="1" x2="12" y2="23" />
-      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+      {/* Bill background */}
+      <rect fill="#27AE60" x="2" y="5" width="20" height="14" rx="2" />
+      {/* Left oval */}
+      <circle fill="#1E8449" cx="5.5" cy="12" r="2.5" />
+      {/* Right oval */}
+      <circle fill="#1E8449" cx="18.5" cy="12" r="2.5" />
+      {/* Dollar sign vertical bar */}
+      <rect fill="#FFFFFF" x="11.25" y="8" width="1.5" height="8" rx=".75" />
+      {/* Dollar sign upper curve */}
+      <path fill="none" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" d="M14 9.5a2.5 1.5 0 0 0-5 0c0 .83 2.5 1.5 2.5 1.5s2.5.67 2.5 1.5a2.5 1.5 0 0 1-5 0" />
     </>,
     p,
   );
 
 const Investment: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-      <polyline points="16 7 22 7 22 13" />
+      {/* Chart background area */}
+      <path fill="#2ECC71" fillOpacity=".25" d="M2 17L8.5 10.5l5 5L22 7v10H2z" />
+      {/* Trend line */}
+      <polyline fill="none" stroke="#2ECC71" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points="2,17 8.5,10.5 13.5,15.5 22,7" />
+      {/* Arrow head */}
+      <polyline fill="none" stroke="#2ECC71" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points="16,7 22,7 22,13" />
     </>,
     p,
   );
 
 const Savings: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2" />
-      <path d="M2 9.5c1 0 3.6.5 4.6 2" />
-      <circle cx="15.5" cy="9.5" r="0.5" fill="currentColor" />
+      {/* Piggy bank body */}
+      <path fill="#229954" d="M19 6c-1.5 0-2.8 1.3-3 2-3.5-1.5-10.5-.3-10.5 5 0 1.8 0 3 2 4.5V21h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2z" />
+      {/* Snout */}
+      <path fill="#1A7A40" d="M2.5 9.5c1 0 3.5.5 4.5 2" />
+      {/* Eye */}
+      <circle fill="#ABEBC6" cx="15.5" cy="9.5" r="1" />
+      {/* Coin slot */}
+      <rect fill="#1A7A40" x="10" y="5" width="4" height="1.5" rx=".75" />
     </>,
     p,
   );
 
 const Insurance: IconComponent = (p) =>
-  strokeSvg(
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+  svg(
+    <>
+      {/* Shield */}
+      <path fill="#17A589" d="M12 2l8 3v7c0 5-4 9-8 10C8 21 4 17 4 12V5l8-3z" />
+      {/* Check mark */}
+      <path fill="none" stroke="#A2F3E8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" d="M8 12l3 3 5-6" />
+    </>,
     p,
   );
 
 const Tax: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
-      <path d="M13 5v2" />
-      <path d="M13 17v2" />
-      <path d="M13 11v2" />
+      {/* Ticket/receipt body */}
+      <path fill="#5B7BAD" d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+      {/* % symbol */}
+      <circle fill="#A8BED4" cx="9" cy="10" r="1.5" />
+      <circle fill="#A8BED4" cx="15" cy="14" r="1.5" />
+      <line x1="9" y1="14" x2="15" y2="10" stroke="#A8BED4" strokeWidth="1.5" strokeLinecap="round" />
+      {/* Perforation dots */}
+      <rect fill="#4A6894" x="12.25" y="5" width="1" height="2" rx=".5" />
+      <rect fill="#4A6894" x="12.25" y="17" width="1" height="2" rx=".5" />
+      <rect fill="#4A6894" x="12.25" y="11" width="1" height="2" rx=".5" />
     </>,
     p,
   );
 
 const Donation: IconComponent = (p) =>
-  strokeSvg(
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />,
+  svg(
+    <>
+      {/* Heart */}
+      <path fill="#E84393" d="M12 21l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.08A5.99 5.99 0 0 1 16.5 3C19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.18L12 21z" />
+      {/* Highlight glint */}
+      <path fill="#F472B6" d="M8 6.5a3.5 3.5 0 0 0-3 3" stroke="none" />
+    </>,
     p,
   );
 
 const Repair: IconComponent = (p) =>
-  strokeSvg(
-    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />,
+  svg(
+    <>
+      {/* Wrench handle */}
+      <path fill="#7F8C8D" d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+      {/* Grip highlight */}
+      <rect fill="#B2BABB" x="3" y="16.5" width="5" height="2" rx="1" transform="rotate(-45 3 16.5)" />
+    </>,
     p,
   );
 
 const Wallet: IconComponent = (p) =>
-  strokeSvg(
+  svg(
     <>
-      <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
-      <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
-      <path d="M18 12a2 2 0 0 0 0 4h4v-4z" />
+      {/* Wallet body */}
+      <path fill="#95A5A6" d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2H5a1 1 0 0 0 0 2h16v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5z" />
+      {/* Card pocket */}
+      <rect fill="#7F8C8D" x="15" y="11" width="6" height="5" rx="1" />
+      {/* Coin circle */}
+      <circle fill="#BDC3C7" cx="18" cy="13.5" r="1.5" />
     </>,
     p,
   );
