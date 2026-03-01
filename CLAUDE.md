@@ -88,9 +88,26 @@ Categories and category groups support an optional `icon?: string` field (stored
 
 **`<CategoryIcon name={string} size={number} />`** (`atoms/CategoryIcon.tsx`)
 
-- Renders one of 35 inline SVG icons using `currentColor` (theme-adaptive)
+- Renders one of 35 inline SVG icons with hardcoded colors (batch 1) or monochrome stroke pending Phase 2 (batch 2)
 - Falls back to the `wallet` icon if name is not found
-- `CATEGORY_ICONS` registry: `Record<string, { label: string; icon: ComponentFn }>` — 35 keys covering common finance categories (food, coffee, grocery, transport, car, bus, home, electricity, wifi, water, shopping, clothing, health, pill, gym, entertainment, movie, music, game, education, book, travel, plane, hotel, gift, pet, baby, salary, investment, savings, insurance, tax, donation, repair, wallet)
+- `CATEGORY_ICONS` registry: `Record<string, { label: string; icon: ComponentFn }>` — 35 keys covering common finance categories
+
+**Icon Batches (Phase 1 — Colorful SVG Category Icons)**
+
+- **Batch 1 (colorful, completed Phase 1)**: food, coffee, grocery, transport, car, bus, home, electricity, wifi, water, shopping, clothing, health, pill, gym, entertainment, movie, music — flat filled SVG with hardcoded palette colors per category group (Food & Drink: `#FF6B35`, Transport: `#4A90D9`, Housing: `#D4A017`, Shopping: `#E91E8C`, Health: `#2ECC71`, Entertainment: `#9B59B6`, Travel: `#1ABC9C`, Finance: `#27AE60`, Other: `#95A5A6`)
+- **Batch 2 (monochrome stroke, pending Phase 2)**: game, education, book, travel, plane, hotel, gift, pet, baby, salary, investment, savings, insurance, tax, donation, repair, wallet — stroke-based with `currentColor` via `strokeSvg()` helper (temporary, will be colorized in Phase 2)
+
+**Design Schema** (`CategoryIcon.tsx` header)
+
+- Flat minimal style: 24x24 viewBox, solid fills, no gradients/shadows
+- Batch 1 uses primary color for main shape, ~20% darker shade for details (max 3 colors/icon)
+- All icons must be visible on light (#f8f9fa) and dark (#0f172a) backgrounds
+- Batch 2 uses `currentColor` placeholder until Phase 2 colorization
+
+**Helper Functions**
+
+- `svg(children, props)` — flat filled SVG wrapper (no fill/stroke defaults; each icon controls its own colors)
+- `strokeSvg(children, props)` — monochrome stroke wrapper for batch 2 icons (sets `fill="none"`, `stroke="currentColor"`, `strokeWidth={2}`, `strokeLinecap="round"`, `strokeLinejoin="round"`)
 
 **`<IconPicker value={string} onChange={fn} />`** (`molecules/IconPicker.tsx`)
 
