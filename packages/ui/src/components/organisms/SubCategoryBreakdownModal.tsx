@@ -44,7 +44,7 @@ export function SubCategoryBreakdownModal({
               {parentIcon ? (
                 <CategoryIcon
                   name={parentIcon}
-                  size={20}
+                  size={24}
                   className="text-primary"
                 />
               ) : (

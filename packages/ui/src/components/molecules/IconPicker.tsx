@@ -14,11 +14,18 @@ export interface IconPickerProps {
   value?: string;
   onChange: (iconName: string) => void;
   className?: string;
+  /** "sm" (default 36px/20px) or "lg" (48px/28px) */
+  triggerSize?: "sm" | "lg";
 }
 
 const iconEntries = Object.entries(CATEGORY_ICONS);
 
-export function IconPicker({ value, onChange, className }: IconPickerProps) {
+export function IconPicker({
+  value,
+  onChange,
+  className,
+  triggerSize = "sm",
+}: IconPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -36,17 +43,19 @@ export function IconPicker({ value, onChange, className }: IconPickerProps) {
     setSearch("");
   };
 
+  const isLg = triggerSize === "lg";
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
-          className={cn("h-8 w-8 p-0", className)}
+          size={isLg ? "default" : "sm"}
+          className={cn(isLg ? "h-12 w-12 p-0" : "h-9 w-9 p-0", className)}
           title={value ? CATEGORY_ICONS[value]?.label : "Pick icon"}
         >
           {value ? (
-            <CategoryIcon name={value} size={16} />
+            <CategoryIcon name={value} size={isLg ? 28 : 20} />
           ) : (
             <span className="text-muted-foreground text-xs">?</span>
           )}
@@ -66,13 +75,13 @@ export function IconPicker({ value, onChange, className }: IconPickerProps) {
               key={key}
               type="button"
               className={cn(
-                "flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent transition-colors",
+                "flex items-center justify-center h-10 w-10 rounded-md hover:bg-accent transition-colors",
                 value === key && "bg-primary/15 ring-1 ring-primary",
               )}
               onClick={() => handleSelect(key)}
               title={entry.label}
             >
-              <CategoryIcon name={key} size={18} />
+              <CategoryIcon name={key} size={22} />
             </button>
           ))}
           {filtered.length === 0 && (

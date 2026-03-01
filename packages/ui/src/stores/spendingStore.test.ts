@@ -4,6 +4,7 @@ import {
   setTransactionService,
   setAccountService,
   setCategoryGroupService,
+  setCategoryService,
   resetServices,
 } from "@money-insight/ui/adapters";
 import {
@@ -63,6 +64,7 @@ describe("spendingStore.initFromDatabase", () => {
   beforeEach(() => {
     useSpendingStore.getState().reset();
     useCategoryGroupStore.setState({
+      categories: [],
       groups: [],
       mappings: [],
       lookupMap: new Map(),
@@ -120,6 +122,13 @@ describe("spendingStore.initFromDatabase", () => {
       mapSubCategory: vi.fn(),
       unmapSubCategory: vi.fn(),
       buildCategoryLookup: vi.fn(),
+    });
+    setCategoryService({
+      getCategories: vi.fn().mockResolvedValue([]),
+      addCategory: vi.fn(),
+      updateCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+      renameCategory: vi.fn(),
     });
 
     await useSpendingStore.getState().initFromDatabase();

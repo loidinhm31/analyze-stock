@@ -123,7 +123,7 @@ export function CategoryPieChart({
                     {getIcon(data.name) && (
                       <CategoryIcon
                         name={getIcon(data.name)}
-                        size={16}
+                        size={20}
                         className="inline-block shrink-0"
                       />
                     )}

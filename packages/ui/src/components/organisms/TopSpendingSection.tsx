@@ -124,7 +124,7 @@ export function TopSpendingSection({
                   {getIcon(item.category) && (
                     <CategoryIcon
                       name={getIcon(item.category)}
-                      size={16}
+                      size={20}
                       className="inline-block shrink-0"
                     />
                   )}

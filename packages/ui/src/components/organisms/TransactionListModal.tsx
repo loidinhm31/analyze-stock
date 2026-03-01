@@ -139,7 +139,7 @@ export function TransactionListModal({
                             {getIcon(transaction.category) && (
                               <CategoryIcon
                                 name={getIcon(transaction.category)}
-                                size={14}
+                                size={16}
                                 className="inline-block shrink-0"
                               />
                             )}
@@ -197,7 +197,7 @@ export function TransactionListModal({
                           {getIcon(transaction.category) && (
                             <CategoryIcon
                               name={getIcon(transaction.category)}
-                              size={12}
+                              size={14}
                               className="inline-block shrink-0"
                             />
                           )}

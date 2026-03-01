@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { DollarSign, Tag, CreditCard, Trash2 } from "lucide-react";
 import {
   Button,
+  CategoryIcon,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -17,7 +18,7 @@ import {
 import { DatePicker, FormField } from "@money-insight/ui/components/molecules";
 import { cn } from "@money-insight/ui/lib";
 import { SUPPORTED_CURRENCIES } from "@money-insight/shared";
-import { useLastFormValues } from "@money-insight/ui/hooks";
+import { useLastFormValues, useCategoryIcon } from "@money-insight/ui/hooks";
 import type {
   Transaction,
   NewTransaction,
@@ -71,6 +72,7 @@ export function TransactionForm(props: TransactionFormProps) {
   const { save, getLastDate, getLastAccount } = useLastFormValues(
     accounts.map((a) => a.name),
   );
+  const { getIcon } = useCategoryIcon();
   // Ensures account is pre-filled only once per add-mode mount, after accounts load
   const accountPrefilledRef = useRef(false);
 
@@ -314,7 +316,13 @@ export function TransactionForm(props: TransactionFormProps) {
             <FormField
               label="Category"
               id={`${formId}-category`}
-              icon={<Tag className="h-4 w-4" />}
+              icon={
+                getIcon(category) ? (
+                  <CategoryIcon name={getIcon(category)!} size={16} />
+                ) : (
+                  <Tag className="h-4 w-4" />
+                )
+              }
               required
               type="text"
               value={category}

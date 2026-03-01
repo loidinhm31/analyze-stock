@@ -98,6 +98,19 @@ export class IndexedDBSyncStorage {
     return records;
   }
 
+  async hasPendingChanges(): Promise<boolean> {
+    const pendingDeletes = await getDb()._pendingChanges
+      .filter((c) => c.operation === "delete")
+      .count();
+    if (pendingDeletes > 0) return true;
+    const tables = [getDb().transactions, getDb().categories, getDb().accounts];
+    for (const table of tables) {
+      const count = await table.filter((r) => r.syncedAt === undefined || r.syncedAt === null).count();
+      if (count > 0) return true;
+    }
+    return false;
+  }
+
   async getPendingChangesCount(): Promise<number> {
     let count = 0;
 

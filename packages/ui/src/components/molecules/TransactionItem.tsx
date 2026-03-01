@@ -75,7 +75,7 @@ export function TransactionItem({
               {!isAdjustment && !isTransfer && iconName && (
                 <CategoryIcon
                   name={iconName}
-                  size={14}
+                  size={16}
                   className="inline-block shrink-0"
                 />
               )}

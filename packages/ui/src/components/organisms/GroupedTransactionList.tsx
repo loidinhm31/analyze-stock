@@ -187,7 +187,7 @@ export function GroupedTransactionList({
                                 getIcon(transaction.category) && (
                                   <CategoryIcon
                                     name={getIcon(transaction.category)}
-                                    size={14}
+                                    size={16}
                                     className="inline-block shrink-0"
                                   />
                                 )}

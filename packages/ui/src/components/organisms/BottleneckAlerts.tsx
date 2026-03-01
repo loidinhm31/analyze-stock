@@ -78,7 +78,7 @@ export function BottleneckAlerts({
                     {getCategoryIconName(bottleneck.category) && (
                       <CategoryIcon
                         name={getCategoryIconName(bottleneck.category)}
-                        size={16}
+                        size={20}
                         className="inline-block shrink-0"
                       />
                     )}

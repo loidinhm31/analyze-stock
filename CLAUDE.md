@@ -92,20 +92,24 @@ Categories and category groups support an optional `icon?: string` field (stored
 - Falls back to the `wallet` icon if name is not found
 - `CATEGORY_ICONS` registry: `Record<string, { label: string; icon: ComponentFn }>` — 35 keys covering common finance categories
 
-**Icon Batches (Completed Phase 1–2)**
+**Icon Pack (v2 — mint-teal + amber outlined style)**
 
-- **Batch 1 (colorful)**: food, coffee, grocery, transport, car, bus, home, electricity, wifi, water, shopping, clothing, health, pill, gym, entertainment, movie, music — flat filled SVG with hardcoded palette colors per category group (Food & Drink: `#FF6B35`, Transport: `#4A90D9`, Housing: `#D4A017`, Shopping: `#E91E8C`, Health: `#2ECC71`, Entertainment: `#9B59B6`, Travel: `#1ABC9C`, Finance: `#27AE60`, Other: `#95A5A6`)
-- **Batch 2**: game, education, book, travel, plane, hotel, gift, pet, baby, salary, investment, savings, insurance, tax, donation, repair, wallet — colorful filled SVG matching batch 1 design schema. Savings snout fixed with rounded stroke endpoints (strokeLinecap: round) for visibility
+All 35 icons redesigned to match the flat two-tone outlined style:
+- **Teal group** (transport, housing, health, entertainment, education, travel, finance): `#92E0C0` fill · `#5FA77E` depth
+- **Amber group** (food & drink, shopping, personal): `#FFC850` fill · `#FF9052` depth
+- Outline stroke `#474D54` (1.5px) on all main shapes
+- White `#FFFFFF` fills for interior details (windows, screens, paper)
 
 **Design Schema** (`CategoryIcon.tsx` header)
 
-- Flat minimal style: 24x24 viewBox, solid fills, no gradients/shadows
-- Primary color for main shape, ~20% darker shade for details (max 3 colors/icon)
-- All icons visible on light (#f8f9fa) and dark (#0f172a) backgrounds
+- Two-tone outlined style: 24x24 viewBox, flat solid fills + dark stroke outlines
+- Main shape: fill + `stroke="#474D54"` `strokeWidth="1.5"` `strokeLinecap="round"` `strokeLinejoin="round"`
+- Depth: darker tint fills (`#5FA77E` or `#FF9052`) for secondary/shadow areas (no separate outline)
+- Interior: `#FFFFFF` for windows, screens, text areas
 
 **Helper Functions**
 
-- `svg(children, props)` — flat filled SVG wrapper (no fill/stroke defaults; each icon controls its own colors)
+- `svg(children, props)` — SVG wrapper forwarding all props; each icon controls its own fill/stroke colors
 
 **`<IconPicker value={string} onChange={fn} />`** (`molecules/IconPicker.tsx`)
 

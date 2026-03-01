@@ -12,8 +12,9 @@ import {
   setStatisticsService,
   setSyncService,
   setTransactionService,
+  getSyncService,
 } from "@money-insight/ui/adapters";
-import { initDb } from "@money-insight/ui/adapters/web";
+import { initDb, deleteCurrentDb, IndexedDBSyncStorage } from "@money-insight/ui/adapters/web";
 import { QmServerAuthAdapter } from "@money-insight/ui/adapters/shared";
 import { TauriAuthAdapter } from "@money-insight/ui/adapters/tauri";
 import { isTauri } from "@money-insight/ui/utils";
@@ -36,6 +37,9 @@ export interface AuthTokens {
   userId?: string;
 }
 
+type LogoutCleanupFn = () => Promise<{ success: boolean; error?: string }>;
+type UnregisterFn = () => void;
+
 export interface MoneyInsightAppProps {
   authTokens?: AuthTokens;
   embedded?: boolean;
@@ -43,6 +47,8 @@ export interface MoneyInsightAppProps {
   basePath?: string;
   className?: string;
   onLogoutRequest?: () => void;
+  /** Register a cleanup callback for logout (sync + delete DB). Returns unregister fn. */
+  registerLogoutCleanup?: (appId: string, fn: LogoutCleanupFn) => UnregisterFn;
 }
 
 export function MoneyInsightApp({
@@ -52,6 +58,7 @@ export function MoneyInsightApp({
   basePath,
   className,
   onLogoutRequest,
+  registerLogoutCleanup,
 }: MoneyInsightAppProps) {
   // Gate rendering on DB ready to prevent getDb() throws before initDb() completes
   const [dbReady, setDbReady] = useState(false);
@@ -63,6 +70,27 @@ export function MoneyInsightApp({
       .then(() => setDbReady(true))
       .catch(console.error);
   }, [authTokens?.userId]);
+
+  // Register logout cleanup with hub after DB is ready
+  useEffect(() => {
+    if (!dbReady || !registerLogoutCleanup) return;
+    const unregister = registerLogoutCleanup("money-insight", async () => {
+      try {
+        const storage = new IndexedDBSyncStorage();
+        const hasPending = await storage.hasPendingChanges();
+        if (hasPending) {
+          const syncService = getSyncService();
+          const result = await syncService.syncNow();
+          if (!result.success) return { success: false, error: result.error };
+        }
+        await deleteCurrentDb();
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: e instanceof Error ? e.message : "Cleanup failed" };
+      }
+    });
+    return unregister;
+  }, [dbReady, registerLogoutCleanup]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(

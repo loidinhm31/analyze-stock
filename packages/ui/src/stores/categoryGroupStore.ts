@@ -1,9 +1,15 @@
 import { create } from "zustand";
-import type { CategoryGroup, CategoryMapping } from "@money-insight/ui/types";
+import type {
+  Category,
+  CategoryGroup,
+  CategoryMapping,
+} from "@money-insight/ui/types";
 import * as categoryGroupService from "@money-insight/ui/services/categoryGroupService";
+import * as categoryService from "@money-insight/ui/services/categoryService";
 
 interface CategoryGroupStore {
   // Data
+  categories: Category[];
   groups: CategoryGroup[];
   mappings: CategoryMapping[];
   lookupMap: Map<string, string>;
@@ -23,6 +29,10 @@ interface CategoryGroupStore {
     parentGroupId: string,
   ) => Promise<CategoryMapping>;
   unmapSubCategory: (subCategory: string) => Promise<void>;
+  updateCategory: (category: Category) => Promise<Category>;
+  addCategory: (
+    category: Omit<Category, "id" | "syncVersion" | "syncedAt">,
+  ) => Promise<Category>;
 
   // Resolver
   resolveParent: (subCategory: string) => string;
@@ -39,6 +49,7 @@ export const useCategoryGroupStore = create<CategoryGroupStore>()(
 
     return {
       // Initial state
+      categories: [],
       groups: [],
       mappings: [],
       lookupMap: new Map<string, string>(),
@@ -51,12 +62,13 @@ export const useCategoryGroupStore = create<CategoryGroupStore>()(
         set({ isLoading: true, error: null });
 
         try {
-          const [groups, mappings] = await Promise.all([
+          const [groups, mappings, categories] = await Promise.all([
             categoryGroupService.getCategoryGroups(),
             categoryGroupService.getCategoryMappings(),
+            categoryService.getCategories(),
           ]);
 
-          set({ groups, mappings, isLoading: false, isLoaded: true });
+          set({ groups, mappings, categories, isLoading: false, isLoaded: true });
           get().rebuildLookup();
         } catch (error) {
           console.error("Failed to load category groups:", error);
@@ -190,6 +202,32 @@ export const useCategoryGroupStore = create<CategoryGroupStore>()(
                 ? error.message
                 : "Failed to unmap sub-category",
           });
+          throw error;
+        }
+      },
+
+      // Update a category (e.g. when setting an icon)
+      updateCategory: async (category) => {
+        try {
+          const updated = await categoryService.updateCategory(category);
+          set((state) => ({
+            categories: state.categories.map((c) =>
+              c.id === updated.id ? updated : c,
+            ),
+          }));
+          return updated;
+        } catch (error) {
+          throw error;
+        }
+      },
+
+      // Add a new standalone category (creates the record if missing)
+      addCategory: async (categoryData) => {
+        try {
+          const created = await categoryService.addCategory(categoryData);
+          set((state) => ({ categories: [...state.categories, created] }));
+          return created;
+        } catch (error) {
           throw error;
         }
       },

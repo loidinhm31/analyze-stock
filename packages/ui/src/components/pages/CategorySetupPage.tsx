@@ -43,6 +43,7 @@ interface CategorySetupPageProps {
 
 export function CategorySetupPage({ onBack }: CategorySetupPageProps) {
   const {
+    categories: storedCategories,
     groups,
     mappings,
     isLoading,
@@ -51,6 +52,8 @@ export function CategorySetupPage({ onBack }: CategorySetupPageProps) {
     deleteGroup,
     mapSubCategory,
     unmapSubCategory,
+    updateCategory: updateCategoryInStore,
+    addCategory: addCategoryToStore,
   } = useCategoryGroupStore();
 
   const { transactions } = useSpendingStore();
@@ -80,9 +83,6 @@ export function CategorySetupPage({ onBack }: CategorySetupPageProps) {
   );
   const [editingStandaloneName, setEditingStandaloneName] = useState("");
   const [standaloneLoading, setStandaloneLoading] = useState(false);
-  const [storedCategories, setStoredCategories] = useState<
-    import("@money-insight/ui/types").Category[]
-  >([]);
 
   // Get all unique categories from transactions with their stats
   const categoryStats = useMemo(() => {
@@ -352,37 +352,20 @@ export function CategorySetupPage({ onBack }: CategorySetupPageProps) {
     }
   };
 
-  // Load stored categories for icon data
-  useEffect(() => {
-    categoryService
-      .getCategories()
-      .then(setStoredCategories)
-      .catch(() => {});
-  }, []);
-
   // Helper to find stored category icon by name
   const getCategoryIcon = (name: string) =>
     storedCategories.find((c) => c.name === name)?.icon;
 
-  // Update a standalone category's icon
+  // Update a standalone category's icon (keeps store in sync for useCategoryIcon)
   const handleUpdateStandaloneIcon = async (
     categoryName: string,
     icon: string,
   ) => {
     const cat = storedCategories.find((c) => c.name === categoryName);
     if (cat) {
-      const updated = await categoryService.updateCategory({ ...cat, icon });
-      setStoredCategories((prev) =>
-        prev.map((c) => (c.id === updated.id ? updated : c)),
-      );
+      await updateCategoryInStore({ ...cat, icon });
     } else {
-      // Create a stored category record with the icon
-      const created = await categoryService.addCategory({
-        name: categoryName,
-        isExpense: true,
-        icon,
-      });
-      setStoredCategories((prev) => [...prev, created]);
+      await addCategoryToStore({ name: categoryName, isExpense: true, icon });
     }
   };
 
@@ -529,6 +512,7 @@ export function CategorySetupPage({ onBack }: CategorySetupPageProps) {
                         <IconPicker
                           value={group.icon}
                           onChange={(icon) => updateGroup({ ...group, icon })}
+                          triggerSize="lg"
                         />
                       </div>
 
@@ -1043,6 +1027,7 @@ export function CategorySetupPage({ onBack }: CategorySetupPageProps) {
                                 onChange={(icon) =>
                                   handleUpdateStandaloneIcon(category, icon)
                                 }
+                                triggerSize="lg"
                               />
                             </div>
                             <span className="flex-1 text-sm font-medium">

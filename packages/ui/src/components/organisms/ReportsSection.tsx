@@ -164,7 +164,7 @@ export function ReportsSection({
                         {getIcon(t.category) && (
                           <CategoryIcon
                             name={getIcon(t.category)}
-                            size={12}
+                            size={14}
                             className="inline-block shrink-0"
                           />
                         )}
@@ -225,7 +225,7 @@ export function ReportsSection({
                         {getIcon(t.category) && (
                           <CategoryIcon
                             name={getIcon(t.category)}
-                            size={12}
+                            size={14}
                             className="inline-block shrink-0"
                           />
                         )}
