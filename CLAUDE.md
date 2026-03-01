@@ -88,14 +88,14 @@ Categories and category groups support an optional `icon?: string` field (stored
 
 **`<CategoryIcon name={string} size={number} />`** (`atoms/CategoryIcon.tsx`)
 
-- Renders one of 35 inline SVG icons with hardcoded colors (batch 1) or monochrome stroke pending Phase 2 (batch 2)
+- Renders one of 35 inline SVG icons with hardcoded colors — all colorful, flat minimal style
 - Falls back to the `wallet` icon if name is not found
 - `CATEGORY_ICONS` registry: `Record<string, { label: string; icon: ComponentFn }>` — 35 keys covering common finance categories
 
 **Icon Batches (Completed Phase 1–2)**
 
 - **Batch 1 (colorful)**: food, coffee, grocery, transport, car, bus, home, electricity, wifi, water, shopping, clothing, health, pill, gym, entertainment, movie, music — flat filled SVG with hardcoded palette colors per category group (Food & Drink: `#FF6B35`, Transport: `#4A90D9`, Housing: `#D4A017`, Shopping: `#E91E8C`, Health: `#2ECC71`, Entertainment: `#9B59B6`, Travel: `#1ABC9C`, Finance: `#27AE60`, Other: `#95A5A6`)
-- **Batch 2 (colorful)**: game, education, book, travel, plane, hotel, gift, pet, baby, salary, investment, savings, insurance, tax, donation, repair, wallet — colorful filled SVG matching batch 1 design schema
+- **Batch 2**: game, education, book, travel, plane, hotel, gift, pet, baby, salary, investment, savings, insurance, tax, donation, repair, wallet — colorful filled SVG matching batch 1 design schema. Savings snout fixed with rounded stroke endpoints (strokeLinecap: round) for visibility
 
 **Design Schema** (`CategoryIcon.tsx` header)
 

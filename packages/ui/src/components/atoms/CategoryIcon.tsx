@@ -95,7 +95,7 @@ const Coffee: IconComponent = (p) =>
 const Grocery: IconComponent = (p) =>
   svg(
     <>
-      {/* Bag body */}
+      {/* Bag body — intentionally green (produce/bag mental model; orange already used by Food) */}
       <path fill="#6ABF4B" d="M5 9h14v11a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V9z" />
       {/* Top edge */}
       <rect fill="#4A9A31" x="5" y="8" width="14" height="2" rx="1" />
@@ -186,6 +186,7 @@ const Electricity: IconComponent = (p) =>
 const Wifi: IconComponent = (p) =>
   svg(
     <>
+      {/* intentionally indigo — reads better than amber on both light/dark backgrounds */}
       <path fill="none" stroke="#6366F1" strokeWidth="2.5" d="M1.42 9a16 16 0 0 1 21.16 0" />
       <path fill="none" stroke="#6366F1" strokeWidth="2.5" d="M5 12.55a11 11 0 0 1 14.08 0" />
       <path fill="none" stroke="#6366F1" strokeWidth="2.5" d="M8.53 16.11a6 6 0 0 1 6.95 0" />
@@ -499,7 +500,7 @@ const Savings: IconComponent = (p) =>
       {/* Piggy bank body */}
       <path fill="#229954" d="M19 6c-1.5 0-2.8 1.3-3 2-3.5-1.5-10.5-.3-10.5 5 0 1.8 0 3 2 4.5V21h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2z" />
       {/* Snout */}
-      <path fill="#1A7A40" d="M2.5 9.5c1 0 3.5.5 4.5 2" />
+      <path fill="none" stroke="#1A7A40" strokeWidth="1.5" strokeLinecap="round" d="M2.5 9.5c1 0 3.5.5 4.5 2" />
       {/* Eye */}
       <circle fill="#ABEBC6" cx="15.5" cy="9.5" r="1" />
       {/* Coin slot */}
@@ -522,7 +523,7 @@ const Insurance: IconComponent = (p) =>
 const Tax: IconComponent = (p) =>
   svg(
     <>
-      {/* Ticket/receipt body */}
+      {/* Ticket/receipt body — intentionally blue-grey (distinguishes from Salary/Investment/Savings green) */}
       <path fill="#5B7BAD" d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
       {/* % symbol */}
       <circle fill="#A8BED4" cx="9" cy="10" r="1.5" />
