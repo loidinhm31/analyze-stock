@@ -54,4 +54,10 @@ export {
   CATEGORY_ICONS,
   type CategoryIconProps,
 } from "./CategoryIcon";
+export {
+  AccountIcon,
+  ACCOUNT_ICONS,
+  ACCOUNT_TYPE_ICON,
+  type AccountIconProps,
+} from "./AccountIcon";
 export { ErrorBoundary } from "./ErrorBoundary";

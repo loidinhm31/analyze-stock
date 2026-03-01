@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Trash2, Scale } from "lucide-react";
-import { Badge, Button } from "@money-insight/ui/components/atoms";
+import { AccountIcon, ACCOUNT_ICONS, Badge, Button } from "@money-insight/ui/components/atoms";
 import { cn } from "@money-insight/ui/lib";
 
 export interface AccountItemProps {
@@ -90,7 +90,11 @@ export function AccountItem({
     >
       <div className="flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          {icon && <span className="text-2xl">{icon}</span>}
+          {icon && (
+            ACCOUNT_ICONS[icon]
+              ? <AccountIcon name={icon} size={24} />
+              : <span className="text-2xl">{icon}</span>
+          )}
           <span className="font-medium">{name}</span>
           {accountType && <Badge variant="outline">{accountType}</Badge>}
         </div>

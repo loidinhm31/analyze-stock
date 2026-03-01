@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { Trash2, DollarSign, CreditCard, Tag } from "lucide-react";
 import {
+  AccountIcon,
+  ACCOUNT_ICONS,
+  ACCOUNT_TYPE_ICON,
   Button,
   DialogDescription,
   DialogFooter,
@@ -14,6 +17,7 @@ import {
   SelectValue,
 } from "@money-insight/ui/components/atoms";
 import { FormField } from "@money-insight/ui/components/molecules";
+import { cn } from "@money-insight/ui/lib";
 import type { Account, NewAccount } from "@money-insight/ui/types";
 
 interface BaseAccountFormProps {
@@ -36,6 +40,10 @@ interface EditAccountFormProps extends BaseAccountFormProps {
 
 export type AccountFormProps = AddAccountFormProps | EditAccountFormProps;
 
+function resolveIcon(iconVal: string | undefined, type: string): string {
+  return iconVal && ACCOUNT_ICONS[iconVal] ? iconVal : (ACCOUNT_TYPE_ICON[type] ?? "cash");
+}
+
 export function AccountForm(props: AccountFormProps) {
   const { mode, onCancel } = props;
   const account = mode === "edit" ? props.account : undefined;
@@ -45,7 +53,7 @@ export function AccountForm(props: AccountFormProps) {
   const [accountType, setAccountType] = useState(
     account?.accountType || "Cash",
   );
-  const [icon, setIcon] = useState(account?.icon || "💰");
+  const [icon, setIcon] = useState(() => resolveIcon(account?.icon, account?.accountType || "Cash"));
   const [initialBalance, setInitialBalance] = useState(
     account?.initialBalance?.toString() || "0",
   );
@@ -57,16 +65,17 @@ export function AccountForm(props: AccountFormProps) {
   // Reset form when switching between add/edit or when account changes
   useEffect(() => {
     if (mode === "edit" && account) {
+      const type = account.accountType || "Cash";
       setName(account.name);
-      setAccountType(account.accountType || "Cash");
-      setIcon(account.icon || "💰");
+      setAccountType(type);
+      setIcon(resolveIcon(account.icon, type));
       setInitialBalance(account.initialBalance.toString());
       setCurrency(account.currency);
       setConfirmDelete(false);
     } else if (mode === "add") {
       setName("");
       setAccountType("Cash");
-      setIcon("💰");
+      setIcon("cash");
       setInitialBalance("0");
       setCurrency("VND");
       setConfirmDelete(false);
@@ -177,7 +186,13 @@ export function AccountForm(props: AccountFormProps) {
               id="account-type"
               icon={<CreditCard className="h-4 w-4" />}
             >
-              <Select value={accountType} onValueChange={setAccountType}>
+              <Select
+                value={accountType}
+                onValueChange={(val) => {
+                  setAccountType(val);
+                  setIcon(ACCOUNT_TYPE_ICON[val] ?? "cash");
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -191,15 +206,28 @@ export function AccountForm(props: AccountFormProps) {
               </Select>
             </FormField>
 
-            {/* Icon */}
-            <FormField
-              label="Icon"
-              id="account-icon"
-              type="text"
-              value={icon}
-              onChange={(e) => setIcon(e.target.value)}
-              placeholder="e.g., 💰 🏦 💳 📊 💎"
-            />
+            {/* Icon picker */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-none">Icon</span>
+              <div className="flex gap-2">
+                {Object.entries(ACCOUNT_ICONS).map(([key, entry]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setIcon(key)}
+                    title={entry.label}
+                    className={cn(
+                      "flex items-center justify-center h-10 w-10 rounded-md border transition-colors hover:bg-accent",
+                      icon === key
+                        ? "border-(--color-primary-500) bg-(--color-primary-500)/10 ring-1 ring-(--color-primary-500)"
+                        : "border-(--color-border-light)",
+                    )}
+                  >
+                    <AccountIcon name={key} size={22} />
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Initial Balance & Currency */}
             <FormField
