@@ -30,6 +30,7 @@ import {
   type IPlatformServices,
 } from "@money-insight/ui/platform";
 import { ThemeProvider } from "@money-insight/ui/contexts";
+import { useAutoSync } from "../hooks/useAutoSync";
 
 export interface AuthTokens {
   accessToken?: string;
@@ -134,6 +135,12 @@ export function MoneyInsightApp({
 
     return { transaction, category, account, statistics, auth, sync };
   }, [dbReady]);
+
+  const isAuthenticated = !!(authTokens?.accessToken && authTokens?.refreshToken);
+  useAutoSync({
+    syncService: dbReady ? getSyncService() : null,
+    enabled: dbReady && isAuthenticated && embedded,
+  });
 
   // If external auth tokens are provided, save them to the auth service
   useEffect(() => {
