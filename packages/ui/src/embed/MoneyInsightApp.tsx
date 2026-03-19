@@ -31,6 +31,27 @@ import {
 } from "@money-insight/ui/platform";
 import { ThemeProvider } from "@money-insight/ui/contexts";
 import { useAutoSync } from "../hooks/useAutoSync";
+import { useSyncToast } from "../hooks/useSyncToast";
+import { SyncToastProvider } from "../contexts/SyncToastContext";
+import { SyncToast } from "../components/atoms/SyncToast";
+import type { ISyncService } from "@money-insight/ui/adapters/factory/interfaces";
+
+function SyncAutoSyncManager({
+  syncService,
+  enabled,
+}: {
+  syncService: ISyncService | null;
+  enabled: boolean;
+}) {
+  const { handleSyncStart, handleSyncResult } = useSyncToast();
+  useAutoSync({
+    syncService,
+    enabled,
+    onSyncStart: handleSyncStart,
+    onSyncResult: handleSyncResult,
+  });
+  return null;
+}
 
 export interface AuthTokens {
   accessToken?: string;
@@ -137,10 +158,7 @@ export function MoneyInsightApp({
   }, [dbReady]);
 
   const isAuthenticated = !!(authTokens?.accessToken && authTokens?.refreshToken);
-  useAutoSync({
-    syncService: dbReady ? getSyncService() : null,
-    enabled: dbReady && isAuthenticated && embedded,
-  });
+  const autoSyncEnabled = dbReady && isAuthenticated && embedded;
 
   // If external auth tokens are provided, save them to the auth service
   useEffect(() => {
@@ -179,11 +197,18 @@ export function MoneyInsightApp({
         <PlatformProvider services={services}>
           <PortalContainerContext.Provider value={portalContainer}>
             <BasePathContext.Provider value={basePath || ""}>
-              {useRouter ? (
-                <BrowserRouter basename={basePath}>{content}</BrowserRouter>
-              ) : (
-                content
-              )}
+              <SyncToastProvider position="top-right">
+                {useRouter ? (
+                  <BrowserRouter basename={basePath}>{content}</BrowserRouter>
+                ) : (
+                  content
+                )}
+                <SyncAutoSyncManager
+                  syncService={dbReady ? getSyncService() : null}
+                  enabled={autoSyncEnabled}
+                />
+                <SyncToast />
+              </SyncToastProvider>
             </BasePathContext.Provider>
           </PortalContainerContext.Provider>
         </PlatformProvider>
