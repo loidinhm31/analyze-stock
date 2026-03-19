@@ -2,7 +2,7 @@
  * Environment configuration interface
  */
 export interface AppEnvironment {
-  VITE_QM_CENTER_SERVER_URL: string;
+  VITE_QM_HUB_SERVER_URL: string;
   VITE_MONEY_INSIGHT_APP_ID: string;
   VITE_MONEY_INSIGHT_API_KEY: string;
   DEV: boolean;
@@ -14,7 +14,7 @@ export interface AppEnvironment {
  * Default values for environment variables
  */
 const ENV_DEFAULTS: Partial<AppEnvironment> = {
-  VITE_QM_CENTER_SERVER_URL: "http://localhost:3000",
+  VITE_QM_HUB_SERVER_URL: "http://localhost:3000",
   VITE_MONEY_INSIGHT_APP_ID: "money-insight",
   VITE_MONEY_INSIGHT_API_KEY: "",
   DEV: false,
@@ -74,7 +74,7 @@ class EnvironmentManager {
   }
 
   get serverUrl(): string {
-    return this.get("VITE_QM_CENTER_SERVER_URL");
+    return this.get("VITE_QM_HUB_SERVER_URL");
   }
 
   get appId(): string {
