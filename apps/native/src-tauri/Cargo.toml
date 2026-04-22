@@ -25,7 +25,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # Sync client library (uses reqwest internally)
-qm-sync-client = { version = "0.2.0", features = ["reqwest-client"] }
+glean-oak-sync-client = { version = "0.2.0", features = ["reqwest-client"] }
 
 # HTTP client for auth service
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }

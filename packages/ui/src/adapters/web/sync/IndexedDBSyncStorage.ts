@@ -201,7 +201,7 @@ export class IndexedDBSyncStorage {
     }
 
     const data: Record<string, unknown> = {
-      ...record.data,
+      ...(record.data as any),
       id: record.rowId,
       syncVersion: record.version,
       syncedAt: syncedAt,

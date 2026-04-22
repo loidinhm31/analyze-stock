@@ -58,7 +58,7 @@ setAuthService(isTauri() ? new TauriAuthAdapter() : new QmServerAuthAdapter());
 **Auth Services** - Platform-specific:
 
 - `TauriAuthAdapter` - Uses Tauri IPC commands to Rust backend
-- `QmServerAuthAdapter` - HTTP calls to qm-hub-server
+- `QmServerAuthAdapter` - HTTP calls to glean-oak-server
 
 **Platform Context** - Services provided to React tree via `PlatformProvider` (`packages/ui/src/platform/`)
 
@@ -127,7 +127,7 @@ All 35 icons redesigned to match the flat two-tone outlined style:
 
 ### Sync Architecture
 
-Uses qm-sync-client for offline-first sync with qm-hub-server:
+Uses glean-oak-sync-client for offline-first sync with glean-oak-server:
 
 - **Checkpoint-based pagination** — client maintains `_syncMeta` table with last-synced timestamps per table
 - **Client-generated UUIDs** — enables offline record creation; soft-deleted records retained for 60-day TTL
@@ -163,8 +163,8 @@ The `MoneyInsightApp` component (`packages/ui/src/embed/`) can be embedded:
 
 ## Dependencies on Parent Project
 
-Part of qm-sync ecosystem:
+Part of glean-oak-sync ecosystem:
 
-- Uses `@qm-hub/sync-client-types` for TypeScript types
-- Uses `qm-sync-client` Rust crate for sync (Tauri only)
-- Designed to embed in `qm-hub-app` admin panel
+- Uses `@glean-oak/sync-client-types` for TypeScript types
+- Uses `glean-oak-sync-client` Rust crate for sync (Tauri only)
+- Designed to embed in `glean-oak-app` admin panel

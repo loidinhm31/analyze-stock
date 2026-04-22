@@ -1,6 +1,6 @@
 # Money Insight
 
-Offline-first personal finance tracker with end-to-end sync, multi-platform deployment, and powerful analytics. Track transactions, manage accounts, analyze spending patterns, and access your financial data across web, desktop (Tauri), and embedded (qm-hub-app) deployments.
+Offline-first personal finance tracker with end-to-end sync, multi-platform deployment, and powerful analytics. Track transactions, manage accounts, analyze spending patterns, and access your financial data across web, desktop (Tauri), and embedded (glean-oak-app) deployments.
 
 ## Quick Start
 
@@ -57,7 +57,7 @@ pnpm clean             # Remove build artifacts
 - **Balance Adjustments**: Manual corrections without affecting expense tracking
 - **Themes**: Light, dark, and cyber themes with CSS variables
 - **Offline-First**: Full functionality without internet; automatic sync when available
-- **Multi-Platform**: Web, Tauri desktop, or embedded in qm-hub-app
+- **Multi-Platform**: Web, Tauri desktop, or embedded in glean-oak-app
 - **Encrypted Storage**: Tauri desktop encrypts tokens with ChaCha20Poly1305
 
 ## Architecture Overview
@@ -79,7 +79,7 @@ packages/
 - **Frontend**: React 19 + React Router 7 + Tailwind CSS v4
 - **State**: Zustand (spendingStore, categoryGroupStore)
 - **Database**: IndexedDB via Dexie.js (offline-first)
-- **Sync**: qm-sync-client with checkpoint-based pagination
+- **Sync**: glean-oak-sync-client with checkpoint-based pagination
 - **Auth**: JWT + refresh-token rotation
 - **Desktop**: Tauri v2 + Axum embedded web server
 - **Styling**: CSS variables (3 themes) + shadcn/ui components
@@ -117,9 +117,9 @@ Start here for development:
 ### Standalone Web
 - Vite dev server or built SPA hosted on web server
 - Full authentication (login, register, logout)
-- Syncs to qm-hub-server
+- Syncs to glean-oak-server
 
-### Embedded in qm-hub-app
+### Embedded in glean-oak-app
 - React component mounted in Shadow DOM
 - Shares auth tokens with parent app (no separate login)
 - Route prefix: `/money`
@@ -128,7 +128,7 @@ Start here for development:
 - Native macOS/Windows/Linux app
 - Encrypted token storage (ChaCha20Poly1305)
 - Embedded Axum web server on port 25096
-- Syncs to qm-hub-server via IPC
+- Syncs to glean-oak-server via IPC
 
 ## Testing
 
@@ -200,7 +200,7 @@ Clear app data or delete old transactions. Max quota varies by browser (typicall
 
 ### "Sync not working"
 1. Check network connectivity
-2. Verify auth tokens in localStorage (`qm-hub-accessToken`, `qm-hub-userId`)
+2. Verify auth tokens in localStorage (`glean-oak-accessToken`, `glean-oak-userId`)
 3. Check `_syncMeta` table in IndexedDB for checkpoint corruption
 4. Try manual sync: Settings → "Sync now" button
 
@@ -232,9 +232,9 @@ money-insight/
 
 ## Related Projects
 
-- **[qm-hub-app](../../../qm-hub-app)** — Admin panel that embeds Money Insight
-- **[qm-hub-server](../../../qm-hub-server)** — Backend API for sync and auth
-- **[qm-sync-engine](../../qm-core-engine/qm-sync-engine)** — Sync protocol implementation
+- **[glean-oak-app](../../../glean-oak-app)** — Admin panel that embeds Money Insight
+- **[glean-oak-server](../../../glean-oak-server)** — Backend API for sync and auth
+- **[glean-oak-sync-engine](../../glean-oak-core-engine/glean-oak-sync-engine)** — Sync protocol implementation
 
 ## License
 

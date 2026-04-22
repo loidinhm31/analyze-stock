@@ -1,4 +1,4 @@
-use qm_sync_client::{ReqwestHttpClient, QmSyncClient, SyncClientConfig};
+use glean_oak_sync_client::{ReqwestHttpClient, GleanOakClient, SyncClientConfig};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri_plugin_store::StoreExt;
@@ -13,7 +13,7 @@ use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use tokio::sync::RwLock;
 
 pub struct AuthService {
-    sync_client: Arc<RwLock<QmSyncClient<ReqwestHttpClient>>>,
+    sync_client: Arc<RwLock<GleanOakClient<ReqwestHttpClient>>>,
     server_url: String,
     default_app_id: String,
     default_api_key: String,
@@ -174,7 +174,7 @@ impl AuthService {
     pub fn new(server_url: String, default_app_id: String, default_api_key: String) -> Self {
         let config = SyncClientConfig::new(&server_url, &default_app_id, &default_api_key);
         let http = ReqwestHttpClient::new();
-        let sync_client = QmSyncClient::new(config, http);
+        let sync_client = GleanOakClient::new(config, http);
         Self {
             sync_client: Arc::new(RwLock::new(sync_client)),
             server_url,
@@ -186,7 +186,7 @@ impl AuthService {
     pub async fn set_server_url(&self, server_url: String) {
         let config = SyncClientConfig::new(&server_url, &self.default_app_id, &self.default_api_key);
         let http = ReqwestHttpClient::new();
-        let new_client = QmSyncClient::new(config, http);
+        let new_client = GleanOakClient::new(config, http);
         let mut client = self.sync_client.write().await;
         *client = new_client;
     }
@@ -411,7 +411,7 @@ impl AuthService {
         Ok(())
     }
 
-    pub fn sync_client(&self) -> Arc<RwLock<QmSyncClient<ReqwestHttpClient>>> {
+    pub fn sync_client(&self) -> Arc<RwLock<GleanOakClient<ReqwestHttpClient>>> {
         Arc::clone(&self.sync_client)
     }
 }
