@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@money-insight/ui/components/atoms";
 import { DatePicker, FormField } from "@money-insight/ui/components/molecules";
-import { cn } from "@money-insight/ui/lib";
+import { cn, formatCurrency } from "@money-insight/ui/lib";
 import { SUPPORTED_CURRENCIES } from "@money-insight/shared";
 import { useLastFormValues, useCategoryIcon } from "@money-insight/ui/hooks";
 import type {
@@ -153,6 +153,16 @@ export function TransactionForm(props: TransactionFormProps) {
     setSubmitSuccess(null);
   }
 
+  function formatSuccessAmount(amountValue: number, currencyCode: string) {
+    if (currencyCode === "VND") {
+      return formatCurrency(amountValue);
+    }
+
+    return `${currencyCode} ${amountValue.toLocaleString("en-US", {
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -210,9 +220,10 @@ export function TransactionForm(props: TransactionFormProps) {
         save({ date: date.toISOString(), account });
         resetForm();
         if (!closeOnSuccess) {
+          const formattedAmount = formatSuccessAmount(numericAmount, currency);
           setDate(date);
           setAccount(account);
-          setSubmitSuccess("Added transaction successfully.");
+          setSubmitSuccess(`Added ${category} for ${formattedAmount}.`);
         }
       }
 
