@@ -30,7 +30,10 @@ import {
   TransferForm,
   AddTransactionForm,
 } from "@money-insight/ui/components/organisms";
-import type { TimePeriodMode } from "@money-insight/ui/lib";
+import {
+  formatCurrency,
+  type TimePeriodMode,
+} from "@money-insight/ui/lib";
 import {
   loadStoredTransactionPagePreferences,
   resolveTransactionPagePreferences,
@@ -86,6 +89,11 @@ export function TransactionPage() {
     selectedAccount !== "__all__"
       ? transactions.filter((t) => t.account === selectedAccount)
       : transactions;
+  const selectedAccountEntity =
+    selectedAccount !== "__all__"
+      ? accounts.find((account) => account.name === selectedAccount) ?? null
+      : null;
+  const maskValue = (value: string) => "*".repeat(value.length);
 
   const getCategories = useCallback(() => categoryService.getCategories(), []);
   const getAccounts = useCallback(() => accountService.getAccounts(), []);
@@ -283,6 +291,59 @@ export function TransactionPage() {
 
             {/* Grouped transaction list */}
             <div className="p-4">
+              {selectedAccountEntity && (
+                <div className="mb-4 rounded-lg border bg-card p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {selectedAccountEntity.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Current balance = opening balance + all transactions,
+                        including transfers and adjustments.
+                      </p>
+                    </div>
+                    <div className="flex gap-6">
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          Opening Balance
+                        </p>
+                        <p className="text-sm font-semibold text-secondary-foreground">
+                          {valuesHidden
+                            ? maskValue(
+                                formatCurrency(
+                                  selectedAccountEntity.initialBalance,
+                                ),
+                              )
+                            : formatCurrency(
+                                selectedAccountEntity.initialBalance,
+                              )}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          Current Balance
+                        </p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {valuesHidden
+                            ? maskValue(
+                                formatCurrency(
+                                  accountBalances.get(
+                                    selectedAccountEntity.name,
+                                  ) ?? selectedAccountEntity.initialBalance,
+                                ),
+                              )
+                            : formatCurrency(
+                                accountBalances.get(
+                                  selectedAccountEntity.name,
+                                ) ?? selectedAccountEntity.initialBalance,
+                              )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <GroupedTransactionList
                 transactions={displayTransactions}
                 periodMode={periodMode}

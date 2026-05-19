@@ -231,7 +231,7 @@ export function AccountForm(props: AccountFormProps) {
 
             {/* Initial Balance & Currency */}
             <FormField
-              label="Initial Balance"
+              label="Opening Balance"
               id="account-balance"
               icon={<DollarSign className="h-4 w-4" />}
               required

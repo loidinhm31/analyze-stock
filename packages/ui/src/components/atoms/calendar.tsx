@@ -44,6 +44,10 @@ export function Calendar({
       : undefined,
   );
 
+  React.useEffect(() => {
+    setCurrentMonth(defaultMonth || new Date());
+  }, [defaultMonth]);
+
   const handleDateClick = (date: Date) => {
     if (mode === "single") {
       onSelect?.(date);

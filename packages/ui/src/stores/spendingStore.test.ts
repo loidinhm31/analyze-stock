@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { Transaction } from "@money-insight/ui/types";
+import { MoneyInsightAnalyzer } from "@money-insight/ui/lib";
 import {
   setTransactionService,
   setAccountService,
@@ -301,5 +302,173 @@ describe("spendingStore.updateTransfer", () => {
     // Transfer legs must be updated
     expect(txs.find((t) => t.id === outgoing.id)!.amount).toBe(-200_000);
     expect(txs.find((t) => t.id === incoming.id)!.amount).toBe(200_000);
+  });
+});
+
+describe("spendingStore.refreshAnalysis", () => {
+  beforeEach(() => {
+    useSpendingStore.getState().reset();
+    resetServices();
+    useCategoryGroupStore.setState({
+      categories: [],
+      groups: [],
+      mappings: [],
+      lookupMap: new Map(),
+      isLoaded: true,
+      isLoading: false,
+      error: null,
+    });
+  });
+
+  it("keeps excludeReport transactions visible in filteredTransactions", () => {
+    const transfer = makeTransferPair(
+      "txfr-003",
+      "Cash",
+      "Bank",
+      100_000,
+      "2024-01-15",
+    );
+    const normalTransaction: Transaction = {
+      id: "manual-1",
+      amount: -50_000,
+      expense: 50_000,
+      income: 0,
+      account: "Cash",
+      category: "Food",
+      note: "Lunch",
+      currency: "VND",
+      date: "2024-01-10",
+      source: "manual",
+      excludeReport: false,
+      yearMonth: "2024-01",
+      year: 2024,
+      month: 1,
+      syncVersion: 1,
+      syncedAt: null,
+      createdAt: "2024-01-10T00:00:00Z",
+      updatedAt: "2024-01-10T00:00:00Z",
+    };
+
+    useSpendingStore.setState({
+      ...useSpendingStore.getState(),
+      ...((transactions: Transaction[]) => {
+        const processedTransactions = transactions.map((tx) => ({
+          id: parseInt(tx.id) || 0,
+          note: tx.note,
+          amount: tx.amount,
+          category: tx.category,
+          account: tx.account,
+          currency: tx.currency,
+          date: new Date(tx.date),
+          event: tx.event,
+          excludeReport: tx.excludeReport,
+          expense: tx.expense,
+          income: tx.income,
+          yearMonth: tx.yearMonth,
+          year: tx.year,
+          month: tx.month,
+          monthName: new Date(tx.date).toLocaleString("default", {
+            month: "long",
+          }),
+        }));
+        return {
+          transactions,
+          processedTransactions,
+          analyzer: new MoneyInsightAnalyzer(
+            processedTransactions.filter((t: { excludeReport: boolean }) => !t.excludeReport),
+          ),
+        };
+      })([normalTransaction, transfer.outgoing, transfer.incoming]),
+      filter: {
+        dateRange: null,
+        categories: [],
+        accounts: ["Cash"],
+        search: "",
+      },
+    });
+
+    useSpendingStore.getState().refreshAnalysis();
+
+    const filtered = useSpendingStore.getState().filteredTransactions;
+    expect(filtered.map((t) => t.id)).toEqual(["manual-1", "txfr-003-out"]);
+    expect(useSpendingStore.getState().statistics?.transactionCount).toBe(1);
+  });
+
+  it("includes account initialBalance in walletBalances", () => {
+    const transaction: Transaction = {
+      id: "manual-2",
+      amount: 50_000,
+      expense: 0,
+      income: 50_000,
+      account: "Savings",
+      category: "Income",
+      note: "Top up",
+      currency: "VND",
+      date: "2024-01-10",
+      source: "manual",
+      excludeReport: false,
+      yearMonth: "2024-01",
+      year: 2024,
+      month: 1,
+      syncVersion: 1,
+      syncedAt: null,
+      createdAt: "2024-01-10T00:00:00Z",
+      updatedAt: "2024-01-10T00:00:00Z",
+    };
+    const processedTransactions = [transaction].map((tx) => ({
+      id: parseInt(tx.id) || 0,
+      note: tx.note,
+      amount: tx.amount,
+      category: tx.category,
+      account: tx.account,
+      currency: tx.currency,
+      date: new Date(tx.date),
+      event: tx.event,
+      excludeReport: tx.excludeReport,
+      expense: tx.expense,
+      income: tx.income,
+      yearMonth: tx.yearMonth,
+      year: tx.year,
+      month: tx.month,
+      monthName: new Date(tx.date).toLocaleString("default", {
+        month: "long",
+      }),
+    }));
+
+    useSpendingStore.setState({
+      ...useSpendingStore.getState(),
+      transactions: [transaction],
+      processedTransactions,
+      accounts: [
+        {
+          id: "acc-1",
+          name: "Savings",
+          initialBalance: 100_000,
+          currency: "VND",
+          createdAt: "2024-01-01T00:00:00Z",
+          updatedAt: "2024-01-01T00:00:00Z",
+          syncVersion: 1,
+          syncedAt: null,
+        },
+      ],
+      analyzer: new MoneyInsightAnalyzer(processedTransactions),
+      filter: {
+        dateRange: null,
+        categories: [],
+        accounts: [],
+        search: "",
+      },
+    });
+
+    useSpendingStore.getState().refreshAnalysis();
+
+    expect(useSpendingStore.getState().walletBalances).toEqual([
+      {
+        account: "Savings",
+        balance: 150_000,
+        totalIncome: 50_000,
+        totalExpense: 0,
+      },
+    ]);
   });
 });

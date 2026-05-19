@@ -45,6 +45,7 @@ export function DatePicker({
         <Calendar
           mode="single"
           selected={date}
+          defaultMonth={date ?? new Date()}
           onSelect={(d) => {
             if (d instanceof Date) {
               onDateChange(d);

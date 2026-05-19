@@ -428,7 +428,7 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
 
   // Refresh all analysis
   refreshAnalysis: () => {
-    const { analyzer, filter, transactions } = get();
+    const { analyzer, filter, transactions, accounts } = get();
     if (!analyzer) return;
 
     set({ isLoading: true });
@@ -455,9 +455,9 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
           ? analyzer.detectBottlenecksGrouped(filteredProcessed, lookupMap)
           : analyzer.detectBottlenecks(filteredProcessed);
 
-      // Filter Transaction[] for display (same logic as analyzer.filterTransactions)
-      // Also exclude transactions with excludeReport=true to match analysis
-      let filteredTransactions = transactions.filter((t) => !t.excludeReport);
+      // Filter Transaction[] for display (same logic as analyzer.filterTransactions),
+      // but keep excludeReport transactions visible in account/transaction history.
+      let filteredTransactions = [...transactions];
       if (filter.dateRange) {
         filteredTransactions = filteredTransactions.filter((t) => {
           const date = new Date(t.date);
@@ -488,14 +488,23 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
       // and the incoming leg increases toAccount balance, correctly reflecting actual money movement.
       const walletMap = new Map<
         string,
-        { totalIncome: number; totalExpense: number }
+        { initialBalance: number; totalIncome: number; totalExpense: number }
       >();
+      for (const account of accounts) {
+        walletMap.set(account.name, {
+          initialBalance: account.initialBalance,
+          totalIncome: 0,
+          totalExpense: 0,
+        });
+      }
       for (const tx of transactions) {
         const current = walletMap.get(tx.account) || {
+          initialBalance: 0,
           totalIncome: 0,
           totalExpense: 0,
         };
         walletMap.set(tx.account, {
+          initialBalance: current.initialBalance,
           totalIncome: current.totalIncome + tx.income,
           totalExpense: current.totalExpense + tx.expense,
         });
@@ -503,7 +512,8 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
       const walletBalances: WalletBalance[] = Array.from(walletMap.entries())
         .map(([account, data]) => ({
           account,
-          balance: data.totalIncome - data.totalExpense,
+          balance:
+            data.initialBalance + data.totalIncome - data.totalExpense,
           totalIncome: data.totalIncome,
           totalExpense: data.totalExpense,
         }))
