@@ -676,6 +676,14 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
     try {
       const { outgoing, incoming } =
         await transactionService.createTransfer(params);
+      const knownAccountNames = new Set(get().accounts.map((a) => a.name));
+      if (
+        !knownAccountNames.has(params.fromAccount) ||
+        !knownAccountNames.has(params.toAccount)
+      ) {
+        const freshAccounts = await accountService.getAccounts();
+        set({ accounts: freshAccounts });
+      }
       set((state) => ({
         ...buildAnalyzerState([...state.transactions, outgoing, incoming]),
         isLoading: false,
@@ -701,6 +709,14 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
         transferId,
         params,
       );
+      const knownAccountNames = new Set(get().accounts.map((a) => a.name));
+      if (
+        !knownAccountNames.has(params.fromAccount) ||
+        !knownAccountNames.has(params.toAccount)
+      ) {
+        const freshAccounts = await accountService.getAccounts();
+        set({ accounts: freshAccounts });
+      }
 
       set((state) => ({
         ...buildAnalyzerState(

@@ -1,6 +1,11 @@
 import { useState } from "react";
-import { Trash2, Scale } from "lucide-react";
-import { AccountIcon, ACCOUNT_ICONS, Badge, Button } from "@money-insight/ui/components/atoms";
+import { ArrowLeftRight, Trash2, Scale } from "lucide-react";
+import {
+  AccountIcon,
+  ACCOUNT_ICONS,
+  Badge,
+  Button,
+} from "@money-insight/ui/components/atoms";
 import { cn } from "@money-insight/ui/lib";
 
 export interface AccountItemProps {
@@ -14,6 +19,7 @@ export interface AccountItemProps {
   onClick?: () => void;
   onDelete?: (id: string) => void;
   onAdjustBalance?: (id: string) => void;
+  onTransfer?: () => void;
 }
 
 function formatCurrencyWithCode(amount: number, currency: string): string {
@@ -60,6 +66,7 @@ export function AccountItem({
   onClick,
   onDelete,
   onAdjustBalance,
+  onTransfer,
 }: AccountItemProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -81,6 +88,11 @@ export function AccountItem({
   const handleAdjust = (e: React.MouseEvent) => {
     e.stopPropagation();
     onAdjustBalance?.(id);
+  };
+
+  const handleTransfer = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onTransfer?.();
   };
 
   return (
@@ -119,6 +131,16 @@ export function AccountItem({
             title="Adjust balance"
           >
             <Scale className="h-4 w-4" />
+          </Button>
+        )}
+        {onTransfer && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleTransfer}
+            title="Transfer money"
+          >
+            <ArrowLeftRight className="h-4 w-4" />
           </Button>
         )}
         {onDelete && (

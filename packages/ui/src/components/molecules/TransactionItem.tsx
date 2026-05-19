@@ -45,7 +45,7 @@ export function TransactionItem({
     displayCategory = "Balance Adjustment";
     displayNote = undefined;
   } else if (isTransfer) {
-    displayCategory = "Transfer";
+    displayCategory = category === "__transfer__" ? "Transfer" : category;
     displayNote = transaction ? getTransferDisplayNote(transaction) : "Transfer";
   } else {
     displayCategory = category;

@@ -11,6 +11,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Dialog,
+  DialogContent,
 } from "@money-insight/ui/components/atoms";
 import { useSpendingStore } from "@money-insight/ui/stores";
 import { useNav } from "@money-insight/ui/hooks";
@@ -24,9 +26,14 @@ import {
   AccountList,
   EditAccountDialog,
   AdjustBalanceDialog,
+  TransferForm,
 } from "@money-insight/ui/components/organisms";
 import type { TimePeriodMode } from "@money-insight/ui/lib";
-import type { Transaction, Account } from "@money-insight/ui/types";
+import type {
+  Transaction,
+  Account,
+  TransferParams,
+} from "@money-insight/ui/types";
 import * as categoryService from "@money-insight/ui/services/categoryService";
 
 export function TransactionPage() {
@@ -40,6 +47,7 @@ export function TransactionPage() {
     deleteTransaction,
     updateTransfer,
     deleteTransfer,
+    createTransfer,
     addAccount,
     updateAccount,
     deleteAccount,
@@ -55,6 +63,9 @@ export function TransactionPage() {
   const [adjustingAccount, setAdjustingAccount] = useState<Account | null>(
     null,
   );
+  const [transferFromAccount, setTransferFromAccount] =
+    useState<Account | null>(null);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
 
   const displayTransactions =
     selectedAccount !== "__all__"
@@ -117,6 +128,20 @@ export function TransactionPage() {
   const handleAdjustBalance = useCallback((account: Account) => {
     setAdjustingAccount(account);
   }, []);
+
+  const handleTransferOpen = useCallback((account?: Account) => {
+    setTransferFromAccount(account ?? null);
+    setIsTransferDialogOpen(true);
+  }, []);
+
+  const handleTransferSubmit = useCallback(
+    async (params: TransferParams) => {
+      await createTransfer(params);
+      setIsTransferDialogOpen(false);
+      setTransferFromAccount(null);
+    },
+    [createTransfer],
+  );
 
   const handleAdjustBalanceSubmit = useCallback(
     async (accountName: string, targetBalance: number, date: string) => {
@@ -220,6 +245,7 @@ export function TransactionPage() {
                 onAccountDelete={handleAccountDelete}
                 onAccountAdd={addAccount}
                 onAdjustBalance={handleAdjustBalance}
+                onTransfer={handleTransferOpen}
               />
             </div>
           </TabsContent>
@@ -269,6 +295,30 @@ export function TransactionPage() {
         onOpenChange={(open) => !open && setAdjustingAccount(null)}
         onSubmit={handleAdjustBalanceSubmit}
       />
+
+      {/* Transfer Money Dialog */}
+      <Dialog
+        open={isTransferDialogOpen}
+        onOpenChange={(open) => {
+          setIsTransferDialogOpen(open);
+          if (!open) setTransferFromAccount(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-[425px] max-h-[90vh] flex flex-col p-0">
+          <TransferForm
+            key={transferFromAccount?.id ?? "blank-transfer"}
+            mode="add"
+            accounts={accounts}
+            isDbReady={isDbReady}
+            initialFromAccount={transferFromAccount?.name}
+            onSubmit={handleTransferSubmit}
+            onCancel={() => {
+              setIsTransferDialogOpen(false);
+              setTransferFromAccount(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

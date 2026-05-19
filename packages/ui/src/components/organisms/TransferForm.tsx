@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
@@ -24,6 +25,8 @@ interface TransferFormBaseProps {
   accounts: Account[];
   isDbReady: boolean;
   onCancel: () => void;
+  initialFromAccount?: string;
+  initialToAccount?: string;
 }
 
 interface TransferFormAddProps extends TransferFormBaseProps {
@@ -54,10 +57,10 @@ export function TransferForm(props: TransferFormProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [fromAccount, setFromAccount] = useState(() =>
-    mode === "add" ? getLastFromAccount() : "",
+    mode === "add" ? props.initialFromAccount || getLastFromAccount() : "",
   );
   const [toAccount, setToAccount] = useState(() =>
-    mode === "add" ? getLastToAccount() : "",
+    mode === "add" ? props.initialToAccount || getLastToAccount() : "",
   );
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("VND");
@@ -65,6 +68,7 @@ export function TransferForm(props: TransferFormProps) {
     mode === "add" ? getLastDate() : new Date(),
   );
   const [note, setNote] = useState("");
+  const [excludeReport, setExcludeReport] = useState(true);
 
   const outgoing = mode === "edit" ? props.outgoing : undefined;
   const incoming = mode === "edit" ? props.incoming : undefined;
@@ -78,6 +82,7 @@ export function TransferForm(props: TransferFormProps) {
       setDate(new Date(outgoing.date));
       const parsed = parseTransferNote(outgoing.note);
       setNote(parsed?.userNote ?? outgoing.note);
+      setExcludeReport(outgoing.excludeReport && incoming.excludeReport);
       setConfirmDelete(false);
     }
   // Include all fields read by the effect so the form reinitializes when
@@ -102,6 +107,7 @@ export function TransferForm(props: TransferFormProps) {
     setCurrency("VND");
     setDate(new Date());
     setNote("");
+    setExcludeReport(true);
     setConfirmDelete(false);
   }
 
@@ -113,6 +119,7 @@ export function TransferForm(props: TransferFormProps) {
       date: format(date, "yyyy-MM-dd"),
       note,
       currency,
+      excludeReport,
     };
   }
 
@@ -296,6 +303,30 @@ export function TransferForm(props: TransferFormProps) {
               onChange={(e) => { setSubmitError(null); setNote(e.target.value); }}
               placeholder="Optional description"
             />
+
+            <div className="rounded-lg border p-3 space-y-2">
+              <div className="flex items-start gap-3">
+                <input
+                  id="transfer-exclude-report"
+                  type="checkbox"
+                  checked={excludeReport}
+                  onChange={(e) => {
+                    setSubmitError(null);
+                    setExcludeReport(e.target.checked);
+                  }}
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 accent-primary"
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="transfer-exclude-report">
+                    Exclude from report
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    These transactions will be excluded from report in both
+                    accounts.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </form>
       </div>

@@ -4,7 +4,10 @@ import type {
   TransferNote,
   TransferParams,
 } from "@money-insight/ui/types";
-import { TRANSFER_CATEGORY } from "@money-insight/shared";
+import {
+  INCOMING_TRANSFER_CATEGORY,
+  OUTGOING_TRANSFER_CATEGORY,
+} from "@money-insight/shared";
 
 export function isTransferTransaction(tx: Transaction): boolean {
   return tx.source === "transfer" && !!tx.transferId;
@@ -23,26 +26,40 @@ export function parseTransferNote(note: string): TransferNote | null {
 }
 
 export function createOutgoingTransferNote(
-  userNote: string,
+  _userNote: string,
   toAccount: string,
 ): string {
-  const note: TransferNote = { userNote, toAccount };
+  const note: TransferNote = {
+    userNote: `Send to ${toAccount}`,
+    toAccount,
+  };
   return JSON.stringify(note);
 }
 
 export function createIncomingTransferNote(
-  userNote: string,
+  _userNote: string,
   fromAccount: string,
 ): string {
-  const note: TransferNote = { userNote, fromAccount };
+  const note: TransferNote = {
+    userNote: `Receive from ${fromAccount}`,
+    fromAccount,
+  };
   return JSON.stringify(note);
 }
 
 export function createTransferTransactions(
   params: TransferParams & { transferId: string },
 ): { outgoing: NewTransaction; incoming: NewTransaction } {
-  const { fromAccount, toAccount, amount, date, note, currency, transferId } =
-    params;
+  const {
+    fromAccount,
+    toAccount,
+    amount,
+    date,
+    note,
+    currency,
+    transferId,
+    excludeReport = true,
+  } = params;
 
   if (amount <= 0) {
     throw new Error("Transfer amount must be positive");
@@ -51,11 +68,11 @@ export function createTransferTransactions(
   const outgoing: NewTransaction = {
     note: createOutgoingTransferNote(note, toAccount),
     amount: -Math.abs(amount),
-    category: TRANSFER_CATEGORY,
+    category: OUTGOING_TRANSFER_CATEGORY,
     account: fromAccount,
     currency,
     date,
-    excludeReport: true,
+    excludeReport,
     source: "transfer",
     transferId,
   };
@@ -63,11 +80,11 @@ export function createTransferTransactions(
   const incoming: NewTransaction = {
     note: createIncomingTransferNote(note, fromAccount),
     amount: Math.abs(amount),
-    category: TRANSFER_CATEGORY,
+    category: INCOMING_TRANSFER_CATEGORY,
     account: toAccount,
     currency,
     date,
-    excludeReport: true,
+    excludeReport,
     source: "transfer",
     transferId,
   };
@@ -112,6 +129,7 @@ export function reconstructTransferParams(
       date: merged.date,
       note: userNote,
       currency: merged.currency,
+      excludeReport: merged.excludeReport,
     };
   } else {
     return {
@@ -121,6 +139,7 @@ export function reconstructTransferParams(
       date: merged.date,
       note: userNote,
       currency: merged.currency,
+      excludeReport: merged.excludeReport,
     };
   }
 }
@@ -133,7 +152,8 @@ export function getTransferDisplayNote(tx: Transaction): string {
   const parsed = parseTransferNote(tx.note);
   if (!parsed) return "Transfer";
 
-  if (parsed.toAccount) return `Transfer to ${parsed.toAccount}`;
-  if (parsed.fromAccount) return `Transfer from ${parsed.fromAccount}`;
+  if (parsed.userNote.trim()) return parsed.userNote;
+  if (parsed.toAccount) return `Send to ${parsed.toAccount}`;
+  if (parsed.fromAccount) return `Receive from ${parsed.fromAccount}`;
   return "Transfer";
 }

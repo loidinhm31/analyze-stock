@@ -143,7 +143,10 @@ export function GroupedTransactionList({
                   if (isAdjustment) {
                     displayCategory = "Balance Adjustment";
                   } else if (isTransfer) {
-                    displayCategory = "Transfer";
+                    displayCategory =
+                      transaction.category === "__transfer__"
+                        ? "Transfer"
+                        : transaction.category;
                     displayNote = getTransferDisplayNote(transaction);
                   } else {
                     displayCategory = transaction.category;

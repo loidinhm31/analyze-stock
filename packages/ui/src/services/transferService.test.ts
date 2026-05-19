@@ -5,7 +5,12 @@ import {
   reconstructTransferParams,
   createOutgoingTransferNote,
   createIncomingTransferNote,
+  createTransferTransactions,
 } from "./transferService";
+import {
+  INCOMING_TRANSFER_CATEGORY,
+  OUTGOING_TRANSFER_CATEGORY,
+} from "@money-insight/shared";
 
 function makeTransferPair(
   transferId: string,
@@ -68,6 +73,88 @@ describe("parseTransferNote", () => {
   });
 });
 
+describe("transfer note helpers", () => {
+  it("defaults outgoing and incoming notes to clear account labels", () => {
+    expect(parseTransferNote(createOutgoingTransferNote("", "Savings"))).toEqual(
+      { userNote: "Send to Savings", toAccount: "Savings" },
+    );
+    expect(parseTransferNote(createIncomingTransferNote("", "Cash"))).toEqual({
+      userNote: "Receive from Cash",
+      fromAccount: "Cash",
+    });
+  });
+
+  it("uses account labels even when an explicit note is provided", () => {
+    expect(
+      parseTransferNote(createOutgoingTransferNote("Monthly savings", "Savings")),
+    ).toEqual({ userNote: "Send to Savings", toAccount: "Savings" });
+  });
+});
+
+describe("createTransferTransactions", () => {
+  it("creates paired visible transfer categories excluded by default", () => {
+    const pair = createTransferTransactions({
+      transferId: "tid-002",
+      fromAccount: "Cash",
+      toAccount: "Savings",
+      amount: 100_000,
+      date: "2024-04-01",
+      note: "Move savings",
+      currency: "VND",
+    });
+
+    expect(pair.outgoing.category).toBe(OUTGOING_TRANSFER_CATEGORY);
+    expect(pair.incoming.category).toBe(INCOMING_TRANSFER_CATEGORY);
+    expect(pair.outgoing.amount).toBe(-100_000);
+    expect(pair.incoming.amount).toBe(100_000);
+    expect(pair.outgoing.excludeReport).toBe(true);
+    expect(pair.incoming.excludeReport).toBe(true);
+    expect(parseTransferNote(pair.outgoing.note)?.userNote).toBe(
+      "Send to Savings",
+    );
+    expect(parseTransferNote(pair.incoming.note)?.userNote).toBe(
+      "Receive from Cash",
+    );
+    expect(pair.outgoing.transferId).toBe("tid-002");
+    expect(pair.incoming.transferId).toBe("tid-002");
+  });
+
+  it("uses clear sender and receiver notes when no custom note is provided", () => {
+    const pair = createTransferTransactions({
+      transferId: "tid-004",
+      fromAccount: "Cash",
+      toAccount: "Savings",
+      amount: 100_000,
+      date: "2024-04-01",
+      note: "",
+      currency: "VND",
+    });
+
+    expect(parseTransferNote(pair.outgoing.note)?.userNote).toBe(
+      "Send to Savings",
+    );
+    expect(parseTransferNote(pair.incoming.note)?.userNote).toBe(
+      "Receive from Cash",
+    );
+  });
+
+  it("applies excludeReport to both transfer legs", () => {
+    const pair = createTransferTransactions({
+      transferId: "tid-003",
+      fromAccount: "Cash",
+      toAccount: "Savings",
+      amount: 100_000,
+      date: "2024-04-01",
+      note: "Move savings",
+      currency: "VND",
+      excludeReport: false,
+    });
+
+    expect(pair.outgoing.excludeReport).toBe(false);
+    expect(pair.incoming.excludeReport).toBe(false);
+  });
+});
+
 describe("reconstructTransferParams", () => {
   const transferId = "tid-001";
   const { outgoing, incoming } = makeTransferPair(
@@ -89,7 +176,7 @@ describe("reconstructTransferParams", () => {
     expect(params!.toAccount).toBe("Savings");
     expect(params!.amount).toBe(600_000);
     expect(params!.date).toBe("2024-03-11");
-    expect(params!.note).toBe("Monthly savings");
+    expect(params!.note).toBe("Send to Savings");
     expect(params!.currency).toBe("VND");
   });
 
@@ -101,7 +188,7 @@ describe("reconstructTransferParams", () => {
     expect(params!.fromAccount).toBe("Wallet");
     expect(params!.toAccount).toBe("Savings");
     expect(params!.amount).toBe(750_000);
-    expect(params!.note).toBe("Monthly savings");
+    expect(params!.note).toBe("Receive from Wallet");
   });
 
   it("propagates currency change from edited leg", () => {
@@ -145,13 +232,13 @@ describe("reconstructTransferParams", () => {
     expect(reconstructTransferParams(outgoing, [outgoing])).toBeNull();
   });
 
-  it("extracts userNote correctly from JSON-encoded note", () => {
+  it("extracts generated display note from JSON-encoded note", () => {
     const editedLeg: Transaction = {
       ...outgoing,
       note: createOutgoingTransferNote("Trip expenses", "Savings"),
     };
     const params = reconstructTransferParams(editedLeg, pair);
-    expect(params!.note).toBe("Trip expenses");
+    expect(params!.note).toBe("Send to Savings");
   });
 
   it("falls back to raw note string if not valid TransferNote JSON", () => {

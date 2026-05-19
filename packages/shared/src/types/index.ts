@@ -112,6 +112,8 @@ export const BALANCE_ADJUSTMENT_CATEGORY = "__balance_adjustment__";
 
 // Special category for account transfers
 export const TRANSFER_CATEGORY = "__transfer__";
+export const OUTGOING_TRANSFER_CATEGORY = "Outgoing Transfer";
+export const INCOMING_TRANSFER_CATEGORY = "Incoming Transfer";
 
 // Parsed adjustment note structure
 export interface AdjustmentNote {
@@ -133,6 +135,7 @@ export interface TransferParams {
   date: string;
   note: string;
   currency: string;
+  excludeReport?: boolean;
 }
 
 // New transaction for creation (matches Rust NewTransaction)

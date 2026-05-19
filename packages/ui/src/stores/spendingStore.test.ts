@@ -185,6 +185,12 @@ describe("spendingStore.updateTransfer", () => {
       deleteTransfer: vi.fn(),
       getTransferPair: vi.fn(),
     });
+    setAccountService({
+      getAccounts: vi.fn().mockResolvedValue([]),
+      addAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
 
     // Seed store with original pair
     useSpendingStore.setState({
@@ -263,6 +269,12 @@ describe("spendingStore.updateTransfer", () => {
         .mockResolvedValue({ outgoing: updatedOutgoing, incoming: updatedIncoming }),
       deleteTransfer: vi.fn(),
       getTransferPair: vi.fn(),
+    });
+    setAccountService({
+      getAccounts: vi.fn().mockResolvedValue([]),
+      addAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
     });
 
     useSpendingStore.setState({

@@ -10,12 +10,7 @@ export async function parseCSV(file: File): Promise<ProcessedTransaction[]> {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      transformHeader: (header) => {
-        // Transform headers to camelCase
-        return header
-          .replace(/\s+/g, "")
-          .replace(/^(.)/, (match) => match.toLowerCase());
-      },
+      transformHeader: normalizeCsvHeader,
       complete: (results) => {
         try {
           const transactions = processTransactions(results.data);
@@ -39,11 +34,7 @@ export async function parseCSVForImport(file: File): Promise<NewTransaction[]> {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      transformHeader: (header) => {
-        return header
-          .replace(/\s+/g, "")
-          .replace(/^(.)/, (match) => match.toLowerCase());
-      },
+      transformHeader: normalizeCsvHeader,
       complete: (results) => {
         try {
           const transactions = processTransactionsForImport(results.data);
@@ -77,15 +68,6 @@ function processTransactions(data: any[]): ProcessedTransaction[] {
 
       const amount = parseFloat(row.amount) || 0;
 
-      // Robust boolean check for excludeReport - handles True, true, TRUE, 1, yes, etc.
-      const excludeReportValue = String(row.excludeReport || "")
-        .trim()
-        .toLowerCase();
-      const isExcluded =
-        excludeReportValue === "true" ||
-        excludeReportValue === "1" ||
-        excludeReportValue === "yes";
-
       const transaction: ProcessedTransaction = {
         id: parseInt(row.id) || index,
         note: row.note || "",
@@ -95,7 +77,7 @@ function processTransactions(data: any[]): ProcessedTransaction[] {
         currency: row.currency || "VND",
         date,
         event: row.event,
-        excludeReport: isExcluded,
+        excludeReport: parseExcludeReport(row),
         expense: amount < 0 ? Math.abs(amount) : 0,
         income: amount > 0 ? amount : 0,
         yearMonth: formatYearMonth(date),
@@ -127,15 +109,6 @@ function processTransactionsForImport(data: any[]): NewTransaction[] {
 
       const amount = parseFloat(row.amount) || 0;
 
-      // Robust boolean check for excludeReport - handles True, true, TRUE, 1, yes, etc.
-      const excludeReportValue = String(row.excludeReport || "")
-        .trim()
-        .toLowerCase();
-      const isExcluded =
-        excludeReportValue === "true" ||
-        excludeReportValue === "1" ||
-        excludeReportValue === "yes";
-
       const transaction: NewTransaction = {
         note: row.note || "",
         amount,
@@ -144,13 +117,28 @@ function processTransactionsForImport(data: any[]): NewTransaction[] {
         currency: row.currency || "VND",
         date: format(date, "yyyy-MM-dd"),
         event: row.event || undefined,
-        excludeReport: isExcluded,
+        excludeReport: parseExcludeReport(row),
         source: "csv_import",
       };
 
       return transaction;
     })
     .filter((t): t is NewTransaction => t !== null);
+}
+
+function normalizeCsvHeader(header: string): string {
+  const normalized = header.trim().replace(/[\s_-]+/g, "");
+  if (normalized.toLowerCase() === "excludereport") {
+    return "excludeReport";
+  }
+  return normalized.replace(/^(.)/, (match) => match.toLowerCase());
+}
+
+function parseExcludeReport(row: Record<string, unknown>): boolean {
+  const rawValue =
+    row.excludeReport ?? row.ExcludeReport ?? row.exclude_report ?? "";
+  const value = String(rawValue).trim().toLowerCase();
+  return value === "true" || value === "1" || value === "yes";
 }
 
 function formatYearMonth(date: Date): string {
