@@ -23,6 +23,7 @@ export interface AddTransactionFormProps {
   getAccounts: () => Promise<Account[]>;
   accounts?: Account[];
   onSuccess?: () => void;
+  closeOnSuccess?: boolean;
 }
 
 export function AddTransactionForm({
@@ -33,6 +34,7 @@ export function AddTransactionForm({
   getAccounts,
   accounts = [],
   onSuccess,
+  closeOnSuccess = true,
 }: AddTransactionFormProps) {
   const [open, setOpen] = useState(false);
   const [isTransferMode, setIsTransferMode] = useState(false);
@@ -73,6 +75,7 @@ export function AddTransactionForm({
               getCategories={getCategories}
               getAccounts={getAccounts}
               onSuccess={onSuccess}
+              closeOnSuccess={closeOnSuccess}
             />
             {onTransfer && (
               <div className="px-6 pb-4 flex-shrink-0 -mt-2">

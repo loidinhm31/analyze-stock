@@ -45,11 +45,6 @@ export function AddTransactionPage() {
     [importFromCSV, navigate],
   );
 
-  // Success handler - navigate to dashboard
-  const handleSuccess = useCallback(() => {
-    navigate("/dashboard");
-  }, [navigate]);
-
   // Get categories and accounts for form
   const getCategories = useCallback(() => categoryService.getCategories(), []);
   const getAccounts = useCallback(() => accountService.getAccounts(), []);
@@ -61,7 +56,6 @@ export function AddTransactionPage() {
       getCategories={getCategories}
       getAccounts={getAccounts}
       isDbReady={isDbReady}
-      onSuccess={handleSuccess}
       onTransfer={handleTransfer}
       accounts={accounts}
     />

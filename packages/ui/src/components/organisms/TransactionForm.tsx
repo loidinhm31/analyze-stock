@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
-import { DollarSign, Tag, CreditCard, Trash2 } from "lucide-react";
+import { CheckCircle2, DollarSign, Tag, CreditCard, Trash2 } from "lucide-react";
 import {
+  Alert,
+  AlertDescription,
   Button,
   CategoryIcon,
   DialogDescription,
@@ -33,6 +35,7 @@ interface BaseTransactionFormProps {
   getCategories: () => Promise<Category[]>;
   getAccounts: () => Promise<Account[]>;
   onSuccess?: () => void;
+  closeOnSuccess?: boolean;
 }
 
 interface AddTransactionFormProps extends BaseTransactionFormProps {
@@ -60,12 +63,14 @@ export function TransactionForm(props: TransactionFormProps) {
     getCategories,
     getAccounts,
     onSuccess,
+    closeOnSuccess = true,
   } = props;
   const transaction = mode === "edit" ? props.transaction : undefined;
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
 
@@ -96,10 +101,12 @@ export function TransactionForm(props: TransactionFormProps) {
       setNote(transaction.note);
       setCurrency(transaction.currency);
       setConfirmDelete(false);
+      setSubmitSuccess(null);
     } else if (mode === "add") {
       accountPrefilledRef.current = false;
       resetForm();
       setDate(getLastDate());
+      setSubmitSuccess(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, transaction]);
@@ -141,10 +148,16 @@ export function TransactionForm(props: TransactionFormProps) {
     setConfirmDelete(false);
   }
 
+  function clearSubmitMessages() {
+    setSubmitError(null);
+    setSubmitSuccess(null);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     setSubmitError(null);
+    setSubmitSuccess(null);
 
     if (!amount.trim() || parseFloat(amount) <= 0 || !category.trim()) {
       setSubmitError("Please enter a valid amount and category.");
@@ -196,10 +209,17 @@ export function TransactionForm(props: TransactionFormProps) {
         await props.onSubmit(newTransaction);
         save({ date: date.toISOString(), account });
         resetForm();
+        if (!closeOnSuccess) {
+          setDate(date);
+          setAccount(account);
+          setSubmitSuccess("Added transaction successfully.");
+        }
       }
 
       onSuccess?.();
-      onCancel();
+      if (closeOnSuccess) {
+        onCancel();
+      }
     } catch (error) {
       console.error("Failed to save transaction:", error);
       setSubmitError(
@@ -264,7 +284,7 @@ export function TransactionForm(props: TransactionFormProps) {
                   "flex-1",
                   isExpense && "bg-red-600 hover:bg-red-700",
                 )}
-                onClick={() => { setSubmitError(null); setIsExpense(true); }}
+                onClick={() => { clearSubmitMessages(); setIsExpense(true); }}
               >
                 Expense
               </Button>
@@ -275,7 +295,7 @@ export function TransactionForm(props: TransactionFormProps) {
                   "flex-1",
                   !isExpense && "bg-green-600 hover:bg-green-700",
                 )}
-                onClick={() => { setSubmitError(null); setIsExpense(false); }}
+                onClick={() => { clearSubmitMessages(); setIsExpense(false); }}
               >
                 Income
               </Button>
@@ -294,12 +314,12 @@ export function TransactionForm(props: TransactionFormProps) {
                   min="0.01"
                   step="any"
                   value={amount}
-                  onChange={(e) => { setSubmitError(null); setAmount(e.target.value); }}
+                  onChange={(e) => { clearSubmitMessages(); setAmount(e.target.value); }}
                   placeholder="0"
                   className="flex-1"
                   required
                 />
-                <Select value={currency} onValueChange={(v) => { setSubmitError(null); setCurrency(v); }}>
+                <Select value={currency} onValueChange={(v) => { clearSubmitMessages(); setCurrency(v); }}>
                   <SelectTrigger className="w-24">
                     <SelectValue />
                   </SelectTrigger>
@@ -326,7 +346,7 @@ export function TransactionForm(props: TransactionFormProps) {
               required
               type="text"
               value={category}
-              onChange={(e) => { setSubmitError(null); setCategory(e.target.value); }}
+              onChange={(e) => { clearSubmitMessages(); setCategory(e.target.value); }}
               placeholder="e.g., Food, Transport, Salary"
               list={`${formId}-categories`}
             />
@@ -343,7 +363,7 @@ export function TransactionForm(props: TransactionFormProps) {
               icon={<CreditCard className="h-4 w-4" />}
               type="text"
               value={account}
-              onChange={(e) => { setSubmitError(null); setAccount(e.target.value); }}
+              onChange={(e) => { clearSubmitMessages(); setAccount(e.target.value); }}
               placeholder="e.g., Cash, Credit Card, Bank"
               list={`${formId}-accounts`}
             />
@@ -357,7 +377,11 @@ export function TransactionForm(props: TransactionFormProps) {
             <FormField label="Date" id={`${formId}-date`}>
               <DatePicker
                 date={date}
-                onDateChange={(d) => d && setDate(d)}
+                onDateChange={(d) => {
+                  if (!d) return;
+                  clearSubmitMessages();
+                  setDate(d);
+                }}
                 className="w-full"
               />
             </FormField>
@@ -368,7 +392,7 @@ export function TransactionForm(props: TransactionFormProps) {
                 id={`${formId}-note`}
                 type="text"
                 value={note}
-                onChange={(e) => { setSubmitError(null); setNote(e.target.value); }}
+                onChange={(e) => { clearSubmitMessages(); setNote(e.target.value); }}
                 placeholder="Transaction description"
                 maxLength={500}
               />
@@ -379,6 +403,12 @@ export function TransactionForm(props: TransactionFormProps) {
 
       {/* Fixed Footer */}
       <div className="px-6 pb-6 pt-4 flex-shrink-0 border-t">
+        {submitSuccess && (
+          <Alert variant="success" className="mb-3">
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>{submitSuccess}</AlertDescription>
+          </Alert>
+        )}
         {submitError && (
           <p className="text-sm text-destructive mb-3">{submitError}</p>
         )}

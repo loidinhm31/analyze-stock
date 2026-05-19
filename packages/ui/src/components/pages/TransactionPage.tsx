@@ -27,14 +27,17 @@ import {
   EditAccountDialog,
   AdjustBalanceDialog,
   TransferForm,
+  AddTransactionForm,
 } from "@money-insight/ui/components/organisms";
 import type { TimePeriodMode } from "@money-insight/ui/lib";
 import type {
   Transaction,
   Account,
   TransferParams,
+  NewTransaction,
 } from "@money-insight/ui/types";
 import * as categoryService from "@money-insight/ui/services/categoryService";
+import * as accountService from "@money-insight/ui/services/accountService";
 
 export function TransactionPage() {
   const { to } = useNav();
@@ -44,6 +47,7 @@ export function TransactionPage() {
     valuesHidden,
     isDbReady,
     updateTransaction,
+    addTransaction,
     deleteTransaction,
     updateTransfer,
     deleteTransfer,
@@ -73,6 +77,7 @@ export function TransactionPage() {
       : transactions;
 
   const getCategories = useCallback(() => categoryService.getCategories(), []);
+  const getAccounts = useCallback(() => accountService.getAccounts(), []);
 
   // Calculate current balance for each account
   const accountBalances = useMemo(() => {
@@ -98,6 +103,13 @@ export function TransactionPage() {
       await updateTransaction(transaction);
     },
     [updateTransaction],
+  );
+
+  const handleAddTransaction = useCallback(
+    async (transaction: NewTransaction) => {
+      await addTransaction(transaction);
+    },
+    [addTransaction],
   );
 
   const handleTransactionDelete = useCallback(
@@ -186,6 +198,15 @@ export function TransactionPage() {
           <TabsContent value="transactions" className="mt-0">
             {/* Sticky period selector + account filter */}
             <div className="sticky top-13 z-10 border-b p-4 bg-card space-y-2">
+              <div className="flex justify-end">
+                <AddTransactionForm
+                  onSubmit={handleAddTransaction}
+                  isDbReady={isDbReady}
+                  getCategories={getCategories}
+                  getAccounts={getAccounts}
+                  closeOnSuccess={false}
+                />
+              </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">
                   Group by
@@ -269,7 +290,7 @@ export function TransactionPage() {
         }}
         isDbReady={isDbReady}
         getCategories={getCategories}
-        getAccounts={async () => accounts}
+        getAccounts={getAccounts}
         accounts={accounts}
         allTransactions={transactions}
       />
