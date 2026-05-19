@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft } from "lucide-react";
 import {
   Tabs,
   TabsList,
@@ -11,6 +11,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Button,
   Dialog,
   DialogContent,
 } from "@money-insight/ui/components/atoms";
@@ -30,6 +31,11 @@ import {
   AddTransactionForm,
 } from "@money-insight/ui/components/organisms";
 import type { TimePeriodMode } from "@money-insight/ui/lib";
+import {
+  loadStoredTransactionPagePreferences,
+  resolveTransactionPagePreferences,
+  saveTransactionPagePreferences,
+} from "../../lib/transactionPagePreferences";
 import type {
   Transaction,
   Account,
@@ -40,6 +46,7 @@ import * as categoryService from "@money-insight/ui/services/categoryService";
 import * as accountService from "@money-insight/ui/services/accountService";
 
 export function TransactionPage() {
+  const initialPreferences = loadStoredTransactionPagePreferences();
   const { to } = useNav();
   const {
     transactions,
@@ -59,8 +66,12 @@ export function TransactionPage() {
   } = useSpendingStore();
 
   const [activeTab, setActiveTab] = useState("transactions");
-  const [periodMode, setPeriodMode] = useState<TimePeriodMode>("month");
-  const [selectedAccount, setSelectedAccount] = useState<string>("__all__");
+  const [periodMode, setPeriodMode] = useState<TimePeriodMode>(
+    initialPreferences.periodMode,
+  );
+  const [selectedAccount, setSelectedAccount] = useState<string>(
+    initialPreferences.selectedAccount,
+  );
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
@@ -78,6 +89,28 @@ export function TransactionPage() {
 
   const getCategories = useCallback(() => categoryService.getCategories(), []);
   const getAccounts = useCallback(() => accountService.getAccounts(), []);
+
+  useEffect(() => {
+    saveTransactionPagePreferences({ periodMode, selectedAccount });
+  }, [periodMode, selectedAccount]);
+
+  useEffect(() => {
+    if (accounts.length === 0) {
+      return;
+    }
+
+    const resolvedPreferences = resolveTransactionPagePreferences(
+      accounts.map((account) => account.name),
+    );
+
+    if (resolvedPreferences.selectedAccount !== selectedAccount) {
+      setSelectedAccount(resolvedPreferences.selectedAccount);
+      saveTransactionPagePreferences({
+        periodMode,
+        selectedAccount: resolvedPreferences.selectedAccount,
+      });
+    }
+  }, [accounts, periodMode, selectedAccount]);
 
   // Calculate current balance for each account
   const accountBalances = useMemo(() => {
@@ -198,7 +231,16 @@ export function TransactionPage() {
           <TabsContent value="transactions" className="mt-0">
             {/* Sticky period selector + account filter */}
             <div className="sticky top-13 z-10 border-b p-4 bg-card space-y-2">
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => handleTransferOpen()}
+                >
+                  <ArrowRightLeft className="h-4 w-4" />
+                  Transfer Money
+                </Button>
                 <AddTransactionForm
                   onSubmit={handleAddTransaction}
                   isDbReady={isDbReady}
