@@ -1,4 +1,5 @@
 export * from "./database";
+export * from "./categoryBackfill";
 export * from "./indexedDbHelpers";
 // Sync adapters
 export * from "./sync";

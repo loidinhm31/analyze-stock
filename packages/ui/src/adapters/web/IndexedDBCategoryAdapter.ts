@@ -1,47 +1,19 @@
 import type { ICategoryService } from "@money-insight/ui/adapters/factory/interfaces";
 import type { Category } from "@money-insight/ui/types";
 import { getDb, generateId, getCurrentTimestamp } from "./database";
+import { sortCategories } from "./categoryBackfill";
 
 export class IndexedDBCategoryAdapter implements ICategoryService {
   async getCategories(): Promise<Category[]> {
-    // Derive categories from existing transactions
-    const transactions = await getDb().transactions.toArray();
-    const categoryMap = new Map<string, { isExpense: boolean }>();
-
-    for (const tx of transactions) {
-      if (!categoryMap.has(tx.category)) {
-        categoryMap.set(tx.category, {
-          isExpense: tx.expense > 0,
-        });
-      }
-    }
-
-    // Also include any manually created categories
-    const storedCategories = await getDb().categories.toArray();
-    for (const cat of storedCategories) {
-      if (!categoryMap.has(cat.name)) {
-        categoryMap.set(cat.name, { isExpense: cat.isExpense });
-      }
-    }
-
-    return Array.from(categoryMap.entries()).map(([name, info]) => {
-      // Check if there's a stored category with this name to get its UUID
-      const stored = storedCategories.find((c) => c.name === name);
-      return {
-        id: stored?.id || generateId(),
-        name,
-        icon: stored?.icon,
-        color: stored?.color,
-        isExpense: info.isExpense,
-        syncVersion: stored?.syncVersion ?? 0,
-        syncedAt: stored?.syncedAt ?? null,
-      };
-    });
+    const categories = await getDb().categories.toArray();
+    return sortCategories(categories);
   }
 
   async addCategory(
     categoryData: Omit<Category, "id" | "syncVersion" | "syncedAt">,
   ): Promise<Category> {
+    await this.assertUniqueName(categoryData.name);
+
     const category: Category = {
       ...categoryData,
       id: generateId(),
@@ -54,6 +26,8 @@ export class IndexedDBCategoryAdapter implements ICategoryService {
   }
 
   async updateCategory(category: Category): Promise<Category> {
+    await this.assertUniqueName(category.name, category.id);
+
     const updated: Category = {
       ...category,
       syncVersion: getCurrentTimestamp(),
@@ -69,34 +43,70 @@ export class IndexedDBCategoryAdapter implements ICategoryService {
   }
 
   async renameCategory(oldName: string, newName: string): Promise<void> {
+    await this.assertUniqueName(newName);
+
     // Update all transactions with the old category name
-    await getDb().transaction("rw", getDb().transactions, getDb().categories, async () => {
+    await getDb().transaction(
+      "rw",
+      getDb().transactions,
+      getDb().categories,
+      getDb().categoryGroups,
+      getDb().categoryMappings,
+      async () => {
       // Update transactions
-      const transactionsToUpdate = await getDb().transactions
-        .where("category")
-        .equals(oldName)
-        .toArray();
+        const transactionsToUpdate = await getDb().transactions
+          .where("category")
+          .equals(oldName)
+          .toArray();
 
-      for (const tx of transactionsToUpdate) {
-        await getDb().transactions.update(tx.id, {
-          category: newName,
-          syncVersion: getCurrentTimestamp(),
-          syncedAt: null,
-        });
-      }
+        const nextSyncVersion = getCurrentTimestamp();
+        for (const tx of transactionsToUpdate) {
+          await getDb().transactions.update(tx.id, {
+            category: newName,
+            syncVersion: nextSyncVersion,
+            syncedAt: null,
+          });
+        }
 
-      // Update the category record if it exists
-      const storedCategory = await getDb().categories
-        .filter((c) => c.name === oldName)
-        .first();
+        const storedCategory = await getDb().categories.where("name").equals(oldName).first();
+        if (storedCategory) {
+          await getDb().categories.update(storedCategory.id, {
+            name: newName,
+            syncVersion: nextSyncVersion,
+            syncedAt: null,
+          });
+        }
 
-      if (storedCategory) {
-        await getDb().categories.update(storedCategory.id, {
-          name: newName,
-          syncVersion: getCurrentTimestamp(),
-          syncedAt: null,
-        });
-      }
-    });
+        const storedGroup = await getDb().categoryGroups.where("name").equals(oldName).first();
+        if (storedGroup) {
+          await getDb().categoryGroups.update(storedGroup.id, {
+            name: newName,
+            syncVersion: (storedGroup.syncVersion || 0) + 1,
+            syncedAt: null,
+          });
+        }
+
+        const mappedCategory = await getDb().categoryMappings.where("subCategory").equals(oldName).first();
+        if (mappedCategory) {
+          await getDb().categoryMappings.update(mappedCategory.id, {
+            subCategory: newName,
+            syncVersion: (mappedCategory.syncVersion || 0) + 1,
+            syncedAt: null,
+          });
+        }
+      },
+    );
+  }
+
+  private async assertUniqueName(name: string, excludedId?: string): Promise<void> {
+    const normalized = name.trim().toLocaleLowerCase();
+    const existing = await getDb().categories
+      .toCollection()
+      .filter((category) => category.name.trim().toLocaleLowerCase() === normalized)
+      .first();
+
+    if (existing && existing.id !== excludedId) {
+      throw new Error(`Category "${name.trim()}" already exists.`);
+    }
   }
 }

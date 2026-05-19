@@ -141,4 +141,5 @@ export function getCurrentTimestamp(): number {
 export const SYNC_META_KEYS = {
   CHECKPOINT: "checkpoint",
   LAST_SYNC_AT: "lastSyncAt",
+  CATEGORY_BACKFILL_V1: "categoryBackfillV1",
 } as const;

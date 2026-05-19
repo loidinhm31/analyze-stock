@@ -14,7 +14,12 @@ import {
   setTransactionService,
   getSyncService,
 } from "@money-insight/ui/adapters";
-import { initDb, deleteCurrentDb, IndexedDBSyncStorage } from "@money-insight/ui/adapters/web";
+import {
+  initDb,
+  deleteCurrentDb,
+  IndexedDBSyncStorage,
+  ensureCategoryBackfill,
+} from "@money-insight/ui/adapters/web";
 import { QmServerAuthAdapter } from "@money-insight/ui/adapters/shared";
 import { TauriAuthAdapter } from "@money-insight/ui/adapters/tauri";
 import { isTauri } from "@money-insight/ui/utils";
@@ -89,7 +94,10 @@ export function MoneyInsightApp({
     // Embedded: use userId from hub. Standalone: userId=undefined → legacy "MoneyInsightDB"
     setDbReady(false);
     initDb(authTokens?.userId)
-      .then(() => setDbReady(true))
+      .then(async () => {
+        await ensureCategoryBackfill();
+        setDbReady(true);
+      })
       .catch(console.error);
   }, [authTokens?.userId]);
 

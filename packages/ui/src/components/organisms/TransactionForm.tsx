@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { format } from "date-fns";
 import { CheckCircle2, DollarSign, Tag, CreditCard, Trash2 } from "lucide-react";
 import {
@@ -27,6 +27,7 @@ import type {
   Category,
   Account,
 } from "@money-insight/ui/types";
+import { getAllowedCategories, isKnownCategory } from "./transaction-form-helpers";
 
 interface BaseTransactionFormProps {
   onCancel: () => void;
@@ -89,6 +90,10 @@ export function TransactionForm(props: TransactionFormProps) {
   const [account, setAccount] = useState("");
   const [note, setNote] = useState("");
   const [currency, setCurrency] = useState("VND");
+  const allowedCategories = useMemo(
+    () => getAllowedCategories(categories, isExpense, transaction?.category ?? category),
+    [categories, isExpense, transaction?.category, category],
+  );
 
   // Initialize form when transaction changes (edit mode)
   useEffect(() => {
@@ -171,6 +176,11 @@ export function TransactionForm(props: TransactionFormProps) {
 
     if (!amount.trim() || parseFloat(amount) <= 0 || !category.trim()) {
       setSubmitError("Please enter a valid amount and category.");
+      return;
+    }
+
+    if (!isKnownCategory(allowedCategories, category)) {
+      setSubmitError("Please select a saved category that matches this transaction type.");
       return;
     }
 
@@ -343,7 +353,6 @@ export function TransactionForm(props: TransactionFormProps) {
               </div>
             </FormField>
 
-            {/* Category */}
             <FormField
               label="Category"
               id={`${formId}-category`}
@@ -355,17 +364,31 @@ export function TransactionForm(props: TransactionFormProps) {
                 )
               }
               required
-              type="text"
-              value={category}
-              onChange={(e) => { clearSubmitMessages(); setCategory(e.target.value); }}
-              placeholder="e.g., Food, Transport, Salary"
-              list={`${formId}-categories`}
-            />
-            <datalist id={`${formId}-categories`}>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.name} />
-              ))}
-            </datalist>
+            >
+              <Select
+                value={category || undefined}
+                onValueChange={(value) => {
+                  clearSubmitMessages();
+                  setCategory(value);
+                }}
+              >
+                <SelectTrigger id={`${formId}-category`}>
+                  <SelectValue placeholder={isExpense ? "Select expense category" : "Select income category"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {allowedCategories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            {allowedCategories.length === 0 && (
+              <p className="text-xs text-muted-foreground -mt-2">
+                Create a {isExpense ? "expense" : "income"} category in Category Setup first.
+              </p>
+            )}
 
             {/* Account */}
             <FormField
@@ -451,7 +474,13 @@ export function TransactionForm(props: TransactionFormProps) {
           <Button
             type="submit"
             form={`transaction-form-${formId}`}
-            disabled={loading || deleting || !amount.trim() || parseFloat(amount) <= 0 || !category.trim()}
+            disabled={
+              loading ||
+              deleting ||
+              !amount.trim() ||
+              parseFloat(amount) <= 0 ||
+              !isKnownCategory(allowedCategories, category)
+            }
           >
             {loading
               ? isEdit
