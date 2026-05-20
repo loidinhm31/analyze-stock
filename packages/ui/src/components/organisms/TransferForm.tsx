@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
-import { ArrowRight, DollarSign, Trash2 } from "lucide-react";
+import { ArrowRight, CreditCard, DollarSign, Trash2 } from "lucide-react";
 import {
   Button,
   DialogDescription,
@@ -15,9 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@money-insight/ui/components/atoms";
-import { DatePicker, FormField } from "@money-insight/ui/components/molecules";
+import { DatePicker, FormField, SearchablePicker, type SearchablePickerOption } from "@money-insight/ui/components/molecules";
 import { parseTransferNote } from "@money-insight/ui/services/transferService";
 import { useLastFormValues } from "@money-insight/ui/hooks";
+import { cn } from "@money-insight/ui/lib";
 import { SUPPORTED_CURRENCIES } from "@money-insight/shared";
 import type { Transaction, Account, TransferParams } from "@money-insight/ui/types";
 
@@ -69,6 +70,11 @@ export function TransferForm(props: TransferFormProps) {
   );
   const [note, setNote] = useState("");
   const [excludeReport, setExcludeReport] = useState(true);
+
+  const accountOptions = useMemo<SearchablePickerOption[]>(
+    () => accounts.map((acc) => ({ value: acc.name, label: acc.name })),
+    [accounts],
+  );
 
   const outgoing = mode === "edit" ? props.outgoing : undefined;
   const incoming = mode === "edit" ? props.incoming : undefined;
@@ -208,21 +214,32 @@ export function TransferForm(props: TransferFormProps) {
             {/* From → To accounts */}
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <FormField
-                  label="From Account"
-                  id="transfer-from"
-                  type="text"
-                  value={fromAccount}
-                  onChange={(e) => { setSubmitError(null); setFromAccount(e.target.value); }}
-                  placeholder="e.g., Cash"
-                  list="transfer-accounts-from"
-                  required
-                />
-                <datalist id="transfer-accounts-from">
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.name} />
-                  ))}
-                </datalist>
+                <FormField label="From Account" id="transfer-from" required>
+                  <SearchablePicker
+                    value={fromAccount}
+                    onChange={(value) => {
+                      setSubmitError(null);
+                      setFromAccount(value);
+                    }}
+                    options={accountOptions}
+                    placeholder="Search account"
+                    searchPlaceholder="Search account..."
+                    emptyMessage="No accounts found."
+                    disabled={accounts.length === 0}
+                    triggerId="transfer-from"
+                    renderTriggerValue={(value) => (
+                      <span className="flex items-center gap-2 truncate">
+                        <CreditCard className="h-4 w-4 text-(--color-text-muted)" />
+                        <span className={cn("truncate", !value && "text-(--color-text-muted)")}>
+                          {value || "Search account"}
+                        </span>
+                      </span>
+                    )}
+                    renderOptionIcon={() => (
+                      <CreditCard className="h-4 w-4 text-(--color-text-muted)" />
+                    )}
+                  />
+                </FormField>
               </div>
 
               <div className="pb-[2px] flex-shrink-0">
@@ -230,23 +247,39 @@ export function TransferForm(props: TransferFormProps) {
               </div>
 
               <div className="flex-1">
-                <FormField
-                  label="To Account"
-                  id="transfer-to"
-                  type="text"
-                  value={toAccount}
-                  onChange={(e) => { setSubmitError(null); setToAccount(e.target.value); }}
-                  placeholder="e.g., Savings"
-                  list="transfer-accounts-to"
-                  required
-                />
-                <datalist id="transfer-accounts-to">
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.name} />
-                  ))}
-                </datalist>
+                <FormField label="To Account" id="transfer-to" required>
+                  <SearchablePicker
+                    value={toAccount}
+                    onChange={(value) => {
+                      setSubmitError(null);
+                      setToAccount(value);
+                    }}
+                    options={accountOptions}
+                    placeholder="Search account"
+                    searchPlaceholder="Search account..."
+                    emptyMessage="No accounts found."
+                    disabled={accounts.length === 0}
+                    triggerId="transfer-to"
+                    renderTriggerValue={(value) => (
+                      <span className="flex items-center gap-2 truncate">
+                        <CreditCard className="h-4 w-4 text-(--color-text-muted)" />
+                        <span className={cn("truncate", !value && "text-(--color-text-muted)")}>
+                          {value || "Search account"}
+                        </span>
+                      </span>
+                    )}
+                    renderOptionIcon={() => (
+                      <CreditCard className="h-4 w-4 text-(--color-text-muted)" />
+                    )}
+                  />
+                </FormField>
               </div>
             </div>
+            {accounts.length === 0 && (
+              <p className="text-xs text-muted-foreground -mt-2">
+                Create an account first to transfer money between accounts.
+              </p>
+            )}
 
             {isSameAccount && (
               <p className="text-xs text-destructive -mt-2">

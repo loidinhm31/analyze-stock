@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@money-insight/ui/components/atoms";
-import { DatePicker, FormField } from "@money-insight/ui/components/molecules";
+import { DatePicker, FormField, SearchablePicker, type SearchablePickerOption } from "@money-insight/ui/components/molecules";
 import { cn, formatCurrency } from "@money-insight/ui/lib";
 import { SUPPORTED_CURRENCIES } from "@money-insight/shared";
 import { useLastFormValues, useCategoryIcon } from "@money-insight/ui/hooks";
@@ -93,6 +93,14 @@ export function TransactionForm(props: TransactionFormProps) {
   const allowedCategories = useMemo(
     () => getAllowedCategories(categories, isExpense, transaction?.category ?? category),
     [categories, isExpense, transaction?.category, category],
+  );
+  const categoryOptions = useMemo<SearchablePickerOption[]>(
+    () => allowedCategories.map((cat) => ({ value: cat.name, label: cat.name })),
+    [allowedCategories],
+  );
+  const accountOptions = useMemo<SearchablePickerOption[]>(
+    () => accounts.map((acc) => ({ value: acc.name, label: acc.name })),
+    [accounts],
   );
 
   // Initialize form when transaction changes (edit mode)
@@ -365,24 +373,37 @@ export function TransactionForm(props: TransactionFormProps) {
               }
               required
             >
-              <Select
-                value={category || undefined}
-                onValueChange={(value) => {
+              <SearchablePicker
+                value={category}
+                onChange={(value) => {
                   clearSubmitMessages();
                   setCategory(value);
                 }}
-              >
-                <SelectTrigger id={`${formId}-category`}>
-                  <SelectValue placeholder={isExpense ? "Select expense category" : "Select income category"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {allowedCategories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.name}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={categoryOptions}
+                placeholder={isExpense ? "Search expense category" : "Search income category"}
+                searchPlaceholder={isExpense ? "Search expense category..." : "Search income category..."}
+                emptyMessage="No categories found."
+                disabled={allowedCategories.length === 0}
+                triggerId={`${formId}-category`}
+                renderTriggerValue={(value) => (
+                  <span className="flex items-center gap-2 truncate">
+                    {value && getIcon(value) ? (
+                      <CategoryIcon name={getIcon(value)!} size={16} />
+                    ) : null}
+                    <span className={cn("truncate", !value && "text-(--color-text-muted)")}>
+                      {value || (isExpense ? "Search expense category" : "Search income category")}
+                    </span>
+                  </span>
+                )}
+                renderOptionIcon={(option) => {
+                  const iconName = getIcon(option.value);
+                  return iconName ? (
+                    <CategoryIcon name={iconName} size={16} />
+                  ) : (
+                    <Tag className="h-4 w-4 text-(--color-text-muted)" />
+                  );
+                }}
+              />
             </FormField>
             {allowedCategories.length === 0 && (
               <p className="text-xs text-muted-foreground -mt-2">
@@ -395,17 +416,26 @@ export function TransactionForm(props: TransactionFormProps) {
               label="Account"
               id={`${formId}-account`}
               icon={<CreditCard className="h-4 w-4" />}
-              type="text"
-              value={account}
-              onChange={(e) => { clearSubmitMessages(); setAccount(e.target.value); }}
-              placeholder="e.g., Cash, Credit Card, Bank"
-              list={`${formId}-accounts`}
-            />
-            <datalist id={`${formId}-accounts`}>
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.name} />
-              ))}
-            </datalist>
+            >
+              <SearchablePicker
+                value={account}
+                onChange={(value) => {
+                  clearSubmitMessages();
+                  setAccount(value);
+                }}
+                options={accountOptions}
+                placeholder="Search account"
+                searchPlaceholder="Search account..."
+                emptyMessage="No accounts found."
+                disabled={accounts.length === 0}
+                triggerId={`${formId}-account`}
+              />
+            </FormField>
+            {accounts.length === 0 && (
+              <p className="text-xs text-muted-foreground -mt-2">
+                Create an account first or keep using the default Cash account.
+              </p>
+            )}
 
             {/* Date */}
             <FormField label="Date" id={`${formId}-date`}>

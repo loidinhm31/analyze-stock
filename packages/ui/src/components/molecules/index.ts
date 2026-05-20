@@ -19,3 +19,7 @@ export {
   type TimePeriodGroupHeaderProps,
 } from "./TimePeriodGroupHeader";
 export { IconPicker, type IconPickerProps } from "./IconPicker";
+export {
+  SearchablePicker,
+  type SearchablePickerOption,
+} from "./SearchablePicker";
