@@ -7,6 +7,9 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Tabs,
   TabsContent,
   TabsList,
@@ -26,7 +29,7 @@ import {
   ReportsSection,
 } from "@money-insight/ui/components/organisms";
 import { formatCurrency } from "@money-insight/ui/lib";
-import { Eye, EyeOff, Wallet } from "lucide-react";
+import { CircleHelp, Eye, EyeOff, Wallet } from "lucide-react";
 import type {
   Transaction,
   CategorySpending,
@@ -175,6 +178,42 @@ export function Dashboard({
           value={`${stats?.savingsRate.toFixed(1)}%`}
           subtitle={
             (stats?.savingsRate || 0) >= 30 ? "Excellent!" : "Target: 30%"
+          }
+          icon={
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                  aria-label="Show savings rate calculation"
+                >
+                  <CircleHelp className="h-4 w-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 space-y-2 p-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    How it&apos;s calculated
+                  </p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Savings Rate = Net Savings / Total Income × 100
+                  </p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Net Savings = Total Income - Total Expenses
+                  </p>
+                </div>
+                {!valuesHidden && stats ? (
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Current period: ({formatCurrency(stats.netSavings)} /{" "}
+                    {formatCurrency(stats.totalIncome)}) × 100 ={" "}
+                    {stats.savingsRate.toFixed(1)}%
+                  </p>
+                ) : null}
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  If total income is 0, this card shows 0%.
+                </p>
+              </PopoverContent>
+            </Popover>
           }
         />
       </div>
