@@ -20,6 +20,83 @@ export interface TransactionItemProps {
   onClick?: () => void;
 }
 
+export function getTransactionItemDisplay({
+  category,
+  note,
+  source,
+  transaction,
+}: Pick<
+  TransactionItemProps,
+  "category" | "note" | "source" | "transaction"
+>): {
+  isAdjustment: boolean;
+  isTransfer: boolean;
+  isDebtInitialization: boolean;
+  isDebtSettlement: boolean;
+  displayCategory: string;
+  displayNote: string | undefined;
+} {
+  const isAdjustment = source === "balance_adjustment";
+  const isTransfer = source === "transfer";
+  const isDebtInitialization = source === "debt_initialization";
+  const isDebtSettlement = source === "debt_settlement";
+
+  if (isAdjustment) {
+    return {
+      isAdjustment,
+      isTransfer,
+      isDebtInitialization,
+      isDebtSettlement,
+      displayCategory: "Balance Adjustment",
+      displayNote: undefined,
+    };
+  }
+
+  if (isTransfer) {
+    return {
+      isAdjustment,
+      isTransfer,
+      isDebtInitialization,
+      isDebtSettlement,
+      displayCategory: category === "__transfer__" ? "Transfer" : category,
+      displayNote: transaction
+        ? getTransferDisplayNote(transaction)
+        : "Transfer",
+    };
+  }
+
+  if (isDebtInitialization) {
+    return {
+      isAdjustment,
+      isTransfer,
+      isDebtInitialization,
+      isDebtSettlement,
+      displayCategory: category,
+      displayNote: note || "Debt initialization",
+    };
+  }
+
+  if (isDebtSettlement) {
+    return {
+      isAdjustment,
+      isTransfer,
+      isDebtInitialization,
+      isDebtSettlement,
+      displayCategory: category,
+      displayNote: note || "Debt settlement",
+    };
+  }
+
+  return {
+    isAdjustment,
+    isTransfer,
+    isDebtInitialization,
+    isDebtSettlement,
+    displayCategory: category,
+    displayNote: note,
+  };
+}
+
 export function TransactionItem({
   date,
   category,
@@ -34,29 +111,20 @@ export function TransactionItem({
   const { getIcon } = useCategoryIcon();
   const transactionDate = typeof date === "string" ? new Date(date) : date;
   const isExpense = expense > 0;
-  const isAdjustment = source === "balance_adjustment";
-  const isTransfer = source === "transfer";
-  const isDebtSettlement = source === "debt_settlement";
+  const {
+    isAdjustment,
+    isTransfer,
+    isDebtInitialization,
+    isDebtSettlement,
+    displayCategory,
+    displayNote,
+  } = getTransactionItemDisplay({
+    category,
+    note,
+    source,
+    transaction,
+  });
   const iconName = getIcon(category);
-
-  let displayCategory: string;
-  let displayNote: string | undefined;
-
-  if (isAdjustment) {
-    displayCategory = "Balance Adjustment";
-    displayNote = undefined;
-  } else if (isTransfer) {
-    displayCategory = category === "__transfer__" ? "Transfer" : category;
-    displayNote = transaction
-      ? getTransferDisplayNote(transaction)
-      : "Transfer";
-  } else if (isDebtSettlement) {
-    displayCategory = category;
-    displayNote = note || "Debt settlement";
-  } else {
-    displayCategory = category;
-    displayNote = note;
-  }
 
   return (
     <div
@@ -64,6 +132,7 @@ export function TransactionItem({
         "flex items-center justify-between p-3 border rounded-lg hover:bg-accent transition-colors cursor-pointer",
         isAdjustment && "border-primary/20 bg-primary/5",
         isTransfer && "border-muted-foreground/20 bg-muted/30",
+        isDebtInitialization && "border-emerald-500/20 bg-emerald-500/5",
         isDebtSettlement && "border-amber-500/20 bg-amber-500/5",
       )}
       onClick={onClick}
@@ -74,6 +143,9 @@ export function TransactionItem({
           {isTransfer && (
             <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
           )}
+          {isDebtInitialization && (
+            <HandCoins className="h-4 w-4 text-emerald-600" />
+          )}
           {isDebtSettlement && <HandCoins className="h-4 w-4 text-amber-600" />}
           <span className="font-medium">
             {format(transactionDate, "MMM dd, yyyy")}
@@ -82,6 +154,7 @@ export function TransactionItem({
             <span className="inline-flex items-center gap-1">
               {!isAdjustment &&
                 !isTransfer &&
+                !isDebtInitialization &&
                 !isDebtSettlement &&
                 iconName && (
                   <CategoryIcon
@@ -114,6 +187,10 @@ export function TransactionItem({
                   ? isExpense
                     ? "text-amber-700"
                     : "text-emerald-700"
+                  : isDebtInitialization
+                    ? isExpense
+                      ? "text-destructive"
+                      : "text-emerald-700"
                   : isExpense
                     ? "text-destructive"
                     : "text-success",

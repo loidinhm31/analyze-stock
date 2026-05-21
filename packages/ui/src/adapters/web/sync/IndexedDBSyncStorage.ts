@@ -4,6 +4,10 @@ import type {
   SyncRecord,
 } from "@money-insight/shared/types";
 import {
+  assertDebtType,
+  assertPositiveAmount,
+  assertTransactionSource,
+  deleteRemoteDebtAndLinkedTransactions,
   deleteRemoteSettlementAndLinkedTransaction,
   getDb,
   getCurrentTimestamp,
@@ -98,6 +102,7 @@ export class IndexedDBSyncStorage {
             debtType: debt.debtType,
             counterpartyName: debt.counterpartyName,
             description: debt.description,
+            initialTransactionId: debt.initialTransactionId,
             accountId: debt.accountId,
             currency: debt.currency,
             principalAmount: debt.principalAmount,
@@ -305,8 +310,38 @@ export class IndexedDBSyncStorage {
       return;
     }
 
+    const normalizedTransactionSource =
+      record.tableName === "transactions"
+        ? typeof (record.data as { source?: unknown }).source === "string"
+          ? (record.data as { source: string }).source
+          : "manual"
+        : undefined;
+
+    if (normalizedTransactionSource) {
+      assertTransactionSource(normalizedTransactionSource);
+    }
+
+    if (record.tableName === "debts") {
+      const debtType = (record.data as { debtType?: unknown }).debtType;
+      if (typeof debtType !== "string") {
+        throw new Error("Debt type is required");
+      }
+      assertDebtType(debtType);
+    }
+
+    if (record.tableName === "debtSettlements") {
+      const amount = (record.data as { amount?: unknown }).amount;
+      if (typeof amount !== "number") {
+        throw new Error("Settlement amount is required");
+      }
+      assertPositiveAmount(amount);
+    }
+
     const data: Record<string, unknown> = {
       ...(record.data as any),
+      ...(normalizedTransactionSource
+        ? { source: normalizedTransactionSource }
+        : {}),
       id: record.rowId,
       syncVersion: record.version,
       syncedAt: syncedAt,
@@ -328,11 +363,28 @@ export class IndexedDBSyncStorage {
       return deleteRemoteSettlementAndLinkedTransaction(record.rowId);
     }
 
-    if (record.tableName === "debts") {
-      const settlements = await getDb().debtSettlements.where("debtId").equals(record.rowId).toArray();
-      for (const settlement of settlements) {
-        await deleteRemoteSettlementAndLinkedTransaction(settlement.id);
+    if (record.tableName === "transactions") {
+      const initializedDebt = await getDb().debts
+        .where("initialTransactionId")
+        .equals(record.rowId)
+        .first();
+      if (initializedDebt) {
+        await deleteRemoteDebtAndLinkedTransactions(initializedDebt.id);
+        return undefined;
       }
+
+      const settlement = await getDb().debtSettlements
+        .where("transactionId")
+        .equals(record.rowId)
+        .first();
+      if (settlement) {
+        return deleteRemoteSettlementAndLinkedTransaction(settlement.id);
+      }
+    }
+
+    if (record.tableName === "debts") {
+      await deleteRemoteDebtAndLinkedTransactions(record.rowId);
+      return undefined;
     }
 
     await table.delete(record.rowId);

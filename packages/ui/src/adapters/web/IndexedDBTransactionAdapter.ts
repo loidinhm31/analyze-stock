@@ -9,6 +9,7 @@ import type {
 } from "@money-insight/ui/types";
 import { getDb, generateId } from "./database";
 import {
+  assertTransactionSource,
   deleteTransactionWithTracking,
   reconcileDebtByTransactionId,
 } from "./indexedDbHelpers";
@@ -61,6 +62,9 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
     const date = tx.date;
     const parsedDate = new Date(date);
     const amount = tx.amount;
+    const source = tx.source || "manual";
+
+    assertTransactionSource(source);
 
     // Ensure account exists (for manual entry with new account names)
     if (tx.account?.trim()) {
@@ -69,7 +73,7 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
 
     const transaction: Transaction = {
       id: generateId(),
-      source: tx.source || "manual",
+      source,
       importBatchId: tx.importBatchId,
       transferId: tx.transferId,
       note: tx.note,
@@ -96,6 +100,8 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
   }
 
   async updateTransaction(tx: Transaction): Promise<Transaction> {
+    assertTransactionSource(tx.source);
+
     const existing = await getDb().transactions.get(tx.id);
 
     // Dev-only guard: warn if a transfer leg is updated without its counterpart.
@@ -133,8 +139,17 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
   }
 
   async deleteTransaction(id: string): Promise<void> {
-    await deleteTransactionWithTracking(id);
-    await reconcileDebtByTransactionId(id);
+    await getDb().transaction(
+      "rw",
+      getDb().transactions,
+      getDb().debts,
+      getDb().debtSettlements,
+      getDb()._pendingChanges,
+      async () => {
+        await deleteTransactionWithTracking(id);
+        await reconcileDebtByTransactionId(id);
+      },
+    );
   }
 
   async importTransactions(

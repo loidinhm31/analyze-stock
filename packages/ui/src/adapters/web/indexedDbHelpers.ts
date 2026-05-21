@@ -1,4 +1,4 @@
-import type { Debt, DebtSettlement } from "@money-insight/ui/types";
+import type { Debt, DebtSettlement, Transaction } from "@money-insight/ui/types";
 import { getDb, generateId, getCurrentTimestamp } from "./database";
 
 interface SyncTracked {
@@ -101,6 +101,10 @@ export async function deleteDebtWithSettlements(id: string): Promise<void> {
   const debt = await getDb().debts.get(id);
   if (!debt) return;
 
+  if (debt.initialTransactionId) {
+    await deleteTransactionWithTracking(debt.initialTransactionId);
+  }
+
   const settlements = await getDb().debtSettlements.where("debtId").equals(id).toArray();
   for (const settlement of settlements) {
     await deleteSettlementAndTransaction(settlement);
@@ -121,9 +125,41 @@ export async function deleteRemoteSettlementAndLinkedTransaction(
   return settlement.debtId;
 }
 
+export async function deleteRemoteDebtAndLinkedTransactions(
+  debtId: string,
+): Promise<void> {
+  const debt = await getDb().debts.get(debtId);
+  const settlements = await getDb().debtSettlements.where("debtId").equals(debtId).toArray();
+
+  if (debt?.initialTransactionId) {
+    await getDb().transactions.delete(debt.initialTransactionId);
+  }
+
+  for (const settlement of settlements) {
+    await deleteRemoteSettlementAndLinkedTransaction(settlement.id);
+  }
+
+  await getDb().debts.delete(debtId);
+}
+
 export function assertDebtType(value: string): asserts value is Debt["debtType"] {
   if (value !== "payable" && value !== "receivable") {
     throw new Error("Invalid debt type");
+  }
+}
+
+export function assertTransactionSource(
+  value: string,
+): asserts value is Transaction["source"] {
+  if (
+    value !== "csv_import" &&
+    value !== "manual" &&
+    value !== "balance_adjustment" &&
+    value !== "transfer" &&
+    value !== "debt_initialization" &&
+    value !== "debt_settlement"
+  ) {
+    throw new Error("Invalid transaction source");
   }
 }
 
@@ -139,6 +175,22 @@ export function buildDebtSettlementTransactionNote(
 ): string {
   const prefix = `${debt.debtType === "payable" ? "Debt payment" : "Debt collection"}: ${debt.name}`;
   return note?.trim() ? `${prefix} — ${note.trim()}` : prefix;
+}
+
+export function buildDebtInitializationTransactionNote(debt: Debt): string {
+  const prefix = debt.debtType === "payable" ? "Debt borrowed" : "Debt lent";
+  return `${prefix}: ${debt.name}`;
+}
+
+export function buildDebtInitializationTransactionAmount(debt: Debt): number {
+  assertPositiveAmount(debt.principalAmount, "principalAmount");
+  return debt.debtType === "payable"
+    ? Math.abs(debt.principalAmount)
+    : -Math.abs(debt.principalAmount);
+}
+
+export function getDebtInitializationCategory(debtType: Debt["debtType"]): string {
+  return debtType === "payable" ? "Debt Borrowed" : "Debt Lent";
 }
 
 export function buildDebtSettlementTransactionAmount(
@@ -168,5 +220,14 @@ export async function reconcileDebtFromSettlements(debtId: string): Promise<void
 }
 
 export async function reconcileDebtByTransactionId(transactionId: string): Promise<void> {
+  const debt = await getDb().debts
+    .where("initialTransactionId")
+    .equals(transactionId)
+    .first();
+  if (debt) {
+    await deleteDebtWithSettlements(debt.id);
+    return;
+  }
+
   await deleteDebtSettlementByTransactionId(transactionId);
 }

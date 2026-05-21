@@ -43,10 +43,6 @@ const {
   generateIdMock: vi.fn(),
 }));
 
-generateIdMock.mockReturnValueOnce("debt-1").mockReturnValueOnce("settlement-1");
-
-
-
 vi.mock("./database", () => ({
   getDb: () => mockDb,
   generateId: generateIdMock,
@@ -55,12 +51,19 @@ vi.mock("./database", () => ({
 vi.mock("./indexedDbHelpers", () => ({
   assertDebtType: vi.fn(),
   assertPositiveAmount: vi.fn(),
+  buildDebtInitializationTransactionAmount: vi.fn((debt: { debtType: string; principalAmount: number }) =>
+    debt.debtType === "payable" ? debt.principalAmount : -debt.principalAmount,
+  ),
+  buildDebtInitializationTransactionNote: vi.fn(() => "Debt borrowed: Loan"),
   buildDebtSettlementTransactionAmount: vi.fn((debtType: string, amount: number) =>
     debtType === "payable" ? -amount : amount,
   ),
   buildDebtSettlementTransactionNote: vi.fn(() => "Debt payment: Loan"),
   deleteDebtSettlementById: deleteDebtSettlementByIdMock,
   deleteDebtWithSettlements: deleteDebtWithSettlementsMock,
+  getDebtInitializationCategory: vi.fn((debtType: string) =>
+    debtType === "payable" ? "Debt Borrowed" : "Debt Lent",
+  ),
   getDebtSettlementCategory: vi.fn((debtType: string) =>
     debtType === "payable" ? "Debt Payment" : "Debt Collection",
   ),
@@ -84,6 +87,8 @@ vi.mock("./IndexedDBTransactionAdapter", () => ({
 describe("IndexedDBDebtAdapter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    generateIdMock.mockReset();
+    generateIdMock.mockReturnValue("generated-id");
     mockDb.debts.toArray.mockResolvedValue([]);
     mockDb.debts.get.mockResolvedValue(undefined);
     mockDb.debtSettlements.where.mockImplementation((field: string) => ({
@@ -116,9 +121,11 @@ describe("IndexedDBDebtAdapter", () => {
         return callback();
       },
     );
+    addTransactionMock.mockResolvedValue({ id: "tx-initial" });
   });
 
-  it("creates debts with derived aggregate fields", async () => {
+  it("creates payable debts with a positive initialization transaction", async () => {
+    generateIdMock.mockReturnValueOnce("debt-1");
     const adapter = new IndexedDBDebtAdapter();
     const debt = await adapter.createDebt({
       name: "Loan",
@@ -133,10 +140,45 @@ describe("IndexedDBDebtAdapter", () => {
     expect(debt.settledAmount).toBe(0);
     expect(debt.remainingAmount).toBe(100);
     expect(debt.isCompleted).toBe(false);
-    expect(mockDb.debts.add).toHaveBeenCalledWith(expect.objectContaining({ id: "debt-1" }));
+    expect(debt.initialTransactionId).toBe("tx-initial");
+    expect(addTransactionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "debt_initialization",
+        amount: 100,
+        category: "Debt Borrowed",
+        account: "Wallet",
+        date: "2024-01-01",
+      }),
+    );
+    expect(mockDb.debts.add).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "debt-1", initialTransactionId: "tx-initial" }),
+    );
+  });
+
+  it("creates receivable debts with a negative initialization transaction", async () => {
+    generateIdMock.mockReturnValueOnce("debt-1");
+    const adapter = new IndexedDBDebtAdapter();
+    await adapter.createDebt({
+      name: "Loan",
+      debtType: "receivable",
+      counterpartyName: "Alice",
+      accountId: "Wallet",
+      currency: "VND",
+      principalAmount: 100,
+      originatedAt: "2024-01-01",
+    });
+
+    expect(addTransactionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "debt_initialization",
+        amount: -100,
+        category: "Debt Lent",
+      }),
+    );
   });
 
   it("creates a settlement after creating the real transaction", async () => {
+    generateIdMock.mockReturnValueOnce("settlement-1");
     mockDb.debts.get.mockResolvedValue({
       id: "debt-1",
       name: "Loan",
@@ -182,6 +224,53 @@ describe("IndexedDBDebtAdapter", () => {
     );
     expect(reconcileDebtFromSettlementsMock).toHaveBeenCalledWith("debt-1");
     expect(settlement.transactionId).toBe("tx-1");
+  });
+
+  it("rejects duplicate settlement transaction links", async () => {
+    mockDb.debts.get.mockResolvedValue({
+      id: "debt-1",
+      name: "Loan",
+      debtType: "payable",
+      counterpartyName: "Alice",
+      accountId: "Wallet",
+      currency: "VND",
+      principalAmount: 100,
+      settledAmount: 0,
+      remainingAmount: 100,
+      isCompleted: false,
+      originatedAt: "2024-01-01",
+      createdAt: "2024-01-01T00:00:00.000Z",
+      updatedAt: "2024-01-01T00:00:00.000Z",
+      syncVersion: 1,
+      syncedAt: null,
+    });
+    addTransactionMock.mockResolvedValue({ id: "tx-1" });
+    mockDb.debtSettlements.where.mockImplementation((field: string) => ({
+      equals: (value: string) => ({
+        toArray: vi.fn().mockResolvedValue([]),
+        first: vi.fn().mockResolvedValue(
+          field === "transactionId" && value === "tx-1"
+            ? {
+                id: "settlement-existing",
+                debtId: "debt-2",
+                transactionId: "tx-1",
+              }
+            : undefined,
+        ),
+      }),
+    }));
+
+    const adapter = new IndexedDBDebtAdapter();
+
+    await expect(
+      adapter.addSettlement("debt-1", {
+        accountId: "Wallet",
+        amount: 30,
+        settledAt: "2024-01-02",
+      }),
+    ).rejects.toThrow("Settlement transaction already linked");
+
+    expect(mockDb.debtSettlements.add).not.toHaveBeenCalled();
   });
 
   it("deletes linked settlement and recomputes when transaction is reconciled", async () => {

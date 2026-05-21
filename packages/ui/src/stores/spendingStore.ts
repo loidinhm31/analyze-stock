@@ -17,7 +17,7 @@ import { matchesSearch, MoneyInsightAnalyzer } from "@money-insight/ui/lib";
 import * as transactionService from "@money-insight/ui/services/transactionService";
 import * as accountService from "@money-insight/ui/services/accountService";
 import * as balanceAdjustmentService from "@money-insight/ui/services/balanceAdjustmentService";
-import { isDebtSettlementTransaction } from "@money-insight/ui/services/debtService";
+import { isDebtManagedTransaction } from "@money-insight/ui/services/debtService";
 import {
   isTransferTransaction,
   reconstructTransferParams,
@@ -55,7 +55,7 @@ function buildAnalyzerState(transactions: Transaction[]) {
 }
 
 async function refreshDebtStoreForTransaction(tx?: Transaction): Promise<void> {
-  if (!tx || !isDebtSettlementTransaction(tx)) return;
+  if (!tx || !isDebtManagedTransaction(tx)) return;
 
   const { useDebtStore } = await import("@money-insight/ui/stores/debtStore");
   const debtStore = useDebtStore.getState();
@@ -341,8 +341,13 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
       // Get the transaction before deleting to know which account to recalculate
       const deletedTx = get().transactions.find((t) => t.id === id);
       await transactionService.deleteTransaction(id);
+      if (deletedTx && isDebtManagedTransaction(deletedTx)) {
+        await refreshDebtStoreForTransaction(deletedTx);
+        await get().initFromDatabase();
+        return;
+      }
+
       let transactions = get().transactions.filter((t) => t.id !== id);
-      await refreshDebtStoreForTransaction(deletedTx);
 
       // Recalculate adjustments for the affected account
       if (

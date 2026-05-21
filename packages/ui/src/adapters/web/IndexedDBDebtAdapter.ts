@@ -10,10 +10,13 @@ import { getDb, generateId } from "./database";
 import {
   assertDebtType,
   assertPositiveAmount,
+  buildDebtInitializationTransactionAmount,
+  buildDebtInitializationTransactionNote,
   buildDebtSettlementTransactionAmount,
   buildDebtSettlementTransactionNote,
   deleteDebtSettlementById,
   deleteDebtWithSettlements,
+  getDebtInitializationCategory,
   getDebtSettlementCategory,
   reconcileDebtByTransactionId,
   reconcileDebtFromSettlements,
@@ -52,8 +55,31 @@ export class IndexedDBDebtAdapter implements IDebtService {
       syncedAt: null,
     };
 
-    await getDb().debts.add(debt);
-    return debt;
+    return getDb().transaction(
+      "rw",
+      getDb().debts,
+      getDb().transactions,
+      getDb().accounts,
+      async () => {
+        const transaction = await this.transactionAdapter.addTransaction({
+          note: buildDebtInitializationTransactionNote(debt),
+          amount: buildDebtInitializationTransactionAmount(debt),
+          category: getDebtInitializationCategory(debt.debtType),
+          account: debt.accountId,
+          currency: debt.currency,
+          date: debt.originatedAt,
+          excludeReport: false,
+          source: "debt_initialization",
+        });
+        const debtWithTransaction: Debt = {
+          ...debt,
+          initialTransactionId: transaction.id,
+        };
+
+        await getDb().debts.add(debtWithTransaction);
+        return debtWithTransaction;
+      },
+    );
   }
 
   async updateDebt(debt: Debt): Promise<Debt> {
@@ -90,10 +116,12 @@ export class IndexedDBDebtAdapter implements IDebtService {
   async deleteDebt(id: string): Promise<void> {
     await getDb().transaction(
       "rw",
-      getDb().debts,
-      getDb().debtSettlements,
-      getDb().transactions,
-      getDb()._pendingChanges,
+      [
+        getDb().debts,
+        getDb().debtSettlements,
+        getDb().transactions,
+        getDb()._pendingChanges,
+      ],
       async () => {
         await deleteDebtWithSettlements(id);
       },
@@ -183,6 +211,7 @@ export class IndexedDBDebtAdapter implements IDebtService {
       "rw",
       getDb().debts,
       getDb().debtSettlements,
+      getDb().transactions,
       getDb()._pendingChanges,
       async () => {
         await reconcileDebtByTransactionId(transactionId);

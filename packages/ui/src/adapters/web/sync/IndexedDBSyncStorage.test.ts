@@ -6,6 +6,7 @@ const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
     transactions: {
       toArray: vi.fn(),
       delete: vi.fn(),
+      put: vi.fn(),
     },
     categories: {
       toArray: vi.fn(),
@@ -19,12 +20,14 @@ const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
       where: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      put: vi.fn(),
     },
     debtSettlements: {
       toArray: vi.fn(),
       get: vi.fn(),
       where: vi.fn(),
       delete: vi.fn(),
+      put: vi.fn(),
     },
     _pendingChanges: {
       filter: vi.fn(),
@@ -34,23 +37,45 @@ const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
   reconcileDebtFromSettlementsMock: vi.fn(),
 }));
 
-vi.mock("@money-insight/ui/adapters/web", () => ({
-  deleteRemoteSettlementAndLinkedTransaction: vi.fn(async (settlementId: string) => {
-    const settlement = await mockDb.debtSettlements.get(settlementId);
-    if (!settlement) return undefined;
-    await mockDb.debtSettlements.delete(settlementId);
-    await mockDb.transactions.delete(settlement.transactionId);
-    return settlement.debtId;
-  }),
-  getDb: () => mockDb,
-  getCurrentTimestamp: () => 123,
-  SYNC_META_KEYS: {
-    CHECKPOINT: "checkpoint",
-    LAST_SYNC_AT: "lastSyncAt",
-    CATEGORY_BACKFILL_V1: "categoryBackfillV1",
-  },
-  reconcileDebtFromSettlements: reconcileDebtFromSettlementsMock,
-}));
+vi.mock("@money-insight/ui/adapters/web", async () => {
+  const actual = await vi.importActual<
+    typeof import("@money-insight/ui/adapters/web")
+  >("@money-insight/ui/adapters/web");
+
+  return {
+    ...actual,
+    deleteRemoteDebtAndLinkedTransactions: vi.fn(async (debtId: string) => {
+      const debt = await mockDb.debts.get(debtId);
+      if (debt?.initialTransactionId) {
+        await mockDb.transactions.delete(debt.initialTransactionId);
+      }
+      const settlements = await mockDb.debtSettlements
+        .where("debtId")
+        .equals(debtId)
+        .toArray();
+      for (const settlement of settlements) {
+        await mockDb.debtSettlements.delete(settlement.id);
+        await mockDb.transactions.delete(settlement.transactionId);
+      }
+      await mockDb.debts.delete(debtId);
+    }),
+    deleteRemoteSettlementAndLinkedTransaction: vi.fn(async (settlementId: string) => {
+      const settlement = await mockDb.debtSettlements.get(settlementId);
+      if (!settlement) return undefined;
+      await mockDb.debtSettlements.delete(settlementId);
+      await mockDb.transactions.delete(settlement.transactionId);
+      return settlement.debtId;
+    }),
+    getDb: () => mockDb,
+    getCurrentTimestamp: () => 123,
+    SYNC_META_KEYS: {
+      CHECKPOINT: "checkpoint",
+      LAST_SYNC_AT: "lastSyncAt",
+      CATEGORY_BACKFILL_V1: "categoryBackfillV1",
+    },
+    reconcileDebtFromSettlements: reconcileDebtFromSettlementsMock,
+  };
+});
 
 describe("IndexedDBSyncStorage.getPendingChanges", () => {
   beforeEach(() => {
@@ -122,6 +147,7 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
         name: "Loan",
         debtType: "payable",
         counterpartyName: "Alice",
+        initialTransactionId: "tx-initial",
         accountId: "Wallet",
         currency: "VND",
         principalAmount: 100,
@@ -161,6 +187,7 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
       rowId: "debt-1",
       data: expect.objectContaining({
         debtType: "payable",
+        initialTransactionId: "tx-initial",
         principalAmount: 100,
         settledAmount: 30,
       }),
@@ -195,5 +222,103 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
     expect(mockDb.debtSettlements.delete).toHaveBeenCalledWith("settlement-1");
     expect(mockDb.transactions.delete).toHaveBeenCalledWith("tx-1");
     expect(reconcileDebtFromSettlementsMock).toHaveBeenCalledWith("debt-1");
+  });
+
+  it("removes initialization and settlement transactions when remote debt delete is applied", async () => {
+    mockDb.debts.get.mockResolvedValue({
+      id: "debt-1",
+      initialTransactionId: "tx-initial",
+    });
+    mockDb.debtSettlements.where.mockReturnValue({
+      equals: () => ({
+        toArray: vi.fn().mockResolvedValue([
+          {
+            id: "settlement-1",
+            debtId: "debt-1",
+            transactionId: "tx-settlement",
+          },
+        ]),
+      }),
+    });
+
+    const storage = new IndexedDBSyncStorage();
+    await storage.applyRemoteChanges([
+      { tableName: "debts", rowId: "debt-1", data: {}, version: 4, deleted: true, syncedAt: "2024-01-03T00:00:00.000Z" },
+    ]);
+
+    expect(mockDb.transactions.delete).toHaveBeenCalledWith("tx-initial");
+    expect(mockDb.transactions.delete).toHaveBeenCalledWith("tx-settlement");
+    expect(mockDb.debtSettlements.delete).toHaveBeenCalledWith("settlement-1");
+    expect(mockDb.debts.delete).toHaveBeenCalledWith("debt-1");
+  });
+
+  it("defaults a missing remote transaction source to manual", async () => {
+    const storage = new IndexedDBSyncStorage();
+
+    await storage.applyRemoteChanges([
+      {
+        tableName: "transactions",
+        rowId: "tx-legacy",
+        data: {
+          note: "Legacy",
+          amount: -10,
+          category: "Food",
+          account: "Cash",
+          currency: "VND",
+          date: "2024-01-03",
+          excludeReport: false,
+          expense: 10,
+          income: 0,
+          yearMonth: "2024-01",
+          year: 2024,
+          month: 1,
+          createdAt: "2024-01-03T00:00:00.000Z",
+          updatedAt: "2024-01-03T00:00:00.000Z",
+        },
+        version: 2,
+        deleted: false,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
+    ]);
+
+    expect(mockDb.transactions.put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "tx-legacy",
+        source: "manual",
+        syncVersion: 2,
+      }),
+    );
+  });
+
+  it("rejects invalid remote debt types", async () => {
+    const storage = new IndexedDBSyncStorage();
+
+    await expect(
+      storage.applyRemoteChanges([
+        {
+          tableName: "debts",
+          rowId: "debt-1",
+          data: {
+            name: "Loan",
+            debtType: "loan",
+            counterpartyName: "Alice",
+            accountId: "Cash",
+            currency: "VND",
+            principalAmount: 100,
+            settledAmount: 0,
+            remainingAmount: 100,
+            isCompleted: false,
+            originatedAt: "2024-01-01",
+            createdAt: "2024-01-01T00:00:00.000Z",
+            updatedAt: "2024-01-01T00:00:00.000Z",
+          },
+          version: 1,
+          deleted: false,
+          syncedAt: "2024-01-03T00:00:00.000Z",
+        },
+      ]),
+    ).rejects.toThrow("Invalid debt type");
+
+    expect(mockDb.debts.put).not.toHaveBeenCalled();
   });
 });

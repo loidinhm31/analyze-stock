@@ -50,6 +50,7 @@
         { "name": "debtType", "type": "string", "nullable": false },
         { "name": "counterpartyName", "type": "string", "nullable": false },
         { "name": "description", "type": "string", "nullable": true },
+        { "name": "initialTransactionId", "type": "string", "nullable": true },
         { "name": "accountId", "type": "string", "nullable": false },
         { "name": "currency", "type": "string", "nullable": false },
         { "name": "principalAmount", "type": "number", "nullable": false },

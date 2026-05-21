@@ -110,6 +110,7 @@ export type TransactionSource =
   | "manual"
   | "balance_adjustment"
   | "transfer"
+  | "debt_initialization"
   | "debt_settlement";
 
 export type DebtType = "payable" | "receivable";
@@ -136,6 +137,7 @@ export interface NewDebt {
 
 export interface Debt extends NewDebt {
   id: string;
+  initialTransactionId?: string;
   settledAmount: number;
   remainingAmount: number;
   isCompleted: boolean;

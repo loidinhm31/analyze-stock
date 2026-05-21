@@ -68,6 +68,22 @@ export class MoneyInsightDatabase extends Dexie {
       _pendingChanges: "++id, tableName, rowId",
     });
 
+    this.version(3).stores({
+      transactions:
+        "id, category, account, date, yearMonth, year, month, source, importBatchId, transferId, syncVersion, syncedAt",
+      categories: "id, name, syncVersion, syncedAt",
+      accounts: "id, name, accountType, currency, syncVersion, syncedAt",
+      importBatches: "id, filename, importedAt",
+      categoryGroups: "id, name, syncVersion, syncedAt",
+      categoryMappings: "id, subCategory, parentGroupId, syncVersion, syncedAt",
+      debts:
+        "id, debtType, counterpartyName, accountId, currency, originatedAt, dueDate, isCompleted, initialTransactionId, syncVersion, syncedAt",
+      debtSettlements:
+        "id, &transactionId, debtId, accountId, settledAt, syncVersion, syncedAt, [debtId+transactionId], [debtId+settledAt]",
+      _syncMeta: "key",
+      _pendingChanges: "++id, tableName, rowId",
+    });
+
     this.transactions = this.table("transactions");
     this.categories = this.table("categories");
     this.accounts = this.table("accounts");

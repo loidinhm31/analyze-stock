@@ -132,6 +132,7 @@ export const useDebtStore = create<DebtStore>()((set, get) => ({
       const debt = await debtService.createDebt(input);
       const debts = [debt, ...get().debts];
       set({ ...applyDebtState(debts), isLoading: false, isDbReady: true });
+      await refreshSpendingStore();
       return debt;
     } catch (error) {
       set({

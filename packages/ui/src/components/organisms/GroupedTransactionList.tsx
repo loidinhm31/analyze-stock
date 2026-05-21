@@ -136,6 +136,8 @@ export function GroupedTransactionList({
                   const isAdjustment =
                     transaction.source === "balance_adjustment";
                   const isTransfer = transaction.source === "transfer";
+                  const isDebtInitialization =
+                    transaction.source === "debt_initialization";
                   const isDebtSettlement =
                     transaction.source === "debt_settlement";
                   const transactionDate = new Date(transaction.date);
@@ -150,6 +152,9 @@ export function GroupedTransactionList({
                         ? "Transfer"
                         : transaction.category;
                     displayNote = getTransferDisplayNote(transaction);
+                  } else if (isDebtInitialization) {
+                    displayCategory = transaction.category;
+                    displayNote = transaction.note || "Debt initialization";
                   } else if (isDebtSettlement) {
                     displayCategory = transaction.category;
                     displayNote = transaction.note || "Debt settlement";
@@ -166,6 +171,10 @@ export function GroupedTransactionList({
                         ? isExpense
                           ? "#a16207"
                           : "#047857"
+                        : isDebtInitialization
+                          ? isExpense
+                            ? "var(--color-destructive)"
+                            : "#047857"
                         : isExpense
                           ? "var(--color-destructive)"
                           : "var(--color-success)";
@@ -178,6 +187,8 @@ export function GroupedTransactionList({
                         onTransactionClick && "cursor-pointer",
                         isAdjustment && "border-primary/20 bg-primary/5",
                         isTransfer && "border-muted-foreground/20 bg-muted/20",
+                        isDebtInitialization &&
+                          "border-emerald-500/20 bg-emerald-500/5",
                         isDebtSettlement &&
                           "border-amber-500/20 bg-amber-500/5",
                       )}
@@ -191,6 +202,9 @@ export function GroupedTransactionList({
                           {isTransfer && (
                             <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
                           )}
+                          {isDebtInitialization && (
+                            <HandCoins className="h-4 w-4 text-emerald-600" />
+                          )}
                           {isDebtSettlement && (
                             <HandCoins className="h-4 w-4 text-amber-600" />
                           )}
@@ -201,6 +215,7 @@ export function GroupedTransactionList({
                             <span className="inline-flex items-center gap-1">
                               {!isAdjustment &&
                                 !isTransfer &&
+                                !isDebtInitialization &&
                                 !isDebtSettlement &&
                                 getIcon(transaction.category) && (
                                   <CategoryIcon

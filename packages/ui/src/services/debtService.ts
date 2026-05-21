@@ -13,6 +13,18 @@ export function isDebtSettlementTransaction(
   return tx.source === "debt_settlement";
 }
 
+export function isDebtInitializationTransaction(
+  tx: Pick<Transaction, "source"> | { source?: Transaction["source"] },
+): boolean {
+  return tx.source === "debt_initialization";
+}
+
+export function isDebtManagedTransaction(
+  tx: Pick<Transaction, "source"> | { source?: Transaction["source"] },
+): boolean {
+  return isDebtSettlementTransaction(tx) || isDebtInitializationTransaction(tx);
+}
+
 export async function getDebts(): Promise<Debt[]> {
   return getDebtService().getDebts();
 }
