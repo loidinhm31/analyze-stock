@@ -17,6 +17,7 @@ import { matchesSearch, MoneyInsightAnalyzer } from "@money-insight/ui/lib";
 import * as transactionService from "@money-insight/ui/services/transactionService";
 import * as accountService from "@money-insight/ui/services/accountService";
 import * as balanceAdjustmentService from "@money-insight/ui/services/balanceAdjustmentService";
+import { isDebtSettlementTransaction } from "@money-insight/ui/services/debtService";
 import {
   isTransferTransaction,
   reconstructTransferParams,
@@ -51,6 +52,19 @@ function buildAnalyzerState(transactions: Transaction[]) {
   );
   const analyzer = new MoneyInsightAnalyzer(reportableTransactions);
   return { transactions, processedTransactions, analyzer };
+}
+
+async function refreshDebtStoreForTransaction(tx?: Transaction): Promise<void> {
+  if (!tx || !isDebtSettlementTransaction(tx)) return;
+
+  const { useDebtStore } = await import("@money-insight/ui/stores/debtStore");
+  const debtStore = useDebtStore.getState();
+  if (debtStore.isDbReady) {
+    await debtStore.loadDebts();
+    if (debtStore.selectedDebtId) {
+      await debtStore.loadSettlements(debtStore.selectedDebtId);
+    }
+  }
 }
 
 interface Statistics {
@@ -222,7 +236,8 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
       }
 
       // Recalculate adjustments for the affected account
-      const account = (existingAccount ?? get().accounts.find((a) => a.name === tx.account));
+      const account =
+        existingAccount ?? get().accounts.find((a) => a.name === tx.account);
       if (account) {
         const updatedAdjs = balanceAdjustmentService.recalculateAdjustments(
           transactions,
@@ -327,6 +342,7 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
       const deletedTx = get().transactions.find((t) => t.id === id);
       await transactionService.deleteTransaction(id);
       let transactions = get().transactions.filter((t) => t.id !== id);
+      await refreshDebtStoreForTransaction(deletedTx);
 
       // Recalculate adjustments for the affected account
       if (
@@ -393,7 +409,12 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
   loadTransactions: (transactions) => {
     const reportableTransactions = transactions.filter((t) => !t.excludeReport);
     const analyzer = new MoneyInsightAnalyzer(reportableTransactions);
-    set({ processedTransactions: transactions, analyzer, isLoading: false, error: null });
+    set({
+      processedTransactions: transactions,
+      analyzer,
+      isLoading: false,
+      error: null,
+    });
     get().refreshAnalysis();
   },
 
@@ -512,8 +533,7 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
       const walletBalances: WalletBalance[] = Array.from(walletMap.entries())
         .map(([account, data]) => ({
           account,
-          balance:
-            data.initialBalance + data.totalIncome - data.totalExpense,
+          balance: data.initialBalance + data.totalIncome - data.totalExpense,
           totalIncome: data.totalIncome,
           totalExpense: data.totalExpense,
         }))

@@ -4,7 +4,14 @@ import type {
   DebtSettlement,
   DebtSettlementInput,
   NewDebt,
+  Transaction,
 } from "@money-insight/ui/types";
+
+export function isDebtSettlementTransaction(
+  tx: Pick<Transaction, "source"> | { source?: Transaction["source"] },
+): boolean {
+  return tx.source === "debt_settlement";
+}
 
 export async function getDebts(): Promise<Debt[]> {
   return getDebtService().getDebts();
@@ -26,7 +33,9 @@ export async function deleteDebt(id: string): Promise<void> {
   return getDebtService().deleteDebt(id);
 }
 
-export async function getSettlements(debtId: string): Promise<DebtSettlement[]> {
+export async function getSettlements(
+  debtId: string,
+): Promise<DebtSettlement[]> {
   return getDebtService().getSettlements(debtId);
 }
 
@@ -41,6 +50,8 @@ export async function deleteSettlement(id: string): Promise<void> {
   return getDebtService().deleteSettlement(id);
 }
 
-export async function reconcileDebtByTransactionId(transactionId: string): Promise<void> {
+export async function reconcileDebtByTransactionId(
+  transactionId: string,
+): Promise<void> {
   return getDebtService().reconcileDebtByTransactionId(transactionId);
 }

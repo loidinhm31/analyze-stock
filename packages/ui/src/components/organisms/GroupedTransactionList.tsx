@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { ArrowLeftRight, ChevronDown, Scale } from "lucide-react";
+import { ArrowLeftRight, ChevronDown, HandCoins, Scale } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -51,8 +51,8 @@ export function GroupedTransactionList({
       const valid = prev.filter((k) => keySet.has(k));
       return valid.length > 0 ? valid : [groups[0].key];
     });
-  // groupKeysStr is a stable string fingerprint of the group set — safe dep
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // groupKeysStr is a stable string fingerprint of the group set — safe dep
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodMode, groupKeysStr]);
 
   if (groups.length === 0) {
@@ -136,6 +136,8 @@ export function GroupedTransactionList({
                   const isAdjustment =
                     transaction.source === "balance_adjustment";
                   const isTransfer = transaction.source === "transfer";
+                  const isDebtSettlement =
+                    transaction.source === "debt_settlement";
                   const transactionDate = new Date(transaction.date);
 
                   let displayCategory: string;
@@ -148,6 +150,9 @@ export function GroupedTransactionList({
                         ? "Transfer"
                         : transaction.category;
                     displayNote = getTransferDisplayNote(transaction);
+                  } else if (isDebtSettlement) {
+                    displayCategory = transaction.category;
+                    displayNote = transaction.note || "Debt settlement";
                   } else {
                     displayCategory = transaction.category;
                     displayNote = transaction.note || undefined;
@@ -157,9 +162,13 @@ export function GroupedTransactionList({
                     ? "var(--color-primary-500)"
                     : isTransfer
                       ? "var(--color-text-secondary)"
-                      : isExpense
-                        ? "var(--color-destructive)"
-                        : "var(--color-success)";
+                      : isDebtSettlement
+                        ? isExpense
+                          ? "#a16207"
+                          : "#047857"
+                        : isExpense
+                          ? "var(--color-destructive)"
+                          : "var(--color-success)";
 
                   return (
                     <div
@@ -169,6 +178,8 @@ export function GroupedTransactionList({
                         onTransactionClick && "cursor-pointer",
                         isAdjustment && "border-primary/20 bg-primary/5",
                         isTransfer && "border-muted-foreground/20 bg-muted/20",
+                        isDebtSettlement &&
+                          "border-amber-500/20 bg-amber-500/5",
                       )}
                       onClick={() => onTransactionClick?.(transaction)}
                     >
@@ -180,6 +191,9 @@ export function GroupedTransactionList({
                           {isTransfer && (
                             <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
                           )}
+                          {isDebtSettlement && (
+                            <HandCoins className="h-4 w-4 text-amber-600" />
+                          )}
                           <span className="text-sm font-medium text-secondary-foreground">
                             {format(transactionDate, "MMM dd")}
                           </span>
@@ -187,6 +201,7 @@ export function GroupedTransactionList({
                             <span className="inline-flex items-center gap-1">
                               {!isAdjustment &&
                                 !isTransfer &&
+                                !isDebtSettlement &&
                                 getIcon(transaction.category) && (
                                   <CategoryIcon
                                     name={getIcon(transaction.category)}

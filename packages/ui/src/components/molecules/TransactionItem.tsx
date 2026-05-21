@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Scale, ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, HandCoins, Scale } from "lucide-react";
 import { Badge, CategoryIcon } from "@money-insight/ui/components/atoms";
 import { formatCurrency, cn } from "@money-insight/ui/lib";
 import { useCategoryIcon } from "@money-insight/ui/hooks";
@@ -36,6 +36,7 @@ export function TransactionItem({
   const isExpense = expense > 0;
   const isAdjustment = source === "balance_adjustment";
   const isTransfer = source === "transfer";
+  const isDebtSettlement = source === "debt_settlement";
   const iconName = getIcon(category);
 
   let displayCategory: string;
@@ -46,7 +47,12 @@ export function TransactionItem({
     displayNote = undefined;
   } else if (isTransfer) {
     displayCategory = category === "__transfer__" ? "Transfer" : category;
-    displayNote = transaction ? getTransferDisplayNote(transaction) : "Transfer";
+    displayNote = transaction
+      ? getTransferDisplayNote(transaction)
+      : "Transfer";
+  } else if (isDebtSettlement) {
+    displayCategory = category;
+    displayNote = note || "Debt settlement";
   } else {
     displayCategory = category;
     displayNote = note;
@@ -58,6 +64,7 @@ export function TransactionItem({
         "flex items-center justify-between p-3 border rounded-lg hover:bg-accent transition-colors cursor-pointer",
         isAdjustment && "border-primary/20 bg-primary/5",
         isTransfer && "border-muted-foreground/20 bg-muted/30",
+        isDebtSettlement && "border-amber-500/20 bg-amber-500/5",
       )}
       onClick={onClick}
     >
@@ -67,18 +74,22 @@ export function TransactionItem({
           {isTransfer && (
             <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
           )}
+          {isDebtSettlement && <HandCoins className="h-4 w-4 text-amber-600" />}
           <span className="font-medium">
             {format(transactionDate, "MMM dd, yyyy")}
           </span>
           <Badge variant={isAdjustment ? "default" : "outline"}>
             <span className="inline-flex items-center gap-1">
-              {!isAdjustment && !isTransfer && iconName && (
-                <CategoryIcon
-                  name={iconName}
-                  size={16}
-                  className="inline-block shrink-0"
-                />
-              )}
+              {!isAdjustment &&
+                !isTransfer &&
+                !isDebtSettlement &&
+                iconName && (
+                  <CategoryIcon
+                    name={iconName}
+                    size={16}
+                    className="inline-block shrink-0"
+                  />
+                )}
               {displayCategory}
             </span>
           </Badge>
@@ -99,9 +110,13 @@ export function TransactionItem({
               ? "text-primary"
               : isTransfer
                 ? "text-muted-foreground"
-                : isExpense
-                  ? "text-destructive"
-                  : "text-success",
+                : isDebtSettlement
+                  ? isExpense
+                    ? "text-amber-700"
+                    : "text-emerald-700"
+                  : isExpense
+                    ? "text-destructive"
+                    : "text-success",
           )}
         >
           {isExpense
