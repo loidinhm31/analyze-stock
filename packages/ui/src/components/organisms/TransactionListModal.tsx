@@ -13,6 +13,7 @@ import { useCategoryIcon } from "@money-insight/ui/hooks";
 import { Pagination } from "@money-insight/ui/components/molecules";
 import { format } from "date-fns";
 import { formatCurrency } from "@money-insight/ui/lib";
+import { getTransferDisplayNote } from "@money-insight/ui/services/transferService";
 import type {
   Transaction,
   ProcessedTransaction,
@@ -38,6 +39,14 @@ function getDate(t: AnyTransaction): Date {
 // Helper to get ID from either type
 function getId(t: AnyTransaction): string | number {
   return t.id;
+}
+
+function getTransactionDescription(t: AnyTransaction): string {
+  if ("source" in t && t.source === "transfer") {
+    return getTransferDisplayNote(t);
+  }
+
+  return t.note || "—";
 }
 
 export function TransactionListModal({
@@ -152,7 +161,7 @@ export function TransactionListModal({
                       </td>
                       <td className="p-3 max-w-md">
                         <span className="text-sm text-muted-foreground line-clamp-2">
-                          {transaction.note || "—"}
+                          {getTransactionDescription(transaction)}
                         </span>
                       </td>
                       <td
@@ -208,9 +217,9 @@ export function TransactionListModal({
                         {transaction.account}
                       </Badge>
                     </div>
-                    {transaction.note && (
+                    {getTransactionDescription(transaction) !== "—" && (
                       <p className="text-sm text-muted-foreground mt-1 truncate">
-                        {transaction.note}
+                        {getTransactionDescription(transaction)}
                       </p>
                     )}
                   </div>

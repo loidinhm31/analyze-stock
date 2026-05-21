@@ -28,6 +28,7 @@ export class IndexedDBSyncStorage {
           rowId: tx.id,
           data: {
             source: tx.source,
+            transferId: tx.transferId,
             note: tx.note,
             amount: tx.amount,
             category: tx.category,

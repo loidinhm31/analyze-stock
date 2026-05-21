@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ISyncService } from "@money-insight/ui/adapters/factory/interfaces";
 import type { SyncResult } from "@money-insight/shared";
+import { refreshLocalStoresAfterSync } from "@money-insight/ui/services/syncService";
 
 interface UseAutoSyncOptions {
   syncService: ISyncService | null;
@@ -25,6 +26,7 @@ export function useAutoSync({
     onSyncStart?.();
     try {
       const result = await syncService.syncNow();
+      await refreshLocalStoresAfterSync(result);
       onSyncResult?.(result);
     } catch (e) {
       console.warn("[auto-sync] failed:", e);

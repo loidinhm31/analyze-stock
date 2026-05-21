@@ -26,25 +26,51 @@ export function parseTransferNote(note: string): TransferNote | null {
 }
 
 export function createOutgoingTransferNote(
-  _userNote: string,
+  userNote: string,
   toAccount: string,
 ): string {
   const note: TransferNote = {
-    userNote: `Send to ${toAccount}`,
+    userNote,
     toAccount,
   };
   return JSON.stringify(note);
 }
 
 export function createIncomingTransferNote(
-  _userNote: string,
+  userNote: string,
   fromAccount: string,
 ): string {
   const note: TransferNote = {
-    userNote: `Receive from ${fromAccount}`,
+    userNote,
     fromAccount,
   };
   return JSON.stringify(note);
+}
+
+function getOutgoingTransferLabel(toAccount: string): string {
+  return `Send to ${toAccount}`;
+}
+
+function getIncomingTransferLabel(fromAccount: string): string {
+  return `Receive from ${fromAccount}`;
+}
+
+function getTransferDirectionLabel(note: TransferNote): string | null {
+  if (note.toAccount) return getOutgoingTransferLabel(note.toAccount);
+  if (note.fromAccount) return getIncomingTransferLabel(note.fromAccount);
+  return null;
+}
+
+export function getTransferUserNote(note: string): string {
+  const parsed = parseTransferNote(note);
+  if (!parsed) return note;
+
+  const directionLabel = getTransferDirectionLabel(parsed);
+  if (directionLabel && parsed.userNote === directionLabel) {
+    return "";
+  }
+
+  return parsed.userNote;
 }
 
 export function createTransferTransactions(
@@ -116,8 +142,7 @@ export function reconstructTransferParams(
   // letting it propagate to createTransferTransactions which would throw.
   if (merged.amount === 0) return null;
 
-  const parsedNote = parseTransferNote(merged.note);
-  const userNote = parsedNote?.userNote ?? merged.note;
+  const userNote = getTransferUserNote(merged.note);
 
   // counterpart.account is authoritative: for the incoming leg it IS the toAccount,
   // for the outgoing leg it IS the fromAccount.
@@ -148,12 +173,15 @@ export function reconstructTransferParams(
  * Returns a human-readable label for a transfer transaction in a list.
  * Uses the encoded note JSON to avoid async DB lookups per render.
  */
-export function getTransferDisplayNote(tx: Transaction): string {
+export function getTransferDisplayNote(tx: Pick<Transaction, "note">): string {
   const parsed = parseTransferNote(tx.note);
   if (!parsed) return "Transfer";
 
-  if (parsed.userNote.trim()) return parsed.userNote;
-  if (parsed.toAccount) return `Send to ${parsed.toAccount}`;
-  if (parsed.fromAccount) return `Receive from ${parsed.fromAccount}`;
+  const userNote = getTransferUserNote(tx.note).trim();
+  const directionLabel = getTransferDirectionLabel(parsed);
+
+  if (userNote && directionLabel) return `${userNote} • ${directionLabel}`;
+  if (userNote) return userNote;
+  if (directionLabel) return directionLabel;
   return "Transfer";
 }

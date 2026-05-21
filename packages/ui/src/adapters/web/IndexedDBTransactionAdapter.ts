@@ -13,9 +13,15 @@ import {
   deleteTransactionWithTracking,
   reconcileDebtByTransactionId,
 } from "./indexedDbHelpers";
-import { createTransferTransactions } from "../../services/transferService";
+import {
+  createTransferTransactions,
+  getTransferUserNote,
+  parseTransferNote,
+} from "../../services/transferService";
 export class IndexedDBTransactionAdapter implements ITransactionService {
   async getTransactions(filter?: TransactionFilter): Promise<Transaction[]> {
+    await this.repairLegacyTransferPairs();
+
     let collection = getDb().transactions.toCollection();
 
     if (filter?.categories?.length) {
@@ -55,6 +61,131 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
     }
 
     return results.sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  private async repairLegacyTransferPairs(): Promise<void> {
+    const legacyTransfers = (await getDb().transactions.toArray()).filter(
+      (tx) => tx.source === "transfer" && !tx.transferId,
+    );
+
+    if (legacyTransfers.length < 2) {
+      return;
+    }
+
+    type TransferLeg = {
+      tx: Transaction;
+      fromAccount: string;
+      toAccount: string;
+      amount: number;
+      userNote: string;
+    };
+
+    const outgoingBySignature = new Map<string, TransferLeg[]>();
+    const incomingBySignature = new Map<string, TransferLeg[]>();
+
+    for (const tx of legacyTransfers) {
+      const parsed = parseTransferNote(tx.note);
+      if (!parsed) {
+        continue;
+      }
+
+      const amount = Math.abs(tx.amount);
+      const userNote = getTransferUserNote(tx.note);
+
+      if (tx.amount < 0 && parsed.toAccount) {
+        const leg = {
+          tx,
+          fromAccount: tx.account,
+          toAccount: parsed.toAccount,
+          amount,
+          userNote,
+        };
+        const signature = this.getLegacyTransferSignature(leg);
+        outgoingBySignature.set(signature, [
+          ...(outgoingBySignature.get(signature) ?? []),
+          leg,
+        ]);
+      }
+
+      if (tx.amount > 0 && parsed.fromAccount) {
+        const leg = {
+          tx,
+          fromAccount: parsed.fromAccount,
+          toAccount: tx.account,
+          amount,
+          userNote,
+        };
+        const signature = this.getLegacyTransferSignature(leg);
+        incomingBySignature.set(signature, [
+          ...(incomingBySignature.get(signature) ?? []),
+          leg,
+        ]);
+      }
+    }
+
+    const repairedPairs: Transaction[] = [];
+    const updatedAt = new Date().toISOString();
+
+    for (const [signature, outgoingLegs] of outgoingBySignature.entries()) {
+      const incomingLegs = incomingBySignature.get(signature);
+      if (!incomingLegs?.length) {
+        continue;
+      }
+
+      const sortedOutgoing = [...outgoingLegs].sort((left, right) =>
+        this.compareLegacyTransfers(left.tx, right.tx),
+      );
+      const sortedIncoming = [...incomingLegs].sort((left, right) =>
+        this.compareLegacyTransfers(left.tx, right.tx),
+      );
+      const pairCount = Math.min(sortedOutgoing.length, sortedIncoming.length);
+
+      for (let index = 0; index < pairCount; index += 1) {
+        const transferId = generateId();
+        const pair = [sortedOutgoing[index].tx, sortedIncoming[index].tx];
+
+        for (const tx of pair) {
+          repairedPairs.push({
+            ...tx,
+            transferId,
+            updatedAt,
+            syncVersion: (tx.syncVersion || 0) + 1,
+            syncedAt: null,
+          });
+        }
+      }
+    }
+
+    for (const tx of repairedPairs) {
+      await getDb().transactions.put(tx);
+    }
+  }
+
+  private getLegacyTransferSignature(leg: {
+    fromAccount: string;
+    toAccount: string;
+    amount: number;
+    userNote: string;
+    tx: Pick<Transaction, "date" | "currency">;
+  }): string {
+    return [
+      leg.tx.date,
+      leg.tx.currency,
+      String(leg.amount),
+      leg.fromAccount,
+      leg.toAccount,
+      leg.userNote,
+    ].join("|");
+  }
+
+  private compareLegacyTransfers(
+    left: Pick<Transaction, "createdAt" | "id">,
+    right: Pick<Transaction, "createdAt" | "id">,
+  ): number {
+    return (
+      left.createdAt.localeCompare(right.createdAt) ||
+      left.id.localeCompare(right.id)
+    );
   }
 
   async addTransaction(tx: NewTransaction): Promise<Transaction> {

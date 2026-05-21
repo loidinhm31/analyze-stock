@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@money-insight/ui/components/atoms";
 import { DatePicker, FormField, SearchablePicker, type SearchablePickerOption } from "@money-insight/ui/components/molecules";
-import { parseTransferNote } from "@money-insight/ui/services/transferService";
+import { getTransferUserNote } from "@money-insight/ui/services/transferService";
 import { useLastFormValues } from "@money-insight/ui/hooks";
 import { cn, formatNumericInput, parseNumericInput } from "@money-insight/ui/lib";
 import { SUPPORTED_CURRENCIES } from "@money-insight/shared";
@@ -86,8 +86,7 @@ export function TransferForm(props: TransferFormProps) {
       setAmount(formatNumericInput(String(Math.abs(outgoing.amount))));
       setCurrency(outgoing.currency);
       setDate(new Date(outgoing.date));
-      const parsed = parseTransferNote(outgoing.note);
-      setNote(parsed?.userNote ?? outgoing.note);
+      setNote(getTransferUserNote(outgoing.note));
       setExcludeReport(outgoing.excludeReport && incoming.excludeReport);
       setConfirmDelete(false);
     }

@@ -140,6 +140,46 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
     });
   });
 
+  it("serializes unsynced transfer transactions with transferId", async () => {
+    mockDb.transactions.toArray.mockResolvedValue([
+      {
+        id: "tx-transfer-out",
+        source: "transfer",
+        transferId: "transfer-1",
+        note: '{"userNote":"Move savings","toAccount":"Savings"}',
+        amount: -100,
+        category: "__transfer__",
+        account: "Wallet",
+        currency: "VND",
+        date: "2024-01-03",
+        excludeReport: true,
+        expense: 100,
+        income: 0,
+        yearMonth: "2024-01",
+        year: 2024,
+        month: 1,
+        createdAt: "2024-01-03T00:00:00.000Z",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+        syncVersion: 2,
+        syncedAt: null,
+      },
+    ]);
+
+    const storage = new IndexedDBSyncStorage();
+    const pendingChanges = await storage.getPendingChanges();
+
+    expect(pendingChanges).toContainEqual({
+      tableName: "transactions",
+      rowId: "tx-transfer-out",
+      data: expect.objectContaining({
+        source: "transfer",
+        transferId: "transfer-1",
+      }),
+      version: 2,
+      deleted: false,
+    });
+  });
+
   it("serializes unsynced debts and settlements", async () => {
     mockDb.debts.toArray.mockResolvedValue([
       {
@@ -285,6 +325,47 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
       expect.objectContaining({
         id: "tx-legacy",
         source: "manual",
+        syncVersion: 2,
+      }),
+    );
+  });
+
+  it("preserves transferId on remote transaction upsert", async () => {
+    const storage = new IndexedDBSyncStorage();
+
+    await storage.applyRemoteChanges([
+      {
+        tableName: "transactions",
+        rowId: "tx-transfer-out",
+        data: {
+          source: "transfer",
+          transferId: "transfer-1",
+          note: '{"userNote":"Move savings","toAccount":"Savings"}',
+          amount: -100,
+          category: "__transfer__",
+          account: "Wallet",
+          currency: "VND",
+          date: "2024-01-03",
+          excludeReport: true,
+          expense: 100,
+          income: 0,
+          yearMonth: "2024-01",
+          year: 2024,
+          month: 1,
+          createdAt: "2024-01-03T00:00:00.000Z",
+          updatedAt: "2024-01-03T00:00:00.000Z",
+        },
+        version: 2,
+        deleted: false,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
+    ]);
+
+    expect(mockDb.transactions.put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "tx-transfer-out",
+        source: "transfer",
+        transferId: "transfer-1",
         syncVersion: 2,
       }),
     );

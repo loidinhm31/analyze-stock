@@ -6,9 +6,19 @@ import {
   CardTitle,
 } from "@money-insight/ui/components/atoms";
 import { formatCurrency } from "@money-insight/ui/lib";
+import { getTransferDisplayNote } from "@money-insight/ui/services/transferService";
+import type { Transaction } from "@money-insight/ui/types";
 import { ArrowLeft, TrendingDown, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useNav } from "@money-insight/ui/hooks";
+
+function getTransactionDescription(transaction: Transaction): string {
+  if (transaction.source === "transfer") {
+    return getTransferDisplayNote(transaction);
+  }
+
+  return transaction.note || transaction.category;
+}
 
 export function ReportsPage() {
   const { to } = useNav();
@@ -141,7 +151,7 @@ export function ReportsPage() {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate text-foreground">
-                        {t.note || t.category}
+                        {getTransactionDescription(t)}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(t.date).toLocaleDateString()} • {t.category} •{" "}
@@ -195,7 +205,7 @@ export function ReportsPage() {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate text-foreground">
-                        {t.note || t.category}
+                        {getTransactionDescription(t)}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(t.date).toLocaleDateString()} • {t.category} •{" "}

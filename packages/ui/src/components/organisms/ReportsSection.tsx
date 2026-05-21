@@ -7,6 +7,7 @@ import {
   CategoryIcon,
 } from "@money-insight/ui/components/atoms";
 import { formatCurrency } from "@money-insight/ui/lib";
+import { getTransferDisplayNote } from "@money-insight/ui/services/transferService";
 import { useCategoryIcon } from "@money-insight/ui/hooks";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import type { Transaction } from "@money-insight/ui/types";
@@ -15,6 +16,14 @@ export interface ReportsSectionProps {
   transactions: Transaction[];
   valuesHidden?: boolean;
   currentYearMonth?: string;
+}
+
+function getTransactionDescription(transaction: Transaction): string {
+  if (transaction.source === "transfer") {
+    return getTransferDisplayNote(transaction);
+  }
+
+  return transaction.note || transaction.category;
 }
 
 export function ReportsSection({
@@ -157,7 +166,7 @@ export function ReportsSection({
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate text-foreground">
-                        {t.note || t.category}
+                        {getTransactionDescription(t)}
                       </p>
                       <p className="text-xs text-muted-foreground inline-flex items-center gap-0.5 flex-wrap">
                         {new Date(t.date).toLocaleDateString()} •{" "}
@@ -218,7 +227,7 @@ export function ReportsSection({
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate text-foreground">
-                        {t.note || t.category}
+                        {getTransactionDescription(t)}
                       </p>
                       <p className="text-xs text-muted-foreground inline-flex items-center gap-0.5 flex-wrap">
                         {new Date(t.date).toLocaleDateString()} •{" "}

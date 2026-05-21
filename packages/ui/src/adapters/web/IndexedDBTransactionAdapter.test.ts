@@ -5,6 +5,7 @@ const { mockDb, generateIdMock, deleteTransactionWithTrackingMock, reconcileDebt
   vi.hoisted(() => ({
     mockDb: {
       transactions: {
+        toArray: vi.fn(),
         toCollection: vi.fn(),
         add: vi.fn(),
         get: vi.fn(),
@@ -47,6 +48,10 @@ describe("IndexedDBTransactionAdapter", () => {
     generateIdMock.mockReset();
     generateIdMock.mockReturnValue("tx-1");
     mockDb.accounts.toArray.mockResolvedValue([]);
+    mockDb.transactions.toArray.mockResolvedValue([]);
+    mockDb.transactions.toCollection.mockReturnValue({
+      toArray: vi.fn().mockResolvedValue([]),
+    });
     mockDb.transaction.mockImplementation(
       async (_mode: unknown, ...args: Array<unknown>) => {
         const callback = args[args.length - 1] as () => Promise<unknown>;
@@ -127,5 +132,85 @@ describe("IndexedDBTransactionAdapter", () => {
 
     expect(deleteTransactionWithTrackingMock).toHaveBeenCalledWith("tx-1");
     expect(reconcileDebtByTransactionIdMock).toHaveBeenCalledWith("tx-1");
+  });
+
+  it("repairs legacy transfer pairs without transferId before returning transactions", async () => {
+    const adapter = new IndexedDBTransactionAdapter();
+    generateIdMock.mockReturnValue("transfer-repaired");
+
+    const legacyOutgoing = {
+      id: "tx-out",
+      source: "transfer",
+      note: JSON.stringify({ userNote: "Send to Savings", toAccount: "Savings" }),
+      amount: -100,
+      category: "__transfer__",
+      account: "Wallet",
+      currency: "VND",
+      date: "2024-01-03",
+      excludeReport: true,
+      expense: 100,
+      income: 0,
+      yearMonth: "2024-01",
+      year: 2024,
+      month: 1,
+      createdAt: "2024-01-03T00:00:00.000Z",
+      updatedAt: "2024-01-03T00:00:00.000Z",
+      syncVersion: 1,
+      syncedAt: 123,
+    };
+    const legacyIncoming = {
+      id: "tx-in",
+      source: "transfer",
+      note: JSON.stringify({ userNote: "Receive from Wallet", fromAccount: "Wallet" }),
+      amount: 100,
+      category: "__transfer__",
+      account: "Savings",
+      currency: "VND",
+      date: "2024-01-03",
+      excludeReport: true,
+      expense: 0,
+      income: 100,
+      yearMonth: "2024-01",
+      year: 2024,
+      month: 1,
+      createdAt: "2024-01-03T00:00:01.000Z",
+      updatedAt: "2024-01-03T00:00:01.000Z",
+      syncVersion: 1,
+      syncedAt: 123,
+    };
+
+    mockDb.transactions.toArray.mockResolvedValue([legacyOutgoing, legacyIncoming]);
+    mockDb.transactions.toCollection.mockReturnValue({
+      toArray: vi.fn().mockResolvedValue([
+        { ...legacyOutgoing, transferId: "transfer-repaired" },
+        { ...legacyIncoming, transferId: "transfer-repaired" },
+      ]),
+    });
+
+    const transactions = await adapter.getTransactions();
+
+    expect(mockDb.transactions.put).toHaveBeenCalledTimes(2);
+    expect(mockDb.transactions.put).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        id: "tx-out",
+        transferId: "transfer-repaired",
+        syncVersion: 2,
+        syncedAt: null,
+      }),
+    );
+    expect(mockDb.transactions.put).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        id: "tx-in",
+        transferId: "transfer-repaired",
+        syncVersion: 2,
+        syncedAt: null,
+      }),
+    );
+    expect(transactions).toEqual([
+      expect.objectContaining({ id: "tx-out", transferId: "transfer-repaired" }),
+      expect.objectContaining({ id: "tx-in", transferId: "transfer-repaired" }),
+    ]);
   });
 });

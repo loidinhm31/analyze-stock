@@ -10,6 +10,7 @@ import {
 } from "@money-insight/ui/components/atoms";
 import { format } from "date-fns";
 import { formatCurrency } from "@money-insight/ui/lib";
+import { getTransferDisplayNote } from "@money-insight/ui/services/transferService";
 import type { CategorySpending } from "@money-insight/ui/types";
 
 export interface TransactionDetailModalProps {
@@ -17,6 +18,17 @@ export interface TransactionDetailModalProps {
   onClose: () => void;
   selectedCategory: string | null;
   categoryData: CategorySpending | undefined;
+}
+
+function getTransactionDescription(transaction: {
+  note: string;
+  source?: string;
+}): string {
+  if (transaction.source === "transfer") {
+    return getTransferDisplayNote(transaction);
+  }
+
+  return transaction.note || "—";
 }
 
 export function TransactionDetailModal({
@@ -75,7 +87,7 @@ export function TransactionDetailModal({
                       </td>
                       <td className="p-3 max-w-md">
                         <span className="text-sm text-muted-foreground line-clamp-2">
-                          {transaction.note || "—"}
+                          {getTransactionDescription(transaction)}
                         </span>
                       </td>
                       <td className="p-3 text-right font-semibold text-red-600 whitespace-nowrap">
@@ -101,9 +113,9 @@ export function TransactionDetailModal({
                       </span>
                       <Badge variant="outline">{transaction.account}</Badge>
                     </div>
-                    {transaction.note && (
+                    {getTransactionDescription(transaction) !== "—" && (
                       <p className="text-sm text-muted-foreground mt-1">
-                        {transaction.note}
+                        {getTransactionDescription(transaction)}
                       </p>
                     )}
                   </div>

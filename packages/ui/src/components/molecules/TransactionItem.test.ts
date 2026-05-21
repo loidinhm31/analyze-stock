@@ -8,7 +8,7 @@ function makeTransferTransaction(): Transaction {
     source: "transfer",
     transferId: "transfer-1",
     note: JSON.stringify({
-      userNote: "Send to Savings",
+      userNote: "Monthly savings",
       toAccount: "Savings",
     }),
     amount: -100_000,
@@ -66,7 +66,7 @@ describe("TransactionItem display helpers", () => {
     ).toMatchObject({
       isTransfer: true,
       displayCategory: "Transfer",
-      displayNote: "Send to Savings",
+      displayNote: "Monthly savings • Send to Savings",
     });
   });
 });

@@ -174,7 +174,7 @@ export interface AdjustmentNote {
   targetBalance: number;
 }
 
-// Transfer note encoded in transaction note field
+// Transfer metadata encoded in transaction note field
 export interface TransferNote {
   userNote: string;
   toAccount?: string;   // present on outgoing tx (debit)
