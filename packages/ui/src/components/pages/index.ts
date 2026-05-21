@@ -6,3 +6,4 @@ export { ReportsPage } from "./ReportsPage";
 export { LoginPage } from "./LoginPage";
 export { TransactionPage } from "./TransactionPage";
 export { CategorySetupPage } from "./CategorySetupPage";
+export { DebtPage } from "./DebtPage";

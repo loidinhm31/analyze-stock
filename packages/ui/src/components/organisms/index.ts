@@ -16,6 +16,13 @@ export {
   AddTransactionForm,
   type AddTransactionFormProps,
 } from "./AddTransactionForm";
+export { DebtDetailDialog, type DebtDetailDialogProps } from "./DebtDetailDialog";
+export { DebtForm, type DebtFormProps } from "./DebtForm";
+export { DebtList, type DebtListProps } from "./DebtList";
+export {
+  DebtSettlementForm,
+  type DebtSettlementFormProps,
+} from "./DebtSettlementForm";
 export {
   EditTransactionDialog,
   type EditTransactionDialogProps,

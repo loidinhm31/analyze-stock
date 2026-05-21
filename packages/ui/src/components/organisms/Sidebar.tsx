@@ -4,6 +4,7 @@ import {
   PlusCircle,
   Settings,
   List,
+  HandCoins,
   ChevronLeft,
   ChevronRight,
   Layers,
@@ -51,6 +52,12 @@ export function Sidebar({
       label: "Transactions",
       icon: <List className="h-5 w-5" />,
       show: hasTransactions,
+    },
+    {
+      path: to("/debt"),
+      label: "Debt",
+      icon: <HandCoins className="h-5 w-5" />,
+      show: true,
     },
     {
       path: to("/add"),

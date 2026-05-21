@@ -6,6 +6,7 @@ import { InitialSetupPage } from "./InitialSetupPage";
 import { ReportsPage } from "./ReportsPage";
 import { TransactionPage } from "./TransactionPage";
 import { CategorySetupPage } from "./CategorySetupPage";
+import { DebtPage } from "./DebtPage";
 import { RootLayout } from "../templates/RootLayout";
 
 /**
@@ -53,6 +54,10 @@ export const router = createBrowserRouter([
       {
         path: "transactions",
         element: <TransactionPage />,
+      },
+      {
+        path: "debt",
+        element: <DebtPage />,
       },
       {
         path: "categories",

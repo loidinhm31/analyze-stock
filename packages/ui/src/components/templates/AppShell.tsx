@@ -46,6 +46,11 @@ const TransactionPage = lazy(() =>
     default: m.TransactionPage,
   })),
 );
+const DebtPage = lazy(() =>
+  import("@money-insight/ui/components/pages").then((m) => ({
+    default: m.DebtPage,
+  })),
+);
 const CategorySetupPage = lazy(() =>
   import("@money-insight/ui/components/pages").then((m) => ({
     default: m.CategorySetupPage,
@@ -184,6 +189,7 @@ export function AppShell({
                   <Route path="setup" element={<InitialSetupPage />} />
                   <Route path="reports" element={<ReportsPage />} />
                   <Route path="transactions" element={<TransactionPage />} />
+                  <Route path="debt" element={<DebtPage />} />
                   <Route path="categories" element={<CategorySetupPage />} />
                   <Route
                     path="*"

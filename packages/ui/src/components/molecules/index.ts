@@ -5,6 +5,7 @@ export { DatePicker, type DatePickerProps } from "./DatePicker";
 export { FormField, type FormFieldProps } from "./FormField";
 export { StatCard, type StatCardProps } from "./StatCard";
 export { TransactionItem, type TransactionItemProps } from "./TransactionItem";
+export { DebtItem, type DebtItemProps } from "./DebtItem";
 export { AccountItem, type AccountItemProps } from "./AccountItem";
 export { AccountStats, type AccountStatsProps } from "./AccountStats";
 export { Pagination, type PaginationProps } from "./Pagination";
