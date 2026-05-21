@@ -8,7 +8,10 @@ import type {
   TransferParams,
 } from "@money-insight/ui/types";
 import { getDb, generateId } from "./database";
-import { trackDelete } from "./indexedDbHelpers";
+import {
+  deleteTransactionWithTracking,
+  reconcileDebtByTransactionId,
+} from "./indexedDbHelpers";
 import { createTransferTransactions } from "../../services/transferService";
 export class IndexedDBTransactionAdapter implements ITransactionService {
   async getTransactions(filter?: TransactionFilter): Promise<Transaction[]> {
@@ -130,11 +133,8 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
   }
 
   async deleteTransaction(id: string): Promise<void> {
-    const existing = await getDb().transactions.get(id);
-    if (existing) {
-      await trackDelete("transactions", id, existing.syncVersion || 0);
-    }
-    await getDb().transactions.delete(id);
+    await deleteTransactionWithTracking(id);
+    await reconcileDebtByTransactionId(id);
   }
 
   async importTransactions(
@@ -321,8 +321,7 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
         }
 
         for (const tx of pair) {
-          await trackDelete("transactions", tx.id, tx.syncVersion || 0);
-          await getDb().transactions.delete(tx.id);
+          await deleteTransactionWithTracking(tx.id);
         }
       },
     );

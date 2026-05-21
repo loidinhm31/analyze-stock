@@ -4,9 +4,11 @@ import type {
   SyncRecord,
 } from "@money-insight/shared/types";
 import {
+  deleteRemoteSettlementAndLinkedTransaction,
   getDb,
   getCurrentTimestamp,
   SYNC_META_KEYS,
+  reconcileDebtFromSettlements,
 } from "@money-insight/ui/adapters/web";
 
 export class IndexedDBSyncStorage {
@@ -85,6 +87,57 @@ export class IndexedDBSyncStorage {
       }
     }
 
+    const debts = await getDb().debts.toArray();
+    for (const debt of debts) {
+      if (debt.syncedAt === undefined || debt.syncedAt === null) {
+        records.push({
+          tableName: "debts",
+          rowId: debt.id,
+          data: {
+            name: debt.name,
+            debtType: debt.debtType,
+            counterpartyName: debt.counterpartyName,
+            description: debt.description,
+            accountId: debt.accountId,
+            currency: debt.currency,
+            principalAmount: debt.principalAmount,
+            settledAmount: debt.settledAmount,
+            remainingAmount: debt.remainingAmount,
+            isCompleted: debt.isCompleted,
+            originatedAt: debt.originatedAt,
+            dueDate: debt.dueDate,
+            completedAt: debt.completedAt,
+            createdAt: debt.createdAt,
+            updatedAt: debt.updatedAt,
+          },
+          version: debt.syncVersion || 1,
+          deleted: false,
+        });
+      }
+    }
+
+    const debtSettlements = await getDb().debtSettlements.toArray();
+    for (const settlement of debtSettlements) {
+      if (settlement.syncedAt === undefined || settlement.syncedAt === null) {
+        records.push({
+          tableName: "debtSettlements",
+          rowId: settlement.id,
+          data: {
+            debtId: settlement.debtId,
+            transactionId: settlement.transactionId,
+            accountId: settlement.accountId,
+            amount: settlement.amount,
+            settledAt: settlement.settledAt,
+            note: settlement.note,
+            createdAt: settlement.createdAt,
+            updatedAt: settlement.updatedAt,
+          },
+          version: settlement.syncVersion || 1,
+          deleted: false,
+        });
+      }
+    }
+
     // Pending deletes
     const pendingDeletes = await getDb()._pendingChanges
       .filter((change) => change.operation === "delete")
@@ -107,7 +160,13 @@ export class IndexedDBSyncStorage {
       .filter((c) => c.operation === "delete")
       .count();
     if (pendingDeletes > 0) return true;
-    const tables = [getDb().transactions, getDb().categories, getDb().accounts];
+    const tables = [
+      getDb().transactions,
+      getDb().categories,
+      getDb().accounts,
+      getDb().debts,
+      getDb().debtSettlements,
+    ];
     for (const table of tables) {
       const count = await table.filter((r) => r.syncedAt === undefined || r.syncedAt === null).count();
       if (count > 0) return true;
@@ -133,6 +192,16 @@ export class IndexedDBSyncStorage {
       (a) => a.syncedAt === undefined || a.syncedAt === null,
     ).length;
 
+    const debts = await getDb().debts.toArray();
+    count += debts.filter(
+      (debt) => debt.syncedAt === undefined || debt.syncedAt === null,
+    ).length;
+
+    const settlements = await getDb().debtSettlements.toArray();
+    count += settlements.filter(
+      (settlement) => settlement.syncedAt === undefined || settlement.syncedAt === null,
+    ).length;
+
     count += await getDb()._pendingChanges
       .filter((change) => change.operation === "delete")
       .count();
@@ -147,7 +216,14 @@ export class IndexedDBSyncStorage {
 
     await getDb().transaction(
       "rw",
-      [getDb()._pendingChanges, getDb().transactions, getDb().categories, getDb().accounts],
+      [
+        getDb()._pendingChanges,
+        getDb().transactions,
+        getDb().categories,
+        getDb().accounts,
+        getDb().debts,
+        getDb().debtSettlements,
+      ],
       async () => {
         for (const { tableName, rowId } of recordIds) {
           await getDb()._pendingChanges.where({ tableName, rowId }).delete();
@@ -182,13 +258,38 @@ export class IndexedDBSyncStorage {
 
     await getDb().transaction(
       "rw",
-      [getDb().transactions, getDb().categories, getDb().accounts],
+      [
+        getDb().transactions,
+        getDb().categories,
+        getDb().accounts,
+        getDb().debts,
+        getDb().debtSettlements,
+      ],
       async () => {
+        const debtIdsToReconcile = new Set<string>();
+
         for (const record of nonDeleted) {
           await this.upsertRecord(record, now);
+          if (record.tableName === "debts") {
+            debtIdsToReconcile.add(record.rowId);
+          }
+          if (record.tableName === "debtSettlements") {
+            const debtId = (record.data as { debtId?: string }).debtId;
+            if (debtId) debtIdsToReconcile.add(debtId);
+          }
         }
         for (const record of deleted) {
-          await this.deleteRecord(record);
+          const deletedDebtId = await this.deleteRecord(record);
+          if (record.tableName === "debts") {
+            debtIdsToReconcile.delete(record.rowId);
+          }
+          if (deletedDebtId) {
+            debtIdsToReconcile.add(deletedDebtId);
+          }
+        }
+
+        for (const debtId of debtIdsToReconcile) {
+          await reconcileDebtFromSettlements(debtId);
         }
       },
     );
@@ -219,10 +320,23 @@ export class IndexedDBSyncStorage {
     await table.put(data as any);
   }
 
-  private async deleteRecord(record: PullRecord): Promise<void> {
+  private async deleteRecord(record: PullRecord): Promise<string | undefined> {
     const table = this.getTable(record.tableName);
-    if (!table) return;
+    if (!table) return undefined;
+
+    if (record.tableName === "debtSettlements") {
+      return deleteRemoteSettlementAndLinkedTransaction(record.rowId);
+    }
+
+    if (record.tableName === "debts") {
+      const settlements = await getDb().debtSettlements.where("debtId").equals(record.rowId).toArray();
+      for (const settlement of settlements) {
+        await deleteRemoteSettlementAndLinkedTransaction(settlement.id);
+      }
+    }
+
     await table.delete(record.rowId);
+    return undefined;
   }
 
   async getCheckpoint(): Promise<Checkpoint | undefined> {
@@ -260,6 +374,10 @@ export class IndexedDBSyncStorage {
         return getDb().categories;
       case "accounts":
         return getDb().accounts;
+      case "debts":
+        return getDb().debts;
+      case "debtSettlements":
+        return getDb().debtSettlements;
       default:
         return undefined;
     }
@@ -270,8 +388,11 @@ export class IndexedDBSyncStorage {
       case "categories":
       case "accounts":
         return 0;
-      case "transactions":
+      case "debts":
         return 1;
+      case "transactions":
+      case "debtSettlements":
+        return 2;
       default:
         return 99;
     }

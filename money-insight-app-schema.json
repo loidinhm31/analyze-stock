@@ -43,6 +43,39 @@
         { "name": "updatedAt", "type": "string", "nullable": false }
       ],
       "primaryKey": "rowId"
+    },
+    "debts": {
+      "columns": [
+        { "name": "name", "type": "string", "nullable": false },
+        { "name": "debtType", "type": "string", "nullable": false },
+        { "name": "counterpartyName", "type": "string", "nullable": false },
+        { "name": "description", "type": "string", "nullable": true },
+        { "name": "accountId", "type": "string", "nullable": false },
+        { "name": "currency", "type": "string", "nullable": false },
+        { "name": "principalAmount", "type": "number", "nullable": false },
+        { "name": "settledAmount", "type": "number", "nullable": false },
+        { "name": "remainingAmount", "type": "number", "nullable": false },
+        { "name": "isCompleted", "type": "boolean", "nullable": false },
+        { "name": "originatedAt", "type": "string", "nullable": false },
+        { "name": "dueDate", "type": "string", "nullable": true },
+        { "name": "completedAt", "type": "string", "nullable": true },
+        { "name": "createdAt", "type": "string", "nullable": false },
+        { "name": "updatedAt", "type": "string", "nullable": false }
+      ],
+      "primaryKey": "rowId"
+    },
+    "debtSettlements": {
+      "columns": [
+        { "name": "debtId", "type": "string", "nullable": false },
+        { "name": "transactionId", "type": "string", "nullable": false },
+        { "name": "accountId", "type": "string", "nullable": false },
+        { "name": "amount", "type": "number", "nullable": false },
+        { "name": "settledAt", "type": "string", "nullable": false },
+        { "name": "note", "type": "string", "nullable": true },
+        { "name": "createdAt", "type": "string", "nullable": false },
+        { "name": "updatedAt", "type": "string", "nullable": false }
+      ],
+      "primaryKey": "rowId"
     }
   }
 }

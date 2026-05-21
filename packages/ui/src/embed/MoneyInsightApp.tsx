@@ -4,12 +4,14 @@ import {
   IndexedDBCategoryGroupAdapter,
   IndexedDBStatisticsAdapter,
   IndexedDBTransactionAdapter,
+  IndexedDBDebtAdapter,
   createIndexedDBSyncAdapter,
   setAccountService,
   setAuthService,
   setCategoryService,
   setCategoryGroupService,
   setStatisticsService,
+  setDebtService,
   setSyncService,
   setTransactionService,
   getSyncService,
@@ -140,11 +142,13 @@ export function MoneyInsightApp({
     const categoryGroup = new IndexedDBCategoryGroupAdapter();
     const account = new IndexedDBAccountAdapter();
     const statistics = new IndexedDBStatisticsAdapter();
+    const debt = new IndexedDBDebtAdapter();
     setTransactionService(transaction);
     setCategoryService(category);
     setCategoryGroupService(categoryGroup);
     setAccountService(account);
     setStatisticsService(statistics);
+    setDebtService(debt);
 
     // Initialize auth service based on platform
     const auth = isTauri() ? new TauriAuthAdapter() : new QmServerAuthAdapter();
@@ -162,7 +166,7 @@ export function MoneyInsightApp({
     });
     setSyncService(sync);
 
-    return { transaction, category, account, statistics, auth, sync };
+    return { transaction, category, categoryGroup, account, statistics, debt, auth, sync };
   }, [dbReady]);
 
   const isAuthenticated = !!(authTokens?.accessToken && authTokens?.refreshToken);

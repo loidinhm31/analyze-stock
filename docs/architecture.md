@@ -129,12 +129,45 @@ erDiagram
         number month "computed"
         string note
         string currency
-        string source "csv_import | manual | balance_adjustment | transfer"
+        string source "csv_import | manual | balance_adjustment | transfer | debt_settlement"
         string transferId FK "links paired transfer legs"
         number importBatchId FK
         number syncVersion
         number syncedAt
         boolean deleted "soft delete"
+    }
+
+    Debt {
+        string id PK
+        string name
+        string debtType "payable | receivable"
+        string counterpartyName
+        string description
+        string accountId FK
+        string currency
+        number principalAmount
+        number settledAmount "derived from linked settlements"
+        number remainingAmount "principalAmount - settledAmount"
+        boolean isCompleted "derived from remainingAmount <= 0"
+        string originatedAt
+        string dueDate
+        string completedAt
+        number syncVersion
+        number syncedAt
+        boolean deleted
+    }
+
+    DebtSettlement {
+        string id PK
+        string debtId FK
+        string transactionId FK "1:1 linked accounting transaction"
+        string accountId FK
+        number amount
+        string settledAt
+        string note
+        number syncVersion
+        number syncedAt
+        boolean deleted
     }
 
     Account {

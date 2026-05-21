@@ -2,6 +2,11 @@
 export type {
   MoneyLoverTransaction,
   TransactionSource,
+  DebtType,
+  NewDebt,
+  Debt,
+  DebtSettlement,
+  DebtSettlementInput,
   NewTransaction,
   Transaction,
   Category,

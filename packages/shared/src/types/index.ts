@@ -105,7 +105,14 @@ export interface FilterState {
 }
 
 // Transaction source type
-export type TransactionSource = "csv_import" | "manual" | "balance_adjustment" | "transfer";
+export type TransactionSource =
+  | "csv_import"
+  | "manual"
+  | "balance_adjustment"
+  | "transfer"
+  | "debt_settlement";
+
+export type DebtType = "payable" | "receivable";
 
 // Special category for balance adjustments
 export const BALANCE_ADJUSTMENT_CATEGORY = "__balance_adjustment__";
@@ -114,6 +121,51 @@ export const BALANCE_ADJUSTMENT_CATEGORY = "__balance_adjustment__";
 export const TRANSFER_CATEGORY = "__transfer__";
 export const OUTGOING_TRANSFER_CATEGORY = "Outgoing Transfer";
 export const INCOMING_TRANSFER_CATEGORY = "Incoming Transfer";
+
+export interface NewDebt {
+  name: string;
+  debtType: DebtType;
+  counterpartyName: string;
+  description?: string;
+  accountId: string;
+  currency: string;
+  principalAmount: number;
+  originatedAt: string;
+  dueDate?: string;
+}
+
+export interface Debt extends NewDebt {
+  id: string;
+  settledAmount: number;
+  remainingAmount: number;
+  isCompleted: boolean;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  syncVersion: number;
+  syncedAt: number | null;
+}
+
+export interface DebtSettlement {
+  id: string;
+  debtId: string;
+  transactionId: string;
+  accountId: string;
+  amount: number;
+  settledAt: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+  syncVersion: number;
+  syncedAt: number | null;
+}
+
+export interface DebtSettlementInput {
+  accountId: string;
+  amount: number;
+  settledAt: string;
+  note?: string;
+}
 
 // Parsed adjustment note structure
 export interface AdjustmentNote {

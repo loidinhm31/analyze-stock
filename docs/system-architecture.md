@@ -199,6 +199,8 @@ db.version(1).stores({
   categories: "&id",
   categoryGroups: "&id",
   categoryMappings: "&id, subCategory",
+  debts: "&id, debtType, accountId, dueDate, isCompleted",
+  debtSettlements: "&id, debtId, transactionId, settledAt",
 
   // Metadata
   importBatches: "++id",

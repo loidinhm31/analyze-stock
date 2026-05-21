@@ -78,7 +78,7 @@ packages/
 ### Key Technologies
 - **Frontend**: React 19 + React Router 7 + Tailwind CSS v4
 - **State**: Zustand (spendingStore, categoryGroupStore)
-- **Database**: IndexedDB via Dexie.js (offline-first)
+- **Database**: IndexedDB via Dexie.js (offline-first), including synced `debts` and `debtSettlements` tables
 - **Sync**: glean-oak-sync-client with checkpoint-based pagination
 - **Auth**: JWT + refresh-token rotation
 - **Desktop**: Tauri v2 + Axum embedded web server
@@ -86,9 +86,11 @@ packages/
 
 ### Service Architecture
 Services are injected via **ServiceFactory** (manual DI) for loose coupling:
-- Data services: IndexedDBTransactionAdapter, IndexedDBAccountAdapter, etc.
+- Data services: IndexedDBTransactionAdapter, IndexedDBAccountAdapter, IndexedDBDebtAdapter, etc.
+- Debt contract: `IDebtService` with thin wrappers in `packages/ui/src/services/debtService.ts`
 - Auth: QmServerAuthAdapter (web) or TauriAuthAdapter (desktop)
 - Sync: IndexedDBSyncAdapter (checkpoint-based)
+- App wiring: `MoneyInsightApp` resolves the adapters, calls `setDebtService(...)`, and exposes the full service set through `PlatformProvider`
 
 Platform detection (`isTauri()`) determines which adapters to use at startup.
 

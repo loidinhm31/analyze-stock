@@ -52,8 +52,14 @@ setAuthService(isTauri() ? new TauriAuthAdapter() : new QmServerAuthAdapter());
 
 **Data Services** - All platforms use IndexedDB via Dexie (`packages/ui/src/adapters/web/`):
 
-- `IndexedDBTransactionAdapter`, `IndexedDBCategoryAdapter`, `IndexedDBAccountAdapter`
+- `IndexedDBTransactionAdapter`, `IndexedDBCategoryAdapter`, `IndexedDBAccountAdapter`, `IndexedDBDebtAdapter`
+- Debt domain service contract lives in `packages/ui/src/adapters/factory/interfaces/IDebtService.ts`; thin service wrappers live in `packages/ui/src/services/debtService.ts`
 - Database schema in `packages/ui/src/adapters/web/database.ts`
+
+**Service Wiring**
+
+- `MoneyInsightApp` initializes `IndexedDBDebtAdapter`, injects it with `setDebtService(...)`, and passes the resolved service set through `PlatformProvider`
+- `PlatformContext` now exposes `debt: IDebtService` alongside transaction/category/account/statistics/auth/sync services
 
 **Auth Services** - Platform-specific:
 
@@ -130,6 +136,7 @@ All 35 icons redesigned to match the flat two-tone outlined style:
 Uses glean-oak-sync-client for offline-first sync with glean-oak-server:
 
 - **Checkpoint-based pagination** — client maintains `_syncMeta` table with last-synced timestamps per table
+- **Debt sync tables** — Dexie schema version 2 adds `debts` and `debtSettlements` as synced tables, including `syncVersion` and `syncedAt` fields plus debt-settlement indexes in `packages/ui/src/adapters/web/database.ts`
 - **Client-generated UUIDs** — enables offline record creation; soft-deleted records retained for 60-day TTL
 - **Concurrency lock** — `IndexedDBSyncAdapter._syncInFlight` prevents overlapping syncs (e.g. double-click + auto-sync). Progress callbacks fan-out to all concurrent callers
 - **Dual auth** — `X-API-Key` + `X-App-Id` for app identity, `Authorization: Bearer` for user authentication

@@ -6,6 +6,8 @@ import type {
   ImportBatch,
   CategoryGroup,
   CategoryMapping,
+  Debt,
+  DebtSettlement,
 } from "@money-insight/ui/types";
 
 export interface SyncMeta {
@@ -30,6 +32,8 @@ export class MoneyInsightDatabase extends Dexie {
   importBatches!: EntityTable<ImportBatch, "id">;
   categoryGroups!: EntityTable<CategoryGroup, "id">;
   categoryMappings!: EntityTable<CategoryMapping, "id">;
+  debts!: EntityTable<Debt, "id">;
+  debtSettlements!: EntityTable<DebtSettlement, "id">;
   _syncMeta!: Table<SyncMeta, string>;
   _pendingChanges!: Table<PendingChange, number>;
 
@@ -48,12 +52,30 @@ export class MoneyInsightDatabase extends Dexie {
       _pendingChanges: "++id, tableName, rowId",
     });
 
+    this.version(2).stores({
+      transactions:
+        "id, category, account, date, yearMonth, year, month, source, importBatchId, transferId, syncVersion, syncedAt",
+      categories: "id, name, syncVersion, syncedAt",
+      accounts: "id, name, accountType, currency, syncVersion, syncedAt",
+      importBatches: "id, filename, importedAt",
+      categoryGroups: "id, name, syncVersion, syncedAt",
+      categoryMappings: "id, subCategory, parentGroupId, syncVersion, syncedAt",
+      debts:
+        "id, debtType, counterpartyName, accountId, currency, originatedAt, dueDate, isCompleted, syncVersion, syncedAt",
+      debtSettlements:
+        "id, &transactionId, debtId, accountId, settledAt, syncVersion, syncedAt, [debtId+transactionId], [debtId+settledAt]",
+      _syncMeta: "key",
+      _pendingChanges: "++id, tableName, rowId",
+    });
+
     this.transactions = this.table("transactions");
     this.categories = this.table("categories");
     this.accounts = this.table("accounts");
     this.importBatches = this.table("importBatches");
     this.categoryGroups = this.table("categoryGroups");
     this.categoryMappings = this.table("categoryMappings");
+    this.debts = this.table("debts");
+    this.debtSettlements = this.table("debtSettlements");
     this._syncMeta = this.table("_syncMeta");
     this._pendingChanges = this.table("_pendingChanges");
   }

@@ -7,6 +7,7 @@ import type {
   ICategoryGroupService,
   IAccountService,
   IStatisticsService,
+  IDebtService,
   ISyncService,
   IAuthService,
 } from "./interfaces";
@@ -17,6 +18,7 @@ let categoryService: ICategoryService | null = null;
 let categoryGroupService: ICategoryGroupService | null = null;
 let accountService: IAccountService | null = null;
 let statisticsService: IStatisticsService | null = null;
+let debtService: IDebtService | null = null;
 let authService: IAuthService | null = null;
 let syncService: ISyncService | null = null;
 
@@ -44,6 +46,11 @@ export const setAccountService = (svc: IAccountService): void => {
 export const setStatisticsService = (svc: IStatisticsService): void => {
   statisticsService = svc;
   serviceLogger.factory("Set custom StatisticsService");
+};
+
+export const setDebtService = (svc: IDebtService): void => {
+  debtService = svc;
+  serviceLogger.factory("Set custom DebtService");
 };
 
 export const setAuthService = (svc: IAuthService): void => {
@@ -101,6 +108,15 @@ export const getStatisticsService = (): IStatisticsService => {
   return statisticsService;
 };
 
+export const getDebtService = (): IDebtService => {
+  if (!debtService) {
+    throw new Error(
+      "DebtService not initialized. Call setDebtService() first.",
+    );
+  }
+  return debtService;
+};
+
 export const getAuthService = (): IAuthService => {
   if (!authService) {
     throw new Error(
@@ -125,6 +141,7 @@ export const getAllServices = () => ({
   categoryGroup: getCategoryGroupService(),
   account: getAccountService(),
   statistics: getStatisticsService(),
+  debt: getDebtService(),
   auth: getAuthService(),
   sync: getSyncService(),
 });
@@ -135,6 +152,7 @@ export const resetServices = (): void => {
   categoryGroupService = null;
   accountService = null;
   statisticsService = null;
+  debtService = null;
   authService = null;
   syncService = null;
   serviceLogger.factory("Reset all services");
