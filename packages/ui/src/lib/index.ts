@@ -1,4 +1,10 @@
-export { cn, formatCurrency, matchesSearch } from "./utils";
+export {
+  cn,
+  formatCurrency,
+  formatNumericInput,
+  matchesSearch,
+  parseNumericInput,
+} from "./utils";
 export { MoneyInsightAnalyzer } from "./analysis";
 export { parseCSV, parseCSVForImport } from "./dataProcessing";
 export {

@@ -30,6 +30,7 @@ import {
 } from "@money-insight/ui/components/molecules";
 import type { Account, Debt, NewDebt } from "@money-insight/ui/types";
 import {
+  formatNumericInput,
   buildDebtInput,
   buildUpdatedDebt,
   type DebtFormValues,
@@ -43,7 +44,7 @@ function buildInitialValues(debt?: Debt): DebtFormValues {
     description: debt?.description ?? "",
     accountId: debt?.accountId ?? "",
     currency: debt?.currency ?? "VND",
-    principalAmount: debt ? String(debt.principalAmount) : "",
+    principalAmount: debt ? formatNumericInput(String(debt.principalAmount)) : "",
     originatedAt: debt?.originatedAt ? new Date(debt.originatedAt) : new Date(),
     dueDate: debt?.dueDate ? new Date(debt.dueDate) : undefined,
   };
@@ -230,12 +231,14 @@ export function DebtForm(props: DebtFormProps) {
               <div className="flex gap-2">
                 <Input
                   id="debt-principal-amount"
-                  type="number"
-                  min="0.01"
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
                   value={values.principalAmount}
                   onChange={(event) =>
-                    updateField("principalAmount", event.target.value)
+                    updateField(
+                      "principalAmount",
+                      formatNumericInput(event.target.value),
+                    )
                   }
                   placeholder="0"
                   required

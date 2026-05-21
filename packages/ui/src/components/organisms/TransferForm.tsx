@@ -18,7 +18,7 @@ import {
 import { DatePicker, FormField, SearchablePicker, type SearchablePickerOption } from "@money-insight/ui/components/molecules";
 import { parseTransferNote } from "@money-insight/ui/services/transferService";
 import { useLastFormValues } from "@money-insight/ui/hooks";
-import { cn } from "@money-insight/ui/lib";
+import { cn, formatNumericInput, parseNumericInput } from "@money-insight/ui/lib";
 import { SUPPORTED_CURRENCIES } from "@money-insight/shared";
 import type { Transaction, Account, TransferParams } from "@money-insight/ui/types";
 
@@ -83,7 +83,7 @@ export function TransferForm(props: TransferFormProps) {
     if (mode === "edit" && outgoing && incoming) {
       setFromAccount(outgoing.account);
       setToAccount(incoming.account);
-      setAmount(String(Math.abs(outgoing.amount)));
+      setAmount(formatNumericInput(String(Math.abs(outgoing.amount))));
       setCurrency(outgoing.currency);
       setDate(new Date(outgoing.date));
       const parsed = parseTransferNote(outgoing.note);
@@ -121,7 +121,7 @@ export function TransferForm(props: TransferFormProps) {
     return {
       fromAccount: fromAccount.trim(),
       toAccount: toAccount.trim(),
-      amount: parseFloat(amount),
+      amount: parseNumericInput(amount),
       date: format(date, "yyyy-MM-dd"),
       note,
       currency,
@@ -134,7 +134,7 @@ export function TransferForm(props: TransferFormProps) {
 
     setSubmitError(null);
 
-    if (!amount || parseFloat(amount) <= 0 || !fromAccount || !toAccount) return;
+    if (!amount || parseNumericInput(amount) <= 0 || !fromAccount || !toAccount) return;
     if (fromAccount.trim() === toAccount.trim()) return;
 
     setLoading(true);
@@ -186,7 +186,7 @@ export function TransferForm(props: TransferFormProps) {
 
   const canSubmit =
     !!amount &&
-    parseFloat(amount) > 0 &&
+    parseNumericInput(amount) > 0 &&
     !!fromAccount.trim() &&
     !!toAccount.trim() &&
     !isSameAccount;
@@ -296,11 +296,13 @@ export function TransferForm(props: TransferFormProps) {
             >
               <div className="flex gap-2">
                 <Input
-                  type="number"
-                  min="0.01"
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
                   value={amount}
-                  onChange={(e) => { setSubmitError(null); setAmount(e.target.value); }}
+                  onChange={(e) => {
+                    setSubmitError(null);
+                    setAmount(formatNumericInput(e.target.value));
+                  }}
                   placeholder="0"
                   className="flex-1"
                   required

@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@money-insight/ui/components/atoms";
 import { FormField } from "@money-insight/ui/components/molecules";
-import { cn } from "@money-insight/ui/lib";
+import { cn, formatNumericInput, parseNumericInput } from "@money-insight/ui/lib";
 import type { Account, NewAccount } from "@money-insight/ui/types";
 
 interface BaseAccountFormProps {
@@ -55,7 +55,7 @@ export function AccountForm(props: AccountFormProps) {
   );
   const [icon, setIcon] = useState(() => resolveIcon(account?.icon, account?.accountType || "Cash"));
   const [initialBalance, setInitialBalance] = useState(
-    account?.initialBalance?.toString() || "0",
+    account ? formatNumericInput(account.initialBalance.toString(), { allowNegative: true }) : "0",
   );
   const [currency, setCurrency] = useState(account?.currency || "VND");
   const [loading, setLoading] = useState(false);
@@ -69,7 +69,11 @@ export function AccountForm(props: AccountFormProps) {
       setName(account.name);
       setAccountType(type);
       setIcon(resolveIcon(account.icon, type));
-      setInitialBalance(account.initialBalance.toString());
+      setInitialBalance(
+        formatNumericInput(account.initialBalance.toString(), {
+          allowNegative: true,
+        }),
+      );
       setCurrency(account.currency);
       setConfirmDelete(false);
     } else if (mode === "add") {
@@ -92,7 +96,7 @@ export function AccountForm(props: AccountFormProps) {
     setLoading(true);
 
     try {
-      const numericBalance = parseFloat(initialBalance) || 0;
+      const numericBalance = parseNumericInput(initialBalance) || 0;
 
       if (mode === "edit" && account) {
         const updatedAccount: Account = {
@@ -238,10 +242,16 @@ export function AccountForm(props: AccountFormProps) {
             >
               <div className="flex gap-2">
                 <Input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={initialBalance}
-                  onChange={(e) => setInitialBalance(e.target.value)}
+                  onChange={(e) =>
+                    setInitialBalance(
+                      formatNumericInput(e.target.value, {
+                        allowNegative: true,
+                      }),
+                    )
+                  }
                   placeholder="0"
                   className="flex-1"
                   required

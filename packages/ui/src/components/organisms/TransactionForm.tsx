@@ -18,7 +18,12 @@ import {
   SelectValue,
 } from "@money-insight/ui/components/atoms";
 import { DatePicker, FormField, SearchablePicker, type SearchablePickerOption } from "@money-insight/ui/components/molecules";
-import { cn, formatCurrency } from "@money-insight/ui/lib";
+import {
+  cn,
+  formatCurrency,
+  formatNumericInput,
+  parseNumericInput,
+} from "@money-insight/ui/lib";
 import { SUPPORTED_CURRENCIES } from "@money-insight/shared";
 import { useLastFormValues, useCategoryIcon } from "@money-insight/ui/hooks";
 import type {
@@ -107,7 +112,7 @@ export function TransactionForm(props: TransactionFormProps) {
   useEffect(() => {
     if (mode === "edit" && transaction) {
       setDate(new Date(transaction.date));
-      setAmount(String(Math.abs(transaction.amount)));
+      setAmount(formatNumericInput(String(Math.abs(transaction.amount))));
       setIsExpense(transaction.amount < 0);
       setCategory(transaction.category);
       setAccount(transaction.account);
@@ -182,7 +187,9 @@ export function TransactionForm(props: TransactionFormProps) {
     setSubmitError(null);
     setSubmitSuccess(null);
 
-    if (!amount.trim() || parseFloat(amount) <= 0 || !category.trim()) {
+    const numericAmount = parseNumericInput(amount);
+
+    if (!amount.trim() || numericAmount <= 0 || !category.trim()) {
       setSubmitError("Please enter a valid amount and category.");
       return;
     }
@@ -195,7 +202,6 @@ export function TransactionForm(props: TransactionFormProps) {
     setLoading(true);
 
     try {
-      const numericAmount = parseFloat(amount);
       const finalAmount = isExpense
         ? -Math.abs(numericAmount)
         : Math.abs(numericAmount);
@@ -339,11 +345,13 @@ export function TransactionForm(props: TransactionFormProps) {
             >
               <div className="flex gap-2">
                 <Input
-                  type="number"
-                  min="0.01"
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
                   value={amount}
-                  onChange={(e) => { clearSubmitMessages(); setAmount(e.target.value); }}
+                  onChange={(e) => {
+                    clearSubmitMessages();
+                    setAmount(formatNumericInput(e.target.value));
+                  }}
                   placeholder="0"
                   className="flex-1"
                   required
@@ -508,7 +516,7 @@ export function TransactionForm(props: TransactionFormProps) {
               loading ||
               deleting ||
               !amount.trim() ||
-              parseFloat(amount) <= 0 ||
+              parseNumericInput(amount) <= 0 ||
               !isKnownCategory(allowedCategories, category)
             }
           >

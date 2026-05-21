@@ -12,7 +12,11 @@ import {
   Label,
 } from "@money-insight/ui/components/atoms";
 import { DatePicker } from "@money-insight/ui/components/molecules";
-import { formatCurrency } from "@money-insight/ui/lib";
+import {
+  formatCurrency,
+  formatNumericInput,
+  parseNumericInput,
+} from "@money-insight/ui/lib";
 import type { Account, Transaction } from "@money-insight/ui/types";
 
 export interface AdjustBalanceDialogProps {
@@ -43,7 +47,7 @@ export function AdjustBalanceDialog({
     e.preventDefault();
     if (!account || !date) return;
 
-    const target = parseFloat(targetBalance);
+    const target = parseNumericInput(targetBalance);
     if (isNaN(target)) {
       setError("Please enter a valid amount");
       return;
@@ -77,8 +81,8 @@ export function AdjustBalanceDialog({
   };
 
   const adjustmentAmount =
-    targetBalance && !isNaN(parseFloat(targetBalance))
-      ? parseFloat(targetBalance) - currentBalance
+    targetBalance && !isNaN(parseNumericInput(targetBalance))
+      ? parseNumericInput(targetBalance) - currentBalance
       : 0;
 
   return (
@@ -112,11 +116,15 @@ export function AdjustBalanceDialog({
               <Label htmlFor="targetBalance">Actual Balance</Label>
               <Input
                 id="targetBalance"
-                type="number"
-                step="any"
+                type="text"
+                inputMode="decimal"
                 placeholder="Enter actual balance"
                 value={targetBalance}
-                onChange={(e) => setTargetBalance(e.target.value)}
+                onChange={(e) =>
+                  setTargetBalance(
+                    formatNumericInput(e.target.value, { allowNegative: true }),
+                  )
+                }
                 required
               />
             </div>
@@ -133,7 +141,7 @@ export function AdjustBalanceDialog({
             </div>
 
             {/* Adjustment Preview */}
-            {targetBalance && !isNaN(parseFloat(targetBalance)) && (
+            {targetBalance && !isNaN(parseNumericInput(targetBalance)) && (
               <div className="space-y-2 rounded-lg border p-3">
                 <Label className="text-muted-foreground">
                   Adjustment Preview

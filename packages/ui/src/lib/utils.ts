@@ -13,6 +13,73 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+export function formatNumericInput(
+  value: string,
+  options?: { allowNegative?: boolean },
+): string {
+  const sanitized = sanitizeNumericInput(value, options?.allowNegative ?? false);
+
+  if (
+    sanitized === "" ||
+    sanitized === "-" ||
+    sanitized === "." ||
+    sanitized === "-."
+  ) {
+    return sanitized;
+  }
+
+  const sign = sanitized.startsWith("-") ? "-" : "";
+  const unsigned = sign ? sanitized.slice(1) : sanitized;
+  const hasTrailingDecimal = unsigned.endsWith(".");
+  const [rawIntegerPart = "", decimalPart] = unsigned.split(".");
+  const normalizedIntegerPart =
+    rawIntegerPart === ""
+      ? "0"
+      : rawIntegerPart.replace(/^0+(?=\d)/, "");
+  const groupedIntegerPart = normalizedIntegerPart.replace(
+    /\B(?=(\d{3})+(?!\d))/g,
+    ",",
+  );
+
+  if (hasTrailingDecimal) {
+    return `${sign}${groupedIntegerPart}.`;
+  }
+
+  if (decimalPart !== undefined) {
+    return `${sign}${groupedIntegerPart}.${decimalPart}`;
+  }
+
+  return `${sign}${groupedIntegerPart}`;
+}
+
+export function parseNumericInput(value: string): number {
+  return Number.parseFloat(value.replace(/,/g, ""));
+}
+
+function sanitizeNumericInput(value: string, allowNegative: boolean): string {
+  let sanitized = "";
+  let hasDecimal = false;
+
+  for (const char of value.replace(/,/g, "").trim()) {
+    if (char >= "0" && char <= "9") {
+      sanitized += char;
+      continue;
+    }
+
+    if (char === "." && !hasDecimal) {
+      sanitized += char;
+      hasDecimal = true;
+      continue;
+    }
+
+    if (char === "-" && allowNegative && sanitized === "") {
+      sanitized += char;
+    }
+  }
+
+  return sanitized;
+}
+
 export function matchesSearch(
   transaction: {
     note: string;

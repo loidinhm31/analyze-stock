@@ -17,6 +17,7 @@ import {
 import type { Account, DebtSettlementInput } from "@money-insight/ui/types";
 import {
   buildDebtSettlementInput,
+  formatNumericInput,
   formatDebtMoney,
 } from "./debt-form-helpers";
 
@@ -97,12 +98,10 @@ export function DebtSettlementForm({
             >
               <Input
                 id="debt-settlement-amount"
-                type="number"
-                min="0.01"
-                max={remainingAmount || undefined}
-                step="any"
+                type="text"
+                inputMode="decimal"
                 value={amount}
-                onChange={(event) => setAmount(event.target.value)}
+                onChange={(event) => setAmount(formatNumericInput(event.target.value))}
                 placeholder="0"
                 required
               />

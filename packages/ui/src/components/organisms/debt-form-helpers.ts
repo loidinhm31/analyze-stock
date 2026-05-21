@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { formatNumericInput, parseNumericInput } from "@money-insight/ui/lib";
 import type {
   Debt,
   DebtSettlementInput,
@@ -44,7 +45,7 @@ export function maskValue(value: string): string {
 }
 
 export function buildDebtInput(values: DebtFormValues): NewDebt {
-  const principalAmount = Number.parseFloat(values.principalAmount);
+  const principalAmount = parseNumericInput(values.principalAmount);
   if (!values.name.trim()) throw new Error("Debt name is required.");
   if (!values.counterpartyName.trim()) {
     throw new Error("Counterparty name is required.");
@@ -80,7 +81,7 @@ export function buildDebtSettlementInput(
   values: DebtSettlementFormValues,
   remainingAmount: number,
 ): DebtSettlementInput {
-  const amount = Number.parseFloat(values.amount);
+  const amount = parseNumericInput(values.amount);
   if (!values.accountId.trim()) throw new Error("Settlement account is required.");
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Settlement amount must be greater than zero.");
@@ -97,3 +98,5 @@ export function buildDebtSettlementInput(
     note: values.note.trim() || undefined,
   };
 }
+
+export { formatNumericInput, parseNumericInput };
