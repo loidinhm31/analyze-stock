@@ -212,7 +212,7 @@ export function TransferForm(props: TransferFormProps) {
           <div className="grid gap-4">
             {/* From → To accounts */}
             <div className="flex items-end gap-2">
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <FormField label="From Account" id="transfer-from" required>
                   <SearchablePicker
                     value={fromAccount}
@@ -227,9 +227,14 @@ export function TransferForm(props: TransferFormProps) {
                     disabled={accounts.length === 0}
                     triggerId="transfer-from"
                     renderTriggerValue={(value) => (
-                      <span className="flex items-center gap-2 truncate">
+                      <span className="flex min-w-0 items-center gap-2">
                         <CreditCard className="h-4 w-4 text-(--color-text-muted)" />
-                        <span className={cn("truncate", !value && "text-(--color-text-muted)")}>
+                        <span
+                          className={cn(
+                            "min-w-0 truncate",
+                            !value && "text-(--color-text-muted)",
+                          )}
+                        >
                           {value || "Search account"}
                         </span>
                       </span>
@@ -245,7 +250,7 @@ export function TransferForm(props: TransferFormProps) {
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </div>
 
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <FormField label="To Account" id="transfer-to" required>
                   <SearchablePicker
                     value={toAccount}
@@ -260,9 +265,14 @@ export function TransferForm(props: TransferFormProps) {
                     disabled={accounts.length === 0}
                     triggerId="transfer-to"
                     renderTriggerValue={(value) => (
-                      <span className="flex items-center gap-2 truncate">
+                      <span className="flex min-w-0 items-center gap-2">
                         <CreditCard className="h-4 w-4 text-(--color-text-muted)" />
-                        <span className={cn("truncate", !value && "text-(--color-text-muted)")}>
+                        <span
+                          className={cn(
+                            "min-w-0 truncate",
+                            !value && "text-(--color-text-muted)",
+                          )}
+                        >
                           {value || "Search account"}
                         </span>
                       </span>

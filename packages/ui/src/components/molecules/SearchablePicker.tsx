@@ -73,13 +73,13 @@ export function SearchablePicker({
           type="button"
           variant="outline"
           id={triggerId}
-          className="w-full justify-between bg-(--color-bg-white) text-(--color-text-primary) border-(--color-border-light)"
+          className="w-full min-w-0 justify-between overflow-hidden bg-(--color-bg-white) text-(--color-text-primary) border-(--color-border-light)"
           disabled={disabled}
         >
           {renderTriggerValue ? (
             renderTriggerValue(value)
           ) : (
-            <span className={cn("truncate", !value && "text-(--color-text-muted)")}>
+            <span className={cn("min-w-0 truncate", !value && "text-(--color-text-muted)")}>
               {value || placeholder}
             </span>
           )}
