@@ -196,7 +196,7 @@ describe("createAdjustment", () => {
     expect(adj.account).toBe("Cash");
     expect(adj.category).toBe("__balance_adjustment__");
     expect(adj.source).toBe("balance_adjustment");
-    expect(adj.amount).toBe(200); // abs(-200)
+    expect(adj.amount).toBe(-200);
     expect(adj.excludeReport).toBe(true);
     expect(JSON.parse(adj.note)).toEqual({ targetBalance: 800 });
   });
@@ -247,6 +247,7 @@ describe("recalculateAdjustments", () => {
 
     expect(updated).toHaveLength(1);
     expect(updated[0].id).toBe("adj1");
+    expect(updated[0].amount).toBe(-100);
     expect(updated[0].expense).toBe(100); // Changed from 200 to 100
     expect(updated[0].income).toBe(0);
   });
@@ -332,6 +333,7 @@ describe("recalculateAdjustments", () => {
     const updated = recalculateAdjustments(transactions, account);
 
     expect(updated).toHaveLength(1);
+    expect(updated[0].amount).toBe(-500);
     expect(updated[0].expense).toBe(500);
     expect(updated[0].income).toBe(0);
   });
@@ -366,6 +368,7 @@ describe("recalculateAdjustments", () => {
     const updated = recalculateAdjustments(transactions, account);
 
     expect(updated).toHaveLength(1);
+    expect(updated[0].amount).toBe(500);
     expect(updated[0].income).toBe(500);
     expect(updated[0].expense).toBe(0);
   });
@@ -416,6 +419,7 @@ describe("recalculateAdjustments", () => {
     const updated = recalculateAdjustments(transactions, account);
 
     expect(updated).toHaveLength(1);
+    expect(updated[0].amount).toBe(0);
     expect(updated[0].expense).toBe(0);
     expect(updated[0].income).toBe(0);
   });

@@ -150,7 +150,7 @@ export function createAdjustment(
 
   return {
     note: createAdjustmentNote(targetBalance),
-    amount: Math.abs(amount),
+    amount,
     category: BALANCE_ADJUSTMENT_CATEGORY,
     account: accountName,
     currency,
@@ -210,7 +210,7 @@ export function recalculateAdjustments(
     if (adjTx.expense !== expense || adjTx.income !== income) {
       const updatedTx: Transaction = {
         ...adjTx,
-        amount: Math.abs(newAmount),
+        amount: newAmount,
         expense,
         income,
         updatedAt: new Date().toISOString(),
