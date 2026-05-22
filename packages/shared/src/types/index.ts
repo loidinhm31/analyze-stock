@@ -169,6 +169,70 @@ export interface DebtSettlementInput {
   note?: string;
 }
 
+export type BudgetStatus = "active" | "paused";
+
+export interface NewBudget {
+  name: string;
+  amount: number;
+  currency: string;
+  categoryNames: string[];
+  accountNames: string[];
+  firstCycleStartDate: string;
+  status?: BudgetStatus;
+}
+
+export interface Budget extends NewBudget {
+  id: string;
+  status: BudgetStatus;
+  createdAt: string;
+  updatedAt: string;
+  syncVersion: number;
+  syncedAt: number | null;
+}
+
+export type NotificationEventPriority = "low" | "normal" | "high" | "critical";
+
+export type NotificationEventStatus = "pending" | "sent" | "failed";
+
+export type JsonPrimitive = string | number | boolean | null;
+
+export type JsonValue =
+  | JsonPrimitive
+  | { [key: string]: JsonValue | undefined }
+  | JsonValue[];
+
+export interface JsonObject {
+  [key: string]: JsonValue | undefined;
+}
+
+export interface NewNotificationEvent {
+  eventType: string;
+  title: string;
+  body: string;
+  priority?: NotificationEventPriority;
+  payload?: JsonObject;
+  dedupeKey?: string;
+  status?: NotificationEventStatus;
+  triggeredAt: string;
+  sentAt?: string;
+  attemptCount?: number;
+  lastError?: string;
+  sourceTable?: string;
+  sourceRowId?: string;
+}
+
+export interface NotificationEvent extends NewNotificationEvent {
+  id: string;
+  priority: NotificationEventPriority;
+  payload?: JsonObject;
+  status: NotificationEventStatus;
+  attemptCount: number;
+  createdAt: string;
+  updatedAt: string;
+  syncVersion: number;
+  syncedAt: number | null;
+}
+
 // Parsed adjustment note structure
 export interface AdjustmentNote {
   targetBalance: number;

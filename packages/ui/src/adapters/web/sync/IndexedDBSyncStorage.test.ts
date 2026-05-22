@@ -5,14 +5,22 @@ const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
   mockDb: {
     transactions: {
       toArray: vi.fn(),
+      get: vi.fn(),
+      where: vi.fn(),
       delete: vi.fn(),
       put: vi.fn(),
     },
     categories: {
       toArray: vi.fn(),
+      get: vi.fn(),
+      where: vi.fn(),
+      put: vi.fn(),
     },
     accounts: {
       toArray: vi.fn(),
+      get: vi.fn(),
+      where: vi.fn(),
+      put: vi.fn(),
     },
     debts: {
       toArray: vi.fn(),
@@ -23,6 +31,20 @@ const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
       put: vi.fn(),
     },
     debtSettlements: {
+      toArray: vi.fn(),
+      get: vi.fn(),
+      where: vi.fn(),
+      delete: vi.fn(),
+      put: vi.fn(),
+    },
+    budgets: {
+      toArray: vi.fn(),
+      get: vi.fn(),
+      where: vi.fn(),
+      delete: vi.fn(),
+      put: vi.fn(),
+    },
+    notificationEvents: {
       toArray: vi.fn(),
       get: vi.fn(),
       where: vi.fn(),
@@ -85,16 +107,50 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
     mockDb.accounts.toArray.mockResolvedValue([]);
     mockDb.debts.toArray.mockResolvedValue([]);
     mockDb.debtSettlements.toArray.mockResolvedValue([]);
+    mockDb.budgets.toArray.mockResolvedValue([]);
+    mockDb.notificationEvents.toArray.mockResolvedValue([]);
     mockDb.debts.where.mockReturnValue({
       equals: () => ({
         toArray: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0),
       }),
     });
     mockDb.debtSettlements.where.mockReturnValue({
       equals: () => ({
         toArray: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0),
       }),
     });
+    mockDb.transactions.where.mockReturnValue({
+      equals: () => ({
+        count: vi.fn().mockResolvedValue(0),
+      }),
+    });
+    mockDb.categories.where.mockReturnValue({
+      equals: () => ({
+        count: vi.fn().mockResolvedValue(0),
+      }),
+    });
+    mockDb.accounts.where.mockReturnValue({
+      equals: () => ({
+        count: vi.fn().mockResolvedValue(0),
+      }),
+    });
+    mockDb.budgets.where.mockReturnValue({
+      equals: () => ({
+        count: vi.fn().mockResolvedValue(0),
+      }),
+    });
+    mockDb.notificationEvents.where.mockReturnValue({
+      equals: () => ({
+        count: vi.fn().mockResolvedValue(0),
+      }),
+    });
+    mockDb.transactions.get.mockResolvedValue(undefined);
+    mockDb.categories.get.mockResolvedValue(undefined);
+    mockDb.accounts.get.mockResolvedValue(undefined);
+    mockDb.budgets.get.mockResolvedValue(undefined);
+    mockDb.notificationEvents.get.mockResolvedValue(undefined);
     mockDb._pendingChanges.filter.mockReturnValue({
       toArray: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0),
@@ -241,6 +297,74 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
         debtId: "debt-1",
         transactionId: "tx-1",
         amount: 30,
+      }),
+      version: 3,
+      deleted: false,
+    });
+  });
+
+  it("serializes unsynced budgets and notification events", async () => {
+    mockDb.budgets.toArray.mockResolvedValue([
+      {
+        id: "budget-1",
+        name: "Food budget",
+        amount: 500,
+        currency: "VND",
+        categoryNames: ["Food", "Coffee"],
+        accountNames: ["Wallet"],
+        firstCycleStartDate: "2024-01-15",
+        status: "active",
+        createdAt: "2024-01-01T00:00:00.000Z",
+        updatedAt: "2024-01-02T00:00:00.000Z",
+        syncVersion: 2,
+        syncedAt: null,
+      },
+    ]);
+    mockDb.notificationEvents.toArray.mockResolvedValue([
+      {
+        id: "event-1",
+        eventType: "budget_overrun",
+        title: "Budget exceeded",
+        body: "Food budget is over limit",
+        priority: "high",
+        payload: { budgetId: "budget-1" },
+        dedupeKey: "money-insight:budget_overrun:budget-1:2024-01-15",
+        status: "pending",
+        triggeredAt: "2024-01-20T00:00:00.000Z",
+        sentAt: undefined,
+        attemptCount: 0,
+        lastError: undefined,
+        sourceTable: "transactions",
+        sourceRowId: "tx-1",
+        createdAt: "2024-01-20T00:00:00.000Z",
+        updatedAt: "2024-01-20T00:00:00.000Z",
+        syncVersion: 3,
+        syncedAt: null,
+      },
+    ]);
+
+    const storage = new IndexedDBSyncStorage();
+    const pendingChanges = await storage.getPendingChanges();
+
+    expect(pendingChanges).toContainEqual({
+      tableName: "budgets",
+      rowId: "budget-1",
+      data: expect.objectContaining({
+        categoryNames: ["Food", "Coffee"],
+        accountNames: ["Wallet"],
+        status: "active",
+      }),
+      version: 2,
+      deleted: false,
+    });
+    expect(pendingChanges).toContainEqual({
+      tableName: "notificationEvents",
+      rowId: "event-1",
+      data: expect.objectContaining({
+        eventType: "budget_overrun",
+        priority: "high",
+        payload: { budgetId: "budget-1" },
+        status: "pending",
       }),
       version: 3,
       deleted: false,
@@ -401,5 +525,102 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
     ).rejects.toThrow("Invalid debt type");
 
     expect(mockDb.debts.put).not.toHaveBeenCalled();
+  });
+
+  it("applies remote budget and notification event upserts", async () => {
+    const storage = new IndexedDBSyncStorage();
+
+    await storage.applyRemoteChanges([
+      {
+        tableName: "budgets",
+        rowId: "budget-1",
+        data: {
+          name: "Food budget",
+          amount: 500,
+          currency: "VND",
+          categoryNames: ["Food", "Coffee"],
+          accountNames: [],
+          firstCycleStartDate: "2024-01-15",
+          status: "active",
+          createdAt: "2024-01-01T00:00:00.000Z",
+          updatedAt: "2024-01-02T00:00:00.000Z",
+        },
+        version: 2,
+        deleted: false,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
+      {
+        tableName: "notificationEvents",
+        rowId: "event-1",
+        data: {
+          eventType: "budget_overrun",
+          title: "Budget exceeded",
+          body: "Food budget is over limit",
+          priority: "high",
+          payload: { budgetId: "budget-1" },
+          dedupeKey: "money-insight:budget_overrun:budget-1:2024-01-15",
+          status: "pending",
+          triggeredAt: "2024-01-20T00:00:00.000Z",
+          attemptCount: 0,
+          sourceTable: "transactions",
+          sourceRowId: "tx-1",
+          createdAt: "2024-01-20T00:00:00.000Z",
+          updatedAt: "2024-01-20T00:00:00.000Z",
+        },
+        version: 3,
+        deleted: false,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
+    ]);
+
+    expect(mockDb.budgets.put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "budget-1",
+        categoryNames: ["Food", "Coffee"],
+        syncVersion: 2,
+      }),
+    );
+    expect(mockDb.notificationEvents.put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "event-1",
+        eventType: "budget_overrun",
+        payload: { budgetId: "budget-1" },
+        syncVersion: 3,
+      }),
+    );
+  });
+
+  it("detects pending changes via syncedAt indexes", async () => {
+    mockDb.budgets.where.mockReturnValue({
+      equals: () => ({
+        count: vi.fn().mockResolvedValue(1),
+      }),
+    });
+
+    const storage = new IndexedDBSyncStorage();
+
+    await expect(storage.hasPendingChanges()).resolves.toBe(true);
+    expect(mockDb.budgets.where).toHaveBeenCalledWith("syncedAt");
+  });
+
+  it("counts pending changes across new budget and notification event tables", async () => {
+    mockDb.budgets.where.mockReturnValue({
+      equals: () => ({
+        count: vi.fn().mockResolvedValue(2),
+      }),
+    });
+    mockDb.notificationEvents.where.mockReturnValue({
+      equals: () => ({
+        count: vi.fn().mockResolvedValue(3),
+      }),
+    });
+    mockDb._pendingChanges.filter.mockReturnValue({
+      toArray: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(1),
+    });
+
+    const storage = new IndexedDBSyncStorage();
+
+    await expect(storage.getPendingChangesCount()).resolves.toBe(6);
   });
 });

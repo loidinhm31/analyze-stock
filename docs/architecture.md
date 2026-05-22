@@ -57,6 +57,7 @@ flowchart TB
         CatSvc["ICategoryService"]
         CatGrpSvc["ICategoryGroupService"]
         StatSvc["IStatisticsService"]
+        BudgetSvc["IBudgetService"]
         SyncSvc["ISyncService"]
         AuthSvc["IAuthService"]
     end
@@ -67,6 +68,7 @@ flowchart TB
         IDBCat["IndexedDBCategoryAdapter"]
         IDBCatGrp["IndexedDBCategoryGroupAdapter"]
         IDBStats["IndexedDBStatisticsAdapter"]
+        IDBBudget["IndexedDBBudgetAdapter"]
         IDBSync["IndexedDBSyncAdapter"]
         QmAuth["QmServerAuthAdapter"]
     end
@@ -85,6 +87,7 @@ flowchart TB
     CatSvc --> IDBCat
     CatGrpSvc --> IDBCatGrp
     StatSvc --> IDBStats
+    BudgetSvc --> IDBBudget
     SyncSvc --> IDBSync
     AuthSvc --> QmAuth
     AuthSvc -.->|Tauri| TauriAuth
@@ -93,6 +96,7 @@ flowchart TB
     IDBAcct --> IDB
     IDBCat --> IDB
     IDBCatGrp --> IDB
+    IDBBudget --> IDB
     IDBSync --> IDB
     TauriAuth --> RustEnc
 
@@ -100,8 +104,8 @@ flowchart TB
     classDef web fill:#c8e6c9,stroke:#388e3c
     classDef tauri fill:#bbdefb,stroke:#1976d2
     classDef store fill:#f5f5f5,stroke:#616161
-    class TxSvc,AccSvc,CatSvc,CatGrpSvc,StatSvc,SyncSvc,AuthSvc iface
-    class IDBTx,IDBAcct,IDBCat,IDBCatGrp,IDBStats,IDBSync,QmAuth web
+    class TxSvc,AccSvc,CatSvc,CatGrpSvc,StatSvc,BudgetSvc,SyncSvc,AuthSvc iface
+    class IDBTx,IDBAcct,IDBCat,IDBCatGrp,IDBStats,IDBBudget,IDBSync,QmAuth web
     class TauriAuth tauri
     class IDB,RustEnc store
 ```
@@ -170,6 +174,39 @@ erDiagram
         boolean deleted
     }
 
+    Budget {
+        string id PK
+        string name
+        number amount
+        string currency
+        array categoryNames
+        array accountNames
+        string firstCycleStartDate
+        string status "active | paused"
+        number syncVersion
+        number syncedAt
+        boolean deleted
+    }
+
+    NotificationEvent {
+        string id PK
+        string eventType
+        string title
+        string body
+        string priority
+        object payload
+        string dedupeKey
+        string status "pending | sent | failed"
+        string triggeredAt
+        string sentAt
+        number attemptCount
+        string sourceTable
+        string sourceRowId
+        number syncVersion
+        number syncedAt
+        boolean deleted
+    }
+
     Account {
         string id PK
         string name
@@ -229,9 +266,12 @@ erDiagram
     Transaction }o--o| Account : "belongs to"
     Transaction }o--o| ImportBatch : "imported via"
     Transaction }o--o| Transaction : "transfer pair (transferId)"
+    Budget ||--o{ NotificationEvent : "emits"
 ```
 
 **Database:** Per-user IndexedDB via Dexie.js. DB name derived from hashed userId.
+
+Budget and notification event rows sync through the same app collection as transactions and accounts. `budgets` stores recurring monthly definitions; `notificationEvents` stores user-owned app events for generic server-side dispatch after sync.
 
 **Key file:** `packages/ui/src/adapters/web/database.ts`
 

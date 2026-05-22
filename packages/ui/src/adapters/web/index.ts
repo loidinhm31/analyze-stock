@@ -9,3 +9,4 @@ export { IndexedDBCategoryGroupAdapter } from "./IndexedDBCategoryGroupAdapter";
 export { IndexedDBAccountAdapter } from "./IndexedDBAccountAdapter";
 export { IndexedDBStatisticsAdapter } from "./IndexedDBStatisticsAdapter";
 export { IndexedDBDebtAdapter } from "./IndexedDBDebtAdapter";
+export { IndexedDBBudgetAdapter } from "./IndexedDBBudgetAdapter";

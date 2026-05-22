@@ -165,7 +165,7 @@
 ## Known Limitations & Future Work
 
 ### v1.0 Limitations
-- No budgeting features (alerts, forecasts)
+- Budget calculations, warnings, and alert dispatch UX are still in progress
 - No transaction tagging (only categories)
 - No recurring transaction rules
 - CSV export only (no PDF, Excel)
@@ -173,7 +173,7 @@
 - No Google Drive integration
 
 ### Roadmap (Post-v1.0)
-- **v1.1**: Budget limits with alerts
+- **v1.1**: Budget calculations, warnings, and alert delivery UX
 - **v1.2**: Recurring transaction rules
 - **v1.3**: Investment portfolio tracking
 - **v1.4**: Bill reminders + notifications
@@ -186,10 +186,10 @@
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-03-13 | 1.0 | Initial PDR; features frozen for v1.0 |
-| TBD | 1.1 | Budget features, alerts |
+| 2026-05-22 | 1.1 | Added synced budget + notification event data layer to roadmap scope |
 
 ---
 
-**Last updated**: 2026-03-13
+**Last updated**: 2026-05-22
 **Owner**: Money Insight Team
 **Status**: Active (v1.0 development)

@@ -6,6 +6,7 @@ import type {
   ICategoryGroupService,
   IStatisticsService,
   IDebtService,
+  IBudgetService,
   ISyncService,
   IAuthService,
 } from "@money-insight/ui/adapters/factory/interfaces";
@@ -21,6 +22,7 @@ export interface IPlatformServices {
   account: IAccountService;
   statistics: IStatisticsService;
   debt: IDebtService;
+  budget: IBudgetService;
   auth: IAuthService;
   sync: ISyncService;
 }

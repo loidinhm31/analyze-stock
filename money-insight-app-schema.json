@@ -77,6 +77,40 @@
         { "name": "updatedAt", "type": "string", "nullable": false }
       ],
       "primaryKey": "rowId"
+    },
+    "budgets": {
+      "columns": [
+        { "name": "name", "type": "string", "nullable": false },
+        { "name": "amount", "type": "number", "nullable": false },
+        { "name": "currency", "type": "string", "nullable": false },
+        { "name": "categoryNames", "type": "array", "nullable": false },
+        { "name": "accountNames", "type": "array", "nullable": false },
+        { "name": "firstCycleStartDate", "type": "string", "nullable": false },
+        { "name": "status", "type": "string", "nullable": false },
+        { "name": "createdAt", "type": "string", "nullable": false },
+        { "name": "updatedAt", "type": "string", "nullable": false }
+      ],
+      "primaryKey": "rowId"
+    },
+    "notificationEvents": {
+      "columns": [
+        { "name": "eventType", "type": "string", "nullable": false },
+        { "name": "title", "type": "string", "nullable": false },
+        { "name": "body", "type": "string", "nullable": false },
+        { "name": "priority", "type": "string", "nullable": false },
+        { "name": "payload", "type": "object", "nullable": true },
+        { "name": "dedupeKey", "type": "string", "nullable": true },
+        { "name": "status", "type": "string", "nullable": false },
+        { "name": "triggeredAt", "type": "string", "nullable": false },
+        { "name": "sentAt", "type": "string", "nullable": true },
+        { "name": "attemptCount", "type": "integer", "nullable": false },
+        { "name": "lastError", "type": "string", "nullable": true },
+        { "name": "sourceTable", "type": "string", "nullable": true },
+        { "name": "sourceRowId", "type": "string", "nullable": true },
+        { "name": "createdAt", "type": "string", "nullable": false },
+        { "name": "updatedAt", "type": "string", "nullable": false }
+      ],
+      "primaryKey": "rowId"
     }
   }
 }

@@ -1,3 +1,4 @@
+import type { IndexableType } from "dexie";
 import type {
   Checkpoint,
   PullRecord,
@@ -144,6 +145,58 @@ export class IndexedDBSyncStorage {
       }
     }
 
+    const budgets = await getDb().budgets.toArray();
+    for (const budget of budgets) {
+      if (budget.syncedAt === undefined || budget.syncedAt === null) {
+        records.push({
+          tableName: "budgets",
+          rowId: budget.id,
+          data: {
+            name: budget.name,
+            amount: budget.amount,
+            currency: budget.currency,
+            categoryNames: budget.categoryNames,
+            accountNames: budget.accountNames,
+            firstCycleStartDate: budget.firstCycleStartDate,
+            status: budget.status,
+            createdAt: budget.createdAt,
+            updatedAt: budget.updatedAt,
+          },
+          version: budget.syncVersion || 1,
+          deleted: false,
+        });
+      }
+    }
+
+    const notificationEvents = await getDb().notificationEvents.toArray();
+    for (const event of notificationEvents) {
+      if (event.syncedAt === undefined || event.syncedAt === null) {
+        records.push({
+          tableName: "notificationEvents",
+          rowId: event.id,
+          data: {
+            eventType: event.eventType,
+            title: event.title,
+            body: event.body,
+            priority: event.priority,
+            payload: event.payload,
+            dedupeKey: event.dedupeKey,
+            status: event.status,
+            triggeredAt: event.triggeredAt,
+            sentAt: event.sentAt,
+            attemptCount: event.attemptCount,
+            lastError: event.lastError,
+            sourceTable: event.sourceTable,
+            sourceRowId: event.sourceRowId,
+            createdAt: event.createdAt,
+            updatedAt: event.updatedAt,
+          },
+          version: event.syncVersion || 1,
+          deleted: false,
+        });
+      }
+    }
+
     // Pending deletes
     const pendingDeletes = await getDb()._pendingChanges
       .filter((change) => change.operation === "delete")
@@ -167,14 +220,16 @@ export class IndexedDBSyncStorage {
       .count();
     if (pendingDeletes > 0) return true;
     const tables = [
-      getDb().transactions,
-      getDb().categories,
-      getDb().accounts,
-      getDb().debts,
-      getDb().debtSettlements,
+      "transactions",
+      "categories",
+      "accounts",
+      "debts",
+      "debtSettlements",
+      "budgets",
+      "notificationEvents",
     ];
-    for (const table of tables) {
-      const count = await table.filter((r) => r.syncedAt === undefined || r.syncedAt === null).count();
+    for (const tableName of tables) {
+      const count = await this.countUnsyncedRecords(tableName);
       if (count > 0) return true;
     }
     return false;
@@ -182,31 +237,18 @@ export class IndexedDBSyncStorage {
 
   async getPendingChangesCount(): Promise<number> {
     let count = 0;
-
-    const transactions = await getDb().transactions.toArray();
-    count += transactions.filter(
-      (t) => t.syncedAt === undefined || t.syncedAt === null,
-    ).length;
-
-    const categories = await getDb().categories.toArray();
-    count += categories.filter(
-      (c) => c.syncedAt === undefined || c.syncedAt === null,
-    ).length;
-
-    const accounts = await getDb().accounts.toArray();
-    count += accounts.filter(
-      (a) => a.syncedAt === undefined || a.syncedAt === null,
-    ).length;
-
-    const debts = await getDb().debts.toArray();
-    count += debts.filter(
-      (debt) => debt.syncedAt === undefined || debt.syncedAt === null,
-    ).length;
-
-    const settlements = await getDb().debtSettlements.toArray();
-    count += settlements.filter(
-      (settlement) => settlement.syncedAt === undefined || settlement.syncedAt === null,
-    ).length;
+    const tables = [
+      "transactions",
+      "categories",
+      "accounts",
+      "debts",
+      "debtSettlements",
+      "budgets",
+      "notificationEvents",
+    ] as const;
+    for (const tableName of tables) {
+      count += await this.countUnsyncedRecords(tableName);
+    }
 
     count += await getDb()._pendingChanges
       .filter((change) => change.operation === "delete")
@@ -229,6 +271,8 @@ export class IndexedDBSyncStorage {
         getDb().accounts,
         getDb().debts,
         getDb().debtSettlements,
+        getDb().budgets,
+        getDb().notificationEvents,
       ],
       async () => {
         for (const { tableName, rowId } of recordIds) {
@@ -270,6 +314,8 @@ export class IndexedDBSyncStorage {
         getDb().accounts,
         getDb().debts,
         getDb().debtSettlements,
+        getDb().budgets,
+        getDb().notificationEvents,
       ],
       async () => {
         const debtIdsToReconcile = new Set<string>();
@@ -419,6 +465,18 @@ export class IndexedDBSyncStorage {
     await getDb()._pendingChanges.clear();
   }
 
+  private async countUnsyncedRecords(tableName: string): Promise<number> {
+    const table = this.getTable(tableName);
+    if (!table) {
+      return 0;
+    }
+
+    return table
+      .where("syncedAt")
+      .equals(null as unknown as IndexableType)
+      .count();
+  }
+
   private getTable(tableName: string) {
     switch (tableName) {
       case "transactions":
@@ -431,6 +489,10 @@ export class IndexedDBSyncStorage {
         return getDb().debts;
       case "debtSettlements":
         return getDb().debtSettlements;
+      case "budgets":
+        return getDb().budgets;
+      case "notificationEvents":
+        return getDb().notificationEvents;
       default:
         return undefined;
     }
@@ -441,11 +503,15 @@ export class IndexedDBSyncStorage {
       case "categories":
       case "accounts":
         return 0;
-      case "debts":
+      case "budgets":
         return 1;
+      case "debts":
+        return 2;
       case "transactions":
       case "debtSettlements":
-        return 2;
+        return 3;
+      case "notificationEvents":
+        return 4;
       default:
         return 99;
     }

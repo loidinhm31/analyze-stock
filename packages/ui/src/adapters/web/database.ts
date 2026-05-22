@@ -8,6 +8,8 @@ import type {
   CategoryMapping,
   Debt,
   DebtSettlement,
+  Budget,
+  NotificationEvent,
 } from "@money-insight/ui/types";
 
 export interface SyncMeta {
@@ -34,6 +36,8 @@ export class MoneyInsightDatabase extends Dexie {
   categoryMappings!: EntityTable<CategoryMapping, "id">;
   debts!: EntityTable<Debt, "id">;
   debtSettlements!: EntityTable<DebtSettlement, "id">;
+  budgets!: EntityTable<Budget, "id">;
+  notificationEvents!: EntityTable<NotificationEvent, "id">;
   _syncMeta!: Table<SyncMeta, string>;
   _pendingChanges!: Table<PendingChange, number>;
 
@@ -84,6 +88,26 @@ export class MoneyInsightDatabase extends Dexie {
       _pendingChanges: "++id, tableName, rowId",
     });
 
+    this.version(4).stores({
+      transactions:
+        "id, category, account, date, yearMonth, year, month, source, importBatchId, transferId, syncVersion, syncedAt",
+      categories: "id, name, syncVersion, syncedAt",
+      accounts: "id, name, accountType, currency, syncVersion, syncedAt",
+      importBatches: "id, filename, importedAt",
+      categoryGroups: "id, name, syncVersion, syncedAt",
+      categoryMappings: "id, subCategory, parentGroupId, syncVersion, syncedAt",
+      debts:
+        "id, debtType, counterpartyName, accountId, currency, originatedAt, dueDate, isCompleted, initialTransactionId, syncVersion, syncedAt",
+      debtSettlements:
+        "id, &transactionId, debtId, accountId, settledAt, syncVersion, syncedAt, [debtId+transactionId], [debtId+settledAt]",
+      budgets:
+        "id, status, currency, firstCycleStartDate, syncVersion, syncedAt",
+      notificationEvents:
+        "id, eventType, status, dedupeKey, triggeredAt, syncVersion, syncedAt",
+      _syncMeta: "key",
+      _pendingChanges: "++id, tableName, rowId",
+    });
+
     this.transactions = this.table("transactions");
     this.categories = this.table("categories");
     this.accounts = this.table("accounts");
@@ -92,6 +116,8 @@ export class MoneyInsightDatabase extends Dexie {
     this.categoryMappings = this.table("categoryMappings");
     this.debts = this.table("debts");
     this.debtSettlements = this.table("debtSettlements");
+    this.budgets = this.table("budgets");
+    this.notificationEvents = this.table("notificationEvents");
     this._syncMeta = this.table("_syncMeta");
     this._pendingChanges = this.table("_pendingChanges");
   }

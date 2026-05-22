@@ -5,6 +5,7 @@ export * as categoryGroupService from "./categoryGroupService";
 export * as accountService from "./accountService";
 export * as statisticsService from "./statisticsService";
 export * as debtService from "./debtService";
+export * as budgetService from "./budgetService";
 export * as authService from "./authService";
 export * as syncService from "./syncService";
 export * as balanceAdjustmentService from "./balanceAdjustmentService";
