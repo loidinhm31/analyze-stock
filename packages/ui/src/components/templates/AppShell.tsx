@@ -56,6 +56,11 @@ const CategorySetupPage = lazy(() =>
     default: m.CategorySetupPage,
   })),
 );
+const BudgetPage = lazy(() =>
+  import("@money-insight/ui/components/pages").then((m) => ({
+    default: m.BudgetPage,
+  })),
+);
 
 export interface AppShellProps {
   skipAuth?: boolean;
@@ -191,6 +196,7 @@ export function AppShell({
                   <Route path="transactions" element={<TransactionPage />} />
                   <Route path="debt" element={<DebtPage />} />
                   <Route path="categories" element={<CategorySetupPage />} />
+                  <Route path="budget" element={<BudgetPage />} />
                   <Route
                     path="*"
                     element={<Navigate to={to("/dashboard")} replace />}

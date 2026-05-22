@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
+  PiggyBank,
 } from "lucide-react";
 import { Button } from "@money-insight/ui/components/atoms";
 import { cn } from "@money-insight/ui/lib";
@@ -70,6 +71,12 @@ export function Sidebar({
       label: "Categories",
       icon: <Layers className="h-5 w-5" />,
       show: hasTransactions,
+    },
+    {
+      path: to("/budget"),
+      label: "Budget",
+      icon: <PiggyBank className="h-5 w-5" />,
+      show: true,
     },
     {
       path: to("/settings"),

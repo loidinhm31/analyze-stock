@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, PlusCircle, Settings, List, HandCoins } from "lucide-react";
+import { Home, PlusCircle, Settings, List, HandCoins, PiggyBank } from "lucide-react";
 import { cn } from "@money-insight/ui/lib";
 import { useNav } from "@money-insight/ui/hooks";
 
@@ -44,6 +44,12 @@ export function BottomNavigation({
       path: to("/debt"),
       label: "Debt",
       icon: <HandCoins className="h-5 w-5" />,
+      show: true,
+    },
+    {
+      path: to("/budget"),
+      label: "Budget",
+      icon: <PiggyBank className="h-5 w-5" />,
       show: true,
     },
     {

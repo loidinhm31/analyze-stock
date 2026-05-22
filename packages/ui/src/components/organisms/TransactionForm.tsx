@@ -1,6 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { format } from "date-fns";
-import { CheckCircle2, DollarSign, Tag, CreditCard, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  DollarSign,
+  Tag,
+  CreditCard,
+  Trash2,
+} from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -22,10 +29,16 @@ import {
   cn,
   formatCurrency,
   formatNumericInput,
+  getTransactionBudgetWarning,
   parseNumericInput,
 } from "@money-insight/ui/lib";
 import { SUPPORTED_CURRENCIES } from "@money-insight/shared";
 import { useLastFormValues, useCategoryIcon } from "@money-insight/ui/hooks";
+import {
+  useBudgetStore,
+  useCategoryGroupStore,
+  useSpendingStore,
+} from "@money-insight/ui/stores";
 import type {
   Transaction,
   NewTransaction,
@@ -95,6 +108,11 @@ export function TransactionForm(props: TransactionFormProps) {
   const [account, setAccount] = useState("");
   const [note, setNote] = useState("");
   const [currency, setCurrency] = useState("VND");
+  const transactions = useSpendingStore((state) => state.transactions);
+  const budgets = useBudgetStore((state) => state.budgets);
+  const budgetDbReady = useBudgetStore((state) => state.isDbReady);
+  const loadBudgets = useBudgetStore((state) => state.loadBudgets);
+  const resolveCategoryName = useCategoryGroupStore((state) => state.resolveParent);
   const allowedCategories = useMemo(
     () => getAllowedCategories(categories, isExpense, transaction?.category ?? category),
     [categories, isExpense, transaction?.category, category],
@@ -144,6 +162,56 @@ export function TransactionForm(props: TransactionFormProps) {
       loadOptions();
     }
   }, [isDbReady]);
+
+  useEffect(() => {
+    if (isDbReady && !budgetDbReady) {
+      void loadBudgets();
+    }
+  }, [budgetDbReady, isDbReady, loadBudgets]);
+
+  const budgetWarning = useMemo(() => {
+    const numericAmount = parseNumericInput(amount);
+
+    if (
+      !isExpense ||
+      numericAmount <= 0 ||
+      !category ||
+      !currency ||
+      !isKnownCategory(allowedCategories, category)
+    ) {
+      return null;
+    }
+
+    return getTransactionBudgetWarning(
+      budgets,
+      transactions,
+      {
+        id: transaction?.id,
+        amount: -Math.abs(numericAmount),
+        account: account || "Cash",
+        category,
+        currency,
+        date: format(date, "yyyy-MM-dd"),
+        excludeReport: false,
+        source: transaction?.source ?? "manual",
+        updatedAt: transaction?.updatedAt,
+      },
+      resolveCategoryName,
+      transaction,
+    );
+  }, [
+    account,
+    allowedCategories,
+    amount,
+    budgets,
+    category,
+    currency,
+    date,
+    isExpense,
+    resolveCategoryName,
+    transaction,
+    transactions,
+  ]);
 
   async function loadOptions() {
     try {
@@ -475,6 +543,18 @@ export function TransactionForm(props: TransactionFormProps) {
 
       {/* Fixed Footer */}
       <div className="px-6 pb-6 pt-4 flex-shrink-0 border-t">
+        {budgetWarning ? (
+          <Alert variant="warning" className="mb-3">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {budgetWarning.budgetName} would go over by{" "}
+              {formatSuccessAmount(budgetWarning.overAmount, currency)}
+              {budgetWarning.matchingBudgetCount > 1
+                ? ` (${budgetWarning.matchingBudgetCount - 1} more budgets also match).`
+                : "."}
+            </AlertDescription>
+          </Alert>
+        ) : null}
         {submitSuccess && (
           <Alert variant="success" className="mb-3">
             <CheckCircle2 className="h-4 w-4" />

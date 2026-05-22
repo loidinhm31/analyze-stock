@@ -7,6 +7,7 @@ import { ReportsPage } from "./ReportsPage";
 import { TransactionPage } from "./TransactionPage";
 import { CategorySetupPage } from "./CategorySetupPage";
 import { DebtPage } from "./DebtPage";
+import { BudgetPage } from "./BudgetPage";
 import { RootLayout } from "../templates/RootLayout";
 
 /**
@@ -62,6 +63,10 @@ export const router = createBrowserRouter([
       {
         path: "categories",
         element: <CategorySetupPage />,
+      },
+      {
+        path: "budget",
+        element: <BudgetPage />,
       },
     ],
   },

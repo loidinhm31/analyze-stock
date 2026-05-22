@@ -18,6 +18,10 @@ export {
   type BudgetUsagePreview,
 } from "./budget-calculations";
 export {
+  getTransactionBudgetWarning,
+  type TransactionBudgetWarning,
+} from "./transaction-budget-warning";
+export {
   groupTransactionsByTimePeriod,
   TIME_PERIOD_OPTIONS,
   type TimePeriodMode,
