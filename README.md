@@ -52,6 +52,7 @@ pnpm clean             # Remove build artifacts
 - **Multi-Account**: Track checking, savings, credit card, and wallet accounts
 - **Hierarchical Categories**: Parent groups → child categories with icons (35-icon library)
 - **Powerful Reports**: Monthly/yearly spending analysis, pie charts, trend lines, bottleneck detection
+- **Budget tracking**: Monthly recurring budgets, cycle usage, over-budget warnings, notification events
 - **CSV Import**: Bulk import transactions from spreadsheets
 - **Transfer Pairs**: Link related debit/credit transactions (e.g., moving money between accounts)
 - **Balance Adjustments**: Manual corrections without affecting expense tracking
@@ -78,7 +79,7 @@ packages/
 ### Key Technologies
 - **Frontend**: React 19 + React Router 7 + Tailwind CSS v4
 - **State**: Zustand (spendingStore, categoryGroupStore)
-- **Database**: IndexedDB via Dexie.js (offline-first), including synced `debts` and `debtSettlements` tables
+- **Database**: IndexedDB via Dexie.js (offline-first), including synced `debts`, `debtSettlements`, `budgets`, and `notificationEvents` tables
 - **Sync**: glean-oak-sync-client with checkpoint-based pagination
 - **Auth**: JWT + refresh-token rotation
 - **Desktop**: Tauri v2 + Axum embedded web server
@@ -188,7 +189,7 @@ docs(architecture): add system architecture guide
 
 ## Known Limitations (v1.0)
 
-- No budgeting features (alerts, forecasts)
+- Budget page / warning UI still limited; core budget calculations and event enqueue logic are already implemented
 - No transaction tagging (categories only)
 - No recurring transaction rules
 - CSV export only (no PDF, Excel)

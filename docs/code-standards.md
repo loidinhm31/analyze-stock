@@ -97,6 +97,19 @@ interface SpendingState {
 }
 ```
 
+**Budget store**: keep budget math in `budgetStore` + `budget-calculations.ts`, not in UI components.
+```typescript
+interface BudgetState {
+  budgets: Budget[];
+  usage: Record<string, BudgetUsage>;
+  loadBudgets: () => Promise<void>;
+  refreshUsage: (transactions?: Transaction[], asOfDate?: string) => Promise<Record<string, BudgetUsage>>;
+  enqueueBudgetEvent: (input: NewNotificationEvent) => Promise<NotificationEvent | null>;
+}
+```
+
+Budget events should stay deduped by budget/cycle/reason/source row. Do not enqueue notification rows from UI directly; route through `spendingStore` preview + `budgetStore.enqueueBudgetEvent()`.
+
 ### Action Patterns
 
 **Async actions with service delegation**:

@@ -46,6 +46,14 @@
 - **Wallet balances**: Total assets across all accounts (grouped by currency)
 - **CSV export**: Export filtered transactions for spreadsheet analysis
 
+### Budgeting & Alerts
+- **Monthly recurring budgets**: `firstCycleStartDate` anchors the cycle; cycles repeat monthly and clamp to month end when needed
+- **Budget scope**: Category-name set, optional account-name set, currency match required
+- **Usage rules**: Only reportable expense tx count; transfers, balance adjustments, excluded-report tx ignored
+- **Historical data**: Old/imported/synced tx count immediately; creating budget over past overspend shows over-budget state
+- **Events**: `budget_overrun` queued on new/edit tx when they first cross or worsen an active budget
+- **Dedup**: First cross uses `budgetId + cycleKey`; worsened edits add `triggeringTransactionId` to dedupe key
+
 ### Sync & Multi-Device
 - **Offline-first IndexedDB**: All data stored locally; sync is optional
 - **Checkpoint-based sync**: Client-generated UUIDs enable offline record creation
@@ -165,7 +173,7 @@
 ## Known Limitations & Future Work
 
 ### v1.0 Limitations
-- Budget calculations, warnings, and alert dispatch UX are still in progress
+- Budget page / warning UI still limited; calc + event enqueue logic already implemented
 - No transaction tagging (only categories)
 - No recurring transaction rules
 - CSV export only (no PDF, Excel)
@@ -173,7 +181,7 @@
 - No Google Drive integration
 
 ### Roadmap (Post-v1.0)
-- **v1.1**: Budget calculations, warnings, and alert delivery UX
+- **v1.1**: Budget page, inline warnings, and alert delivery UX polish
 - **v1.2**: Recurring transaction rules
 - **v1.3**: Investment portfolio tracking
 - **v1.4**: Bill reminders + notifications
@@ -187,6 +195,7 @@
 |------|---------|--------|
 | 2026-03-13 | 1.0 | Initial PDR; features frozen for v1.0 |
 | 2026-05-22 | 1.1 | Added synced budget + notification event data layer to roadmap scope |
+| 2026-05-22 | 1.2 | Documented implemented budget calc + event rules |
 
 ---
 

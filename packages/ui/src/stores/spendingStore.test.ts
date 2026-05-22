@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import type { Transaction } from "@money-insight/ui/types";
+import type { Budget, NotificationEvent, Transaction } from "@money-insight/ui/types";
 import { MoneyInsightAnalyzer } from "@money-insight/ui/lib";
 import {
   setTransactionService,
   setAccountService,
+  setBudgetService,
   setCategoryGroupService,
   setCategoryService,
   resetServices,
@@ -12,6 +13,7 @@ import {
   createOutgoingTransferNote,
   createIncomingTransferNote,
 } from "@money-insight/ui/services/transferService";
+import { useBudgetStore } from "./budgetStore";
 import { useCategoryGroupStore } from "./categoryGroupStore";
 import { useSpendingStore } from "./spendingStore";
 
@@ -58,6 +60,32 @@ function makeTransferPair(
       account: toAccount,
       note: createIncomingTransferNote("", fromAccount),
     },
+  };
+}
+
+function makeBudgetTransaction(
+  overrides: Partial<Transaction> = {},
+): Transaction {
+  return {
+    id: "budget-tx-1",
+    source: "manual",
+    note: "",
+    amount: -200,
+    category: "Food",
+    account: "Cash",
+    currency: "VND",
+    date: "2024-01-10",
+    excludeReport: false,
+    expense: 200,
+    income: 0,
+    yearMonth: "2024-01",
+    year: 2024,
+    month: 1,
+    syncVersion: 1,
+    syncedAt: null,
+    createdAt: "2024-01-10T00:00:00.000Z",
+    updatedAt: "2024-01-10T00:00:00.000Z",
+    ...overrides,
   };
 }
 
@@ -302,6 +330,290 @@ describe("spendingStore.updateTransfer", () => {
     // Transfer legs must be updated
     expect(txs.find((t) => t.id === outgoing.id)!.amount).toBe(-200_000);
     expect(txs.find((t) => t.id === incoming.id)!.amount).toBe(200_000);
+  });
+});
+
+describe("spendingStore budget notifications", () => {
+  const account = {
+    id: "acc-1",
+    name: "Cash",
+    currency: "VND",
+    initialBalance: 0,
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    syncVersion: 1,
+    syncedAt: null,
+  };
+  const budget: Budget = {
+    id: "budget-1",
+    name: "Food",
+    amount: 1000,
+    currency: "VND",
+    categoryNames: ["Food"],
+    accountNames: [],
+    firstCycleStartDate: "2024-01-01",
+    status: "active",
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    syncVersion: 1,
+    syncedAt: null,
+  };
+
+  beforeEach(() => {
+    useSpendingStore.getState().reset();
+    useBudgetStore.getState().reset();
+    resetServices();
+
+    setAccountService({
+      getAccounts: vi.fn().mockResolvedValue([account]),
+      addAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
+    setBudgetService({
+      getBudgets: vi.fn().mockResolvedValue([budget]),
+      getBudget: vi.fn(),
+      addBudget: vi.fn(),
+      updateBudget: vi.fn(),
+      deleteBudget: vi.fn(),
+      getNotificationEvents: vi.fn().mockResolvedValue([]),
+      enqueueNotificationEvent: vi.fn().mockImplementation(
+        async (input): Promise<NotificationEvent> => ({
+          id: `event-${input.sourceRowId}`,
+          priority: input.priority ?? "normal",
+          payload: input.payload,
+          status: input.status ?? "pending",
+          attemptCount: input.attemptCount ?? 0,
+          createdAt: "2024-01-10T00:00:00.000Z",
+          updatedAt: "2024-01-10T00:00:00.000Z",
+          syncVersion: 1,
+          syncedAt: null,
+          ...input,
+        }),
+      ),
+      updateNotificationEventStatus: vi.fn(),
+    });
+  });
+
+  it("enqueues one deduped event when a new transaction first crosses the budget", async () => {
+    const existing = makeBudgetTransaction({
+      id: "tx-1",
+      amount: -900,
+      expense: 900,
+      date: "2024-01-05",
+      yearMonth: "2024-01",
+      month: 1,
+    });
+    const created = makeBudgetTransaction({
+      id: "tx-2",
+      amount: -200,
+      expense: 200,
+      date: "2024-01-10",
+      yearMonth: "2024-01",
+      month: 1,
+      updatedAt: "2024-01-10T00:00:00.000Z",
+    });
+    const addTransactionMock = vi.fn().mockResolvedValue(created);
+    const enqueueMock = vi.fn().mockImplementation(async (input) => ({
+      id: `event-${input.sourceRowId}`,
+      priority: input.priority ?? "normal",
+      payload: input.payload,
+      status: input.status ?? "pending",
+      attemptCount: input.attemptCount ?? 0,
+      createdAt: "2024-01-10T00:00:00.000Z",
+      updatedAt: "2024-01-10T00:00:00.000Z",
+      syncVersion: 1,
+      syncedAt: null,
+      ...input,
+    }));
+
+    setBudgetService({
+      getBudgets: vi.fn().mockResolvedValue([budget]),
+      getBudget: vi.fn(),
+      addBudget: vi.fn(),
+      updateBudget: vi.fn(),
+      deleteBudget: vi.fn(),
+      getNotificationEvents: vi.fn().mockResolvedValue([]),
+      enqueueNotificationEvent: enqueueMock,
+      updateNotificationEventStatus: vi.fn(),
+    });
+
+    setTransactionService({
+      getTransactions: vi.fn().mockResolvedValue([]),
+      addTransaction: addTransactionMock,
+      updateTransaction: vi.fn(),
+      deleteTransaction: vi.fn(),
+      importTransactions: vi.fn(),
+      createTransfer: vi.fn(),
+      updateTransfer: vi.fn(),
+      deleteTransfer: vi.fn(),
+      getTransferPair: vi.fn(),
+    });
+
+    useSpendingStore.setState({
+      transactions: [existing],
+      accounts: [account],
+      analyzer: new MoneyInsightAnalyzer([]),
+      isDbReady: true,
+    });
+
+    await useSpendingStore.getState().addTransaction({
+      note: "",
+      amount: -200,
+      category: "Food",
+      account: "Cash",
+      currency: "VND",
+      date: "2024-01-10",
+      excludeReport: false,
+      source: "manual",
+    });
+
+    expect(addTransactionMock).toHaveBeenCalledTimes(1);
+    expect(enqueueMock).toHaveBeenCalledTimes(1);
+    expect(enqueueMock.mock.calls[0][0].dedupeKey).toBe(
+      "money-insight:budget_overrun:budget-1:2024-01-01",
+    );
+    expect(enqueueMock.mock.calls[0][0].payload?.reason).toBe("crossed");
+  });
+
+  it("enqueues a per-transaction deduped event when an edit worsens an existing over-budget cycle", async () => {
+    const original = makeBudgetTransaction({
+      id: "tx-2",
+      amount: -150,
+      expense: 150,
+      date: "2024-01-10",
+      yearMonth: "2024-01",
+      month: 1,
+      updatedAt: "2024-01-10T00:00:00.000Z",
+    });
+    const updated = {
+      ...original,
+      amount: -300,
+      expense: 300,
+      updatedAt: "2024-01-11T00:00:00.000Z",
+    };
+    const enqueueMock = vi.fn().mockImplementation(async (input) => ({
+      id: "event-1",
+      priority: input.priority ?? "normal",
+      payload: input.payload,
+      status: input.status ?? "pending",
+      attemptCount: input.attemptCount ?? 0,
+      createdAt: "2024-01-11T00:00:00.000Z",
+      updatedAt: "2024-01-11T00:00:00.000Z",
+      syncVersion: 1,
+      syncedAt: null,
+      ...input,
+    }));
+
+    setBudgetService({
+      getBudgets: vi.fn().mockResolvedValue([budget]),
+      getBudget: vi.fn(),
+      addBudget: vi.fn(),
+      updateBudget: vi.fn(),
+      deleteBudget: vi.fn(),
+      getNotificationEvents: vi.fn().mockResolvedValue([]),
+      enqueueNotificationEvent: enqueueMock,
+      updateNotificationEventStatus: vi.fn(),
+    });
+    setTransactionService({
+      getTransactions: vi.fn().mockResolvedValue([]),
+      addTransaction: vi.fn(),
+      updateTransaction: vi.fn().mockResolvedValue(updated),
+      deleteTransaction: vi.fn(),
+      importTransactions: vi.fn(),
+      createTransfer: vi.fn(),
+      updateTransfer: vi.fn(),
+      deleteTransfer: vi.fn(),
+      getTransferPair: vi.fn(),
+    });
+
+    useSpendingStore.setState({
+      transactions: [
+        makeBudgetTransaction({
+          id: "tx-1",
+          amount: -1000,
+          expense: 1000,
+          date: "2024-01-05",
+          yearMonth: "2024-01",
+          month: 1,
+        }),
+        original,
+      ],
+      accounts: [account],
+      analyzer: new MoneyInsightAnalyzer([]),
+      isDbReady: true,
+    });
+
+    await useSpendingStore.getState().updateTransaction(updated);
+
+    expect(enqueueMock).toHaveBeenCalledTimes(1);
+    expect(enqueueMock.mock.calls[0][0].dedupeKey).toBe(
+      "money-insight:budget_overrun:budget-1:2024-01-01:worsened:tx-2",
+    );
+    expect(enqueueMock.mock.calls[0][0].payload?.reason).toBe("worsened");
+  });
+
+  it("keeps transaction success when budget event enqueue fails", async () => {
+    const created = makeBudgetTransaction({
+      id: "tx-2",
+      amount: -1200,
+      expense: 1200,
+      date: "2024-01-10",
+      yearMonth: "2024-01",
+      month: 1,
+      updatedAt: "2024-01-10T00:00:00.000Z",
+    });
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    setBudgetService({
+      getBudgets: vi.fn().mockResolvedValue([budget]),
+      getBudget: vi.fn(),
+      addBudget: vi.fn(),
+      updateBudget: vi.fn(),
+      deleteBudget: vi.fn(),
+      getNotificationEvents: vi.fn().mockResolvedValue([]),
+      enqueueNotificationEvent: vi
+        .fn()
+        .mockRejectedValue(new Error("notification unavailable")),
+      updateNotificationEventStatus: vi.fn(),
+    });
+    setTransactionService({
+      getTransactions: vi.fn().mockResolvedValue([]),
+      addTransaction: vi.fn().mockResolvedValue(created),
+      updateTransaction: vi.fn(),
+      deleteTransaction: vi.fn(),
+      importTransactions: vi.fn(),
+      createTransfer: vi.fn(),
+      updateTransfer: vi.fn(),
+      deleteTransfer: vi.fn(),
+      getTransferPair: vi.fn(),
+    });
+
+    useSpendingStore.setState({
+      transactions: [],
+      accounts: [account],
+      analyzer: new MoneyInsightAnalyzer([]),
+      isDbReady: true,
+    });
+
+    await expect(
+      useSpendingStore.getState().addTransaction({
+        note: "",
+        amount: -1200,
+        category: "Food",
+        account: "Cash",
+        currency: "VND",
+        date: "2024-01-10",
+        excludeReport: false,
+        source: "manual",
+      }),
+    ).resolves.toMatchObject({ id: "tx-2" });
+    expect(useSpendingStore.getState().transactions).toHaveLength(1);
+    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
   });
 });
 

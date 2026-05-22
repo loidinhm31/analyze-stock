@@ -13,7 +13,12 @@ import type {
   MonthlyReport,
   TransferParams,
 } from "@money-insight/ui/types";
-import { matchesSearch, MoneyInsightAnalyzer } from "@money-insight/ui/lib";
+import {
+  buildBudgetOverrunEvent,
+  matchesSearch,
+  MoneyInsightAnalyzer,
+  previewBudgetUsageWithTransaction,
+} from "@money-insight/ui/lib";
 import * as transactionService from "@money-insight/ui/services/transactionService";
 import * as accountService from "@money-insight/ui/services/accountService";
 import * as balanceAdjustmentService from "@money-insight/ui/services/balanceAdjustmentService";
@@ -65,6 +70,54 @@ async function refreshDebtStoreForTransaction(tx?: Transaction): Promise<void> {
       await debtStore.loadSettlements(debtStore.selectedDebtId);
     }
   }
+}
+
+async function refreshBudgetStoreForTransactionChange(
+  beforeTransactions: Transaction[],
+  afterTransactions: Transaction[],
+  draftTransaction: Transaction,
+  originalTransaction?: Transaction,
+): Promise<void> {
+  const { useBudgetStore } = await import("@money-insight/ui/stores/budgetStore");
+  const budgetStore = useBudgetStore.getState();
+
+  if (!budgetStore.isDbReady) {
+    await budgetStore.loadBudgets();
+  }
+
+  const resolveCategoryName = useCategoryGroupStore.getState().resolveParent;
+  const activeBudgets = useBudgetStore
+    .getState()
+    .budgets.filter((budget) => budget.status === "active");
+
+  for (const budget of activeBudgets) {
+    const preview = previewBudgetUsageWithTransaction(
+      budget,
+      beforeTransactions,
+      draftTransaction,
+      originalTransaction,
+      { resolveCategoryName },
+    );
+
+    if (!preview.crossedOverBudget && !preview.worsenedOverBudget) {
+      continue;
+    }
+
+    try {
+      await useBudgetStore.getState().enqueueBudgetEvent(
+        buildBudgetOverrunEvent(
+          budget,
+          preview.after,
+          draftTransaction,
+          preview.crossedOverBudget ? "crossed" : "worsened",
+        ),
+      );
+    } catch (error) {
+      console.error("[money-insight] failed to enqueue budget notification", error);
+    }
+  }
+
+  await useBudgetStore.getState().refreshUsage(afterTransactions);
 }
 
 interface Statistics {
@@ -224,6 +277,7 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
     set({ isLoading: true });
 
     try {
+      const previousTransactions = get().transactions;
       const transaction = await transactionService.addTransaction(tx);
       let transactions = [...get().transactions, transaction];
 
@@ -252,6 +306,11 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
 
       set({ ...buildAnalyzerState(transactions), isLoading: false });
       get().refreshAnalysis();
+      await refreshBudgetStoreForTransactionChange(
+        previousTransactions,
+        transactions,
+        transaction,
+      );
       return transaction;
     } catch (error) {
       set({
@@ -291,6 +350,7 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
     set({ isLoading: true });
 
     try {
+      const previousTransactions = get().transactions;
       const updated = await transactionService.updateTransaction(tx);
       let transactions = get().transactions.map((t) =>
         t.id === updated.id ? updated : t,
@@ -314,6 +374,12 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
 
       set({ ...buildAnalyzerState(transactions), isLoading: false });
       get().refreshAnalysis();
+      await refreshBudgetStoreForTransactionChange(
+        previousTransactions,
+        transactions,
+        updated,
+        storedTx,
+      );
       return updated;
     } catch (error) {
       set({

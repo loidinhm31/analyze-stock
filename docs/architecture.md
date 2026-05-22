@@ -273,6 +273,17 @@ erDiagram
 
 Budget and notification event rows sync through the same app collection as transactions and accounts. `budgets` stores recurring monthly definitions; `notificationEvents` stores user-owned app events for generic server-side dispatch after sync.
 
+### Budget Runtime Flow
+
+1. `getBudgetCycleForDate()` anchors each cycle from `firstCycleStartDate`, then advances monthly with month-end clamping.
+2. `calculateBudgetUsage()` only counts reportable expense tx, matching category names, optional account names, and currency.
+3. Historical transactions count immediately, so new budgets can start over budget with no special backfill step.
+4. `previewBudgetUsageWithTransaction()` compares before/after state for new or edited tx.
+5. `buildBudgetOverrunEvent()` emits `budget_overrun` with `dedupeKey`:
+   - first cross: `money-insight:budget_overrun:{budgetId}:{cycleKey}`
+   - worsened edit: `money-insight:budget_overrun:{budgetId}:{cycleKey}:worsened:{transactionId}`
+6. `budgetStore.enqueueBudgetEvent()` skips duplicates by budget/cycle/reason/source row before save.
+
 **Key file:** `packages/ui/src/adapters/web/database.ts`
 
 ## State Management

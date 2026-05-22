@@ -38,9 +38,11 @@
     "./stores/spendingStore": "./src/stores/spendingStore.ts",
     "./stores/categoryGroupStore": "./src/stores/categoryGroupStore.ts",
     "./stores/debtStore": "./src/stores/debtStore.ts",
+    "./stores/budgetStore": "./src/stores/budgetStore.ts",
     "./utils": "./src/utils/index.ts",
     "./types": "./src/types/index.ts",
     "./lib": "./src/lib/index.ts",
+    "./lib/budget-calculations": "./src/lib/budget-calculations.ts",
     "./embed": "./src/embed/index.ts",
     "./platform": "./src/platform/index.ts",
     "./contexts": "./src/contexts/index.ts"
