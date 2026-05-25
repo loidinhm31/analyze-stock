@@ -51,7 +51,7 @@
 - **Budget scope**: Category-name set, optional account-name set, currency match required
 - **Usage rules**: Only reportable expense tx count; transfers, balance adjustments, excluded-report tx ignored
 - **Historical data**: Old/imported/synced tx count immediately; creating budget over past overspend shows over-budget state
-- **Events**: `budget_overrun` queued on new/edit tx when they first cross or worsen an active budget
+- **Events**: `budget_overrun` queued on new/edit tx when they first cross or worsen an active budget; server-side dispatch depends on schema rollout in deployed environments
 - **Dedup**: First cross uses `budgetId + cycleKey`; worsened edits add `triggeringTransactionId` to dedupe key
 
 ### Sync & Multi-Device
@@ -173,7 +173,7 @@
 ## Known Limitations & Future Work
 
 ### v1.0 Limitations
-- Budget page / warning UI still limited; calc + event enqueue logic already implemented
+- Notification delivery UX is still generic; budget overruns queue shared `notificationEvents`, and deployed environments still need schema rollout before server dispatch is guaranteed
 - No transaction tagging (only categories)
 - No recurring transaction rules
 - CSV export only (no PDF, Excel)
@@ -199,6 +199,6 @@
 
 ---
 
-**Last updated**: 2026-05-22
+**Last updated**: 2026-05-23
 **Owner**: Money Insight Team
 **Status**: Active (v1.0 development)

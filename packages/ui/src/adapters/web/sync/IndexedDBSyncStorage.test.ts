@@ -7,6 +7,7 @@ const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
       toArray: vi.fn(),
       get: vi.fn(),
       where: vi.fn(),
+      filter: vi.fn(),
       delete: vi.fn(),
       put: vi.fn(),
     },
@@ -14,18 +15,21 @@ const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
       toArray: vi.fn(),
       get: vi.fn(),
       where: vi.fn(),
+      filter: vi.fn(),
       put: vi.fn(),
     },
     accounts: {
       toArray: vi.fn(),
       get: vi.fn(),
       where: vi.fn(),
+      filter: vi.fn(),
       put: vi.fn(),
     },
     debts: {
       toArray: vi.fn(),
       get: vi.fn(),
       where: vi.fn(),
+      filter: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
       put: vi.fn(),
@@ -34,6 +38,7 @@ const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
       toArray: vi.fn(),
       get: vi.fn(),
       where: vi.fn(),
+      filter: vi.fn(),
       delete: vi.fn(),
       put: vi.fn(),
     },
@@ -41,6 +46,7 @@ const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
       toArray: vi.fn(),
       get: vi.fn(),
       where: vi.fn(),
+      filter: vi.fn(),
       delete: vi.fn(),
       put: vi.fn(),
     },
@@ -48,6 +54,7 @@ const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
       toArray: vi.fn(),
       get: vi.fn(),
       where: vi.fn(),
+      filter: vi.fn(),
       delete: vi.fn(),
       put: vi.fn(),
     },
@@ -121,30 +128,26 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
         count: vi.fn().mockResolvedValue(0),
       }),
     });
-    mockDb.transactions.where.mockReturnValue({
-      equals: () => ({
-        count: vi.fn().mockResolvedValue(0),
-      }),
+    mockDb.transactions.filter.mockReturnValue({
+      count: vi.fn().mockResolvedValue(0),
     });
-    mockDb.categories.where.mockReturnValue({
-      equals: () => ({
-        count: vi.fn().mockResolvedValue(0),
-      }),
+    mockDb.categories.filter.mockReturnValue({
+      count: vi.fn().mockResolvedValue(0),
     });
-    mockDb.accounts.where.mockReturnValue({
-      equals: () => ({
-        count: vi.fn().mockResolvedValue(0),
-      }),
+    mockDb.accounts.filter.mockReturnValue({
+      count: vi.fn().mockResolvedValue(0),
     });
-    mockDb.budgets.where.mockReturnValue({
-      equals: () => ({
-        count: vi.fn().mockResolvedValue(0),
-      }),
+    mockDb.debts.filter.mockReturnValue({
+      count: vi.fn().mockResolvedValue(0),
     });
-    mockDb.notificationEvents.where.mockReturnValue({
-      equals: () => ({
-        count: vi.fn().mockResolvedValue(0),
-      }),
+    mockDb.debtSettlements.filter.mockReturnValue({
+      count: vi.fn().mockResolvedValue(0),
+    });
+    mockDb.budgets.filter.mockReturnValue({
+      count: vi.fn().mockResolvedValue(0),
+    });
+    mockDb.notificationEvents.filter.mockReturnValue({
+      count: vi.fn().mockResolvedValue(0),
     });
     mockDb.transactions.get.mockResolvedValue(undefined);
     mockDb.categories.get.mockResolvedValue(undefined);
@@ -590,29 +593,23 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
     );
   });
 
-  it("detects pending changes via syncedAt indexes", async () => {
-    mockDb.budgets.where.mockReturnValue({
-      equals: () => ({
-        count: vi.fn().mockResolvedValue(1),
-      }),
+  it("detects pending changes via unsynced record filters", async () => {
+    mockDb.budgets.filter.mockReturnValue({
+      count: vi.fn().mockResolvedValue(1),
     });
 
     const storage = new IndexedDBSyncStorage();
 
     await expect(storage.hasPendingChanges()).resolves.toBe(true);
-    expect(mockDb.budgets.where).toHaveBeenCalledWith("syncedAt");
+    expect(mockDb.budgets.filter).toHaveBeenCalled();
   });
 
   it("counts pending changes across new budget and notification event tables", async () => {
-    mockDb.budgets.where.mockReturnValue({
-      equals: () => ({
-        count: vi.fn().mockResolvedValue(2),
-      }),
+    mockDb.budgets.filter.mockReturnValue({
+      count: vi.fn().mockResolvedValue(2),
     });
-    mockDb.notificationEvents.where.mockReturnValue({
-      equals: () => ({
-        count: vi.fn().mockResolvedValue(3),
-      }),
+    mockDb.notificationEvents.filter.mockReturnValue({
+      count: vi.fn().mockResolvedValue(3),
     });
     mockDb._pendingChanges.filter.mockReturnValue({
       toArray: vi.fn().mockResolvedValue([]),

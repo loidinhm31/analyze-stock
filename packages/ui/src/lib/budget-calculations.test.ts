@@ -81,6 +81,27 @@ describe("budget-calculations", () => {
     ).toBe(true);
   });
 
+  it("supports category sets and optional account filters", () => {
+    const scopedBudget: Budget = {
+      ...budget,
+      categoryNames: ["Food", "Coffee"],
+      accountNames: ["Card"],
+    };
+
+    expect(
+      transactionMatchesBudget(
+        makeTransaction({ category: "Coffee", account: "Card" }),
+        scopedBudget,
+      ),
+    ).toBe(true);
+    expect(
+      transactionMatchesBudget(
+        makeTransaction({ category: "Food", account: "Cash" }),
+        scopedBudget,
+      ),
+    ).toBe(false);
+  });
+
   it("calculates usage for the active cycle only", () => {
     const usage = calculateBudgetUsage(
       budget,
@@ -96,6 +117,32 @@ describe("budget-calculations", () => {
     expect(usage.remaining).toBe(150);
     expect(usage.isOverBudget).toBe(false);
     expect(usage.matchingTransactionIds).toEqual(["tx-1", "tx-2"]);
+  });
+
+  it("counts historical synced transactions immediately for current usage", () => {
+    const usage = calculateBudgetUsage(
+      budget,
+      [
+        makeTransaction({
+          id: "tx-old",
+          amount: -650,
+          expense: 650,
+          date: "2024-02-02",
+          syncedAt: 1_700_000_000,
+        }),
+        makeTransaction({
+          id: "tx-new",
+          amount: -200,
+          expense: 200,
+          date: "2024-02-05",
+          syncedAt: null,
+        }),
+      ],
+      "2024-02-20",
+    );
+
+    expect(usage.spent).toBe(850);
+    expect(usage.matchingTransactionIds).toEqual(["tx-old", "tx-new"]);
   });
 
   it("detects first crossing and worsening when previewing transactions", () => {

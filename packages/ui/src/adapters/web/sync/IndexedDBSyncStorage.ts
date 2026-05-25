@@ -1,4 +1,3 @@
-import type { IndexableType } from "dexie";
 import type {
   Checkpoint,
   PullRecord,
@@ -471,9 +470,11 @@ export class IndexedDBSyncStorage {
       return 0;
     }
 
+    // Dexie/IndexedDB indexes do not accept null as a query key.
+    // Unsynced local records can have syncedAt missing or null, so count them
+    // via a predicate instead of an indexed equals(null) lookup.
     return table
-      .where("syncedAt")
-      .equals(null as unknown as IndexableType)
+      .filter((record) => record.syncedAt == null)
       .count();
   }
 

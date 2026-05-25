@@ -52,7 +52,7 @@ pnpm clean             # Remove build artifacts
 - **Multi-Account**: Track checking, savings, credit card, and wallet accounts
 - **Hierarchical Categories**: Parent groups → child categories with icons (35-icon library)
 - **Powerful Reports**: Monthly/yearly spending analysis, pie charts, trend lines, bottleneck detection
-- **Budget tracking**: Monthly recurring budgets, cycle usage, over-budget warnings, notification events
+- **Budget tracking**: Monthly recurring budgets, cycle usage, over-budget warnings, and queued `notificationEvents` records
 - **CSV Import**: Bulk import transactions from spreadsheets
 - **Transfer Pairs**: Link related debit/credit transactions (e.g., moving money between accounts)
 - **Balance Adjustments**: Manual corrections without affecting expense tracking
@@ -138,7 +138,7 @@ Start here for development:
 - **Framework**: Vitest with node environment
 - **Pattern**: Arrange-Act-Assert (AAA)
 - **Mocking**: ServiceFactory `setTransactionService()` pattern
-- **Coverage**: 46 tests across 3 files
+- **Coverage**: Budget, sync, adapter, store, and component helpers covered by the UI package test suite
 
 ```bash
 pnpm test              # Watch mode
@@ -189,7 +189,7 @@ docs(architecture): add system architecture guide
 
 ## Known Limitations (v1.0)
 
-- Budget page / warning UI still limited; core budget calculations and event enqueue logic are already implemented
+- Notification delivery preferences are still generic; budget rows queue shared `notificationEvents`, but deployed environments still need schema rollout before end-to-end server dispatch is guaranteed
 - No transaction tagging (categories only)
 - No recurring transaction rules
 - CSV export only (no PDF, Excel)
@@ -246,6 +246,6 @@ See parent repository LICENSE file.
 ---
 
 **Created**: 2026-02-15
-**Last updated**: 2026-03-13
+**Last updated**: 2026-05-23
 **Status**: v1.0 active development
 **Maintainers**: Money Insight Team

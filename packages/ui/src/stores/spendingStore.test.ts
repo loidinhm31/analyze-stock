@@ -615,6 +615,61 @@ describe("spendingStore budget notifications", () => {
 
     consoleErrorSpy.mockRestore();
   });
+
+  it("skips paused budgets when a transaction would exceed them", async () => {
+    const created = makeBudgetTransaction({
+      id: "tx-2",
+      amount: -1200,
+      expense: 1200,
+      date: "2024-01-10",
+      yearMonth: "2024-01",
+      month: 1,
+      updatedAt: "2024-01-10T00:00:00.000Z",
+    });
+    const enqueueMock = vi.fn();
+
+    setBudgetService({
+      getBudgets: vi.fn().mockResolvedValue([{ ...budget, status: "paused" }]),
+      getBudget: vi.fn(),
+      addBudget: vi.fn(),
+      updateBudget: vi.fn(),
+      deleteBudget: vi.fn(),
+      getNotificationEvents: vi.fn().mockResolvedValue([]),
+      enqueueNotificationEvent: enqueueMock,
+      updateNotificationEventStatus: vi.fn(),
+    });
+    setTransactionService({
+      getTransactions: vi.fn().mockResolvedValue([]),
+      addTransaction: vi.fn().mockResolvedValue(created),
+      updateTransaction: vi.fn(),
+      deleteTransaction: vi.fn(),
+      importTransactions: vi.fn(),
+      createTransfer: vi.fn(),
+      updateTransfer: vi.fn(),
+      deleteTransfer: vi.fn(),
+      getTransferPair: vi.fn(),
+    });
+
+    useSpendingStore.setState({
+      transactions: [],
+      accounts: [account],
+      analyzer: new MoneyInsightAnalyzer([]),
+      isDbReady: true,
+    });
+
+    await useSpendingStore.getState().addTransaction({
+      note: "",
+      amount: -1200,
+      category: "Food",
+      account: "Cash",
+      currency: "VND",
+      date: "2024-01-10",
+      excludeReport: false,
+      source: "manual",
+    });
+
+    expect(enqueueMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("spendingStore.refreshAnalysis", () => {
