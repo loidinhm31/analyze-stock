@@ -563,6 +563,10 @@ body.modal-open {
   overflow: hidden;
 }
 
+.shadow-body.modal-open {
+  overflow: hidden;
+}
+
 /* Success/Warning color utilities */
 .success-bg-light {
   background-color: rgba(5, 150, 105, 0.1);

@@ -5,7 +5,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  ScrollArea,
   Badge,
   CategoryIcon,
 } from "@money-insight/ui/components/atoms";
@@ -88,8 +87,8 @@ export function TransactionListModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="max-h-[85vh] max-w-4xl flex flex-col overflow-hidden p-0">
+        <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4">
           <DialogTitle className="text-foreground">{title}</DialogTitle>
           <DialogDescription>
             {subtitle && <span>{subtitle} • </span>}
@@ -115,57 +114,122 @@ export function TransactionListModal({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="h-[500px] w-full pr-4">
-          {/* Desktop Table View */}
-          <div className="hidden md:block w-full overflow-x-auto">
-            <table className="w-full min-w-full">
-              <thead className="sticky top-0 bg-background border-b">
-                <tr className="text-left text-sm text-muted-foreground">
-                  <th className="p-3 font-medium">Date</th>
-                  <th className="p-3 font-medium">Category</th>
-                  <th className="p-3 font-medium">Account</th>
-                  <th className="p-3 font-medium">Description</th>
-                  <th className="p-3 font-medium text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedTransactions.map((transaction, index) => {
-                  const amount = transaction.expense || transaction.income;
-                  const isExpense = transaction.expense > 0;
-                  const formattedAmount = formatCurrency(amount);
+        <div
+          className="min-h-0 flex-1 overflow-y-auto px-6 pb-6"
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
+          <div>
+            {/* Desktop Table View */}
+            <div className="hidden md:block w-full overflow-x-auto">
+              <table className="w-full min-w-full">
+                <thead className="sticky top-0 bg-background border-b">
+                  <tr className="text-left text-sm text-muted-foreground">
+                    <th className="p-3 font-medium">Date</th>
+                    <th className="p-3 font-medium">Category</th>
+                    <th className="p-3 font-medium">Account</th>
+                    <th className="p-3 font-medium">Description</th>
+                    <th className="p-3 font-medium text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedTransactions.map((transaction, index) => {
+                    const amount = transaction.expense || transaction.income;
+                    const isExpense = transaction.expense > 0;
+                    const formattedAmount = formatCurrency(amount);
 
-                  return (
-                    <tr
-                      key={`${getId(transaction)}-${index}`}
-                      className="border-b hover:bg-accent transition-colors"
-                    >
-                      <td className="p-3 font-medium whitespace-nowrap">
-                        {format(getDate(transaction), "MMM dd, yyyy")}
-                      </td>
-                      <td className="p-3">
-                        <Badge variant="secondary">
+                    return (
+                      <tr
+                        key={`${getId(transaction)}-${index}`}
+                        className="border-b hover:bg-accent transition-colors"
+                      >
+                        <td className="p-3 font-medium whitespace-nowrap">
+                          {format(getDate(transaction), "MMM dd, yyyy")}
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="secondary">
+                            <span className="inline-flex items-center gap-1">
+                              {getIcon(transaction.category) && (
+                                <CategoryIcon
+                                  name={getIcon(transaction.category)}
+                                  size={16}
+                                  className="inline-block shrink-0"
+                                />
+                              )}
+                              {transaction.category}
+                            </span>
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="outline">{transaction.account}</Badge>
+                        </td>
+                        <td className="p-3 max-w-md">
+                          <span className="text-sm text-muted-foreground line-clamp-2">
+                            {getTransactionDescription(transaction)}
+                          </span>
+                        </td>
+                        <td
+                          className="p-3 text-right font-semibold whitespace-nowrap"
+                          style={{
+                            color: isExpense
+                              ? "var(--color-destructive)"
+                              : "var(--color-success)",
+                          }}
+                        >
+                          {isExpense ? "-" : "+"}
+                          {valuesHidden
+                            ? maskValue(formattedAmount)
+                            : formattedAmount}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="space-y-2 pt-4 md:hidden">
+              {paginatedTransactions.map((transaction, index) => {
+                const amount = transaction.expense || transaction.income;
+                const isExpense = transaction.expense > 0;
+                const formattedAmount = formatCurrency(amount);
+
+                return (
+                  <div
+                    key={`${getId(transaction)}-${index}`}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm">
+                          {format(getDate(transaction), "MMM dd")}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
                           <span className="inline-flex items-center gap-1">
                             {getIcon(transaction.category) && (
                               <CategoryIcon
                                 name={getIcon(transaction.category)}
-                                size={16}
+                                size={14}
                                 className="inline-block shrink-0"
                               />
                             )}
                             {transaction.category}
                           </span>
                         </Badge>
-                      </td>
-                      <td className="p-3">
-                        <Badge variant="outline">{transaction.account}</Badge>
-                      </td>
-                      <td className="p-3 max-w-md">
-                        <span className="text-sm text-muted-foreground line-clamp-2">
+                        <Badge variant="outline" className="text-xs">
+                          {transaction.account}
+                        </Badge>
+                      </div>
+                      {getTransactionDescription(transaction) !== "—" && (
+                        <p className="text-sm text-muted-foreground mt-1 truncate">
                           {getTransactionDescription(transaction)}
-                        </span>
-                      </td>
-                      <td
-                        className="p-3 text-right font-semibold whitespace-nowrap"
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right ml-2 flex-shrink-0">
+                      <p
+                        className="font-semibold"
                         style={{
                           color: isExpense
                             ? "var(--color-destructive)"
@@ -176,77 +240,18 @@ export function TransactionListModal({
                         {valuesHidden
                           ? maskValue(formattedAmount)
                           : formattedAmount}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Card View */}
-          <div className="md:hidden space-y-2">
-            {paginatedTransactions.map((transaction, index) => {
-              const amount = transaction.expense || transaction.income;
-              const isExpense = transaction.expense > 0;
-              const formattedAmount = formatCurrency(amount);
-
-              return (
-                <div
-                  key={`${getId(transaction)}-${index}`}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm">
-                        {format(getDate(transaction), "MMM dd")}
-                      </span>
-                      <Badge variant="secondary" className="text-xs">
-                        <span className="inline-flex items-center gap-1">
-                          {getIcon(transaction.category) && (
-                            <CategoryIcon
-                              name={getIcon(transaction.category)}
-                              size={14}
-                              className="inline-block shrink-0"
-                            />
-                          )}
-                          {transaction.category}
-                        </span>
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {transaction.account}
-                      </Badge>
-                    </div>
-                    {getTransactionDescription(transaction) !== "—" && (
-                      <p className="text-sm text-muted-foreground mt-1 truncate">
-                        {getTransactionDescription(transaction)}
                       </p>
-                    )}
+                    </div>
                   </div>
-                  <div className="text-right ml-2 flex-shrink-0">
-                    <p
-                      className="font-semibold"
-                      style={{
-                        color: isExpense
-                          ? "var(--color-destructive)"
-                          : "var(--color-success)",
-                      }}
-                    >
-                      {isExpense ? "-" : "+"}
-                      {valuesHidden
-                        ? maskValue(formattedAmount)
-                        : formattedAmount}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="pt-4 border-t">
+          <div className="flex-shrink-0 border-t px-6 py-4">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

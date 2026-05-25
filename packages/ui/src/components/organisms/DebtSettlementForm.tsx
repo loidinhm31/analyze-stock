@@ -87,7 +87,11 @@ export function DebtSettlementForm({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div
+        className="min-h-0 flex-1 overflow-y-auto px-6 py-4"
+        onWheel={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+      >
         <form id="debt-settlement-form" onSubmit={handleSubmit}>
           <div className="grid gap-4">
             <FormField

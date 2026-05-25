@@ -14,7 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ScrollArea,
 } from "@money-insight/ui/components/atoms";
 import type { Account, Debt, DebtSettlement, DebtSettlementInput } from "@money-insight/ui/types";
 import { cn } from "@money-insight/ui/lib";
@@ -92,8 +91,8 @@ export function DebtDetailDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-hidden p-0">
-          <DialogHeader className="border-b px-6 pt-6 pb-4">
+        <DialogContent className="max-h-[90vh] max-w-2xl flex flex-col overflow-hidden p-0">
+          <DialogHeader className="flex-shrink-0 border-b px-6 pt-6 pb-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <DialogTitle className={cn(isCompleted && "line-through")}>
@@ -110,8 +109,12 @@ export function DebtDetailDialog({
             </div>
           </DialogHeader>
 
-          <ScrollArea className="max-h-[calc(90vh-150px)]">
-            <div className="space-y-6 px-6 py-4">
+          <div
+            className="min-h-0 flex-1 overflow-y-auto px-6 py-4"
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+          >
+            <div className="space-y-6">
               <div className="grid gap-3 sm:grid-cols-3">
                 <DebtSummaryCard label="Principal" value={displayAmount(debt.principalAmount)} />
                 <DebtSummaryCard label="Settled" value={displayAmount(debt.settledAmount)} />
@@ -199,9 +202,9 @@ export function DebtDetailDialog({
                 </CardContent>
               </Card>
             </div>
-          </ScrollArea>
+          </div>
 
-          <DialogFooter className="border-t px-6 py-4">
+          <DialogFooter className="flex-shrink-0 border-t px-6 py-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Close
             </Button>

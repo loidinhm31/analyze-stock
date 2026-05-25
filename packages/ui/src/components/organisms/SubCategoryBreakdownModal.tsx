@@ -37,8 +37,8 @@ export function SubCategoryBreakdownModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="max-w-md max-h-[80vh] flex flex-col overflow-hidden p-0">
+        <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {parentIcon ? (
@@ -72,7 +72,11 @@ export function SubCategoryBreakdownModal({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto mt-4 -mx-6 px-6">
+        <div
+          className="min-h-0 flex-1 overflow-y-auto px-6 pb-6"
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
           <div className="space-y-2">
             {subCategories.map((subCat) => {
               const formattedAmount = formatCurrency(subCat.total);

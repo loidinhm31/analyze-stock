@@ -217,82 +217,88 @@ export function BudgetFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[720px]">
-        <DialogHeader>
+      <DialogContent className="max-h-[90vh] sm:max-w-[720px] flex flex-col overflow-hidden p-0">
+        <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4">
           <DialogTitle>{budget ? "Edit Budget" : "Create Budget"}</DialogTitle>
           <DialogDescription>
             Track monthly spending for selected expense categories and optional accounts.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
-          <FormField label="Budget Name" id="budget-name" required>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Groceries" />
-          </FormField>
-          <FormField label="Amount" id="budget-amount" icon={<DollarSign className="h-4 w-4" />} required>
-            <div className="flex gap-2">
-              <Input
-                value={amount}
-                onChange={(e) => setAmount(formatNumericInput(e.target.value))}
-                placeholder="0"
-              />
-              <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPORTED_CURRENCIES.map((item) => (
-                    <SelectItem key={item} value={item}>{item}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </FormField>
-          <FormField label="First Cycle Start" id="budget-start" required>
-            <DatePicker
-              date={firstCycleStartDate}
-              onDateChange={(value) => value && setFirstCycleStartDate(value)}
-              className="w-full"
-            />
-          </FormField>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="grid gap-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <Layers className="h-4 w-4" />
-                Categories
+        <div
+          className="min-h-0 flex-1 overflow-y-auto px-6 py-4"
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
+          <div className="grid gap-4">
+            <FormField label="Budget Name" id="budget-name" required>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Groceries" />
+            </FormField>
+            <FormField label="Amount" id="budget-amount" icon={<DollarSign className="h-4 w-4" />} required>
+              <div className="flex gap-2">
+                <Input
+                  value={amount}
+                  onChange={(e) => setAmount(formatNumericInput(e.target.value))}
+                  placeholder="0"
+                />
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPORTED_CURRENCIES.map((item) => (
+                      <SelectItem key={item} value={item}>{item}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <ChecklistField
-                items={categoryItems}
-                selected={categoryNames}
-                title="Categories"
-                helper={`${categoryNames.length} selected`}
-                search={categorySearch}
-                emptySelectionLabel="No categories selected yet."
-                onSearchChange={setCategorySearch}
-                onToggle={(value) => setCategoryNames((current) => toggleSelection(current, value))}
+            </FormField>
+            <FormField label="First Cycle Start" id="budget-start" required>
+              <DatePicker
+                date={firstCycleStartDate}
+                onDateChange={(value) => value && setFirstCycleStartDate(value)}
+                className="w-full"
               />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <Wallet className="h-4 w-4" />
-                Accounts
+            </FormField>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Layers className="h-4 w-4" />
+                  Categories
+                </div>
+                <ChecklistField
+                  items={categoryItems}
+                  selected={categoryNames}
+                  title="Categories"
+                  helper={`${categoryNames.length} selected`}
+                  search={categorySearch}
+                  emptySelectionLabel="No categories selected yet."
+                  onSearchChange={setCategorySearch}
+                  onToggle={(value) => setCategoryNames((current) => toggleSelection(current, value))}
+                />
               </div>
-              <ChecklistField
-                items={accountItems}
-                selected={accountNames}
-                title="Accounts"
-                helper={accountNames.length === 0 ? "All accounts" : `${accountNames.length} selected`}
-                search={accountSearch}
-                emptySelectionLabel="No account filter. Budget applies to all accounts."
-                onSearchChange={setAccountSearch}
-                onToggle={(value) => setAccountNames((current) => toggleSelection(current, value))}
-              />
+              <div className="grid gap-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Wallet className="h-4 w-4" />
+                  Accounts
+                </div>
+                <ChecklistField
+                  items={accountItems}
+                  selected={accountNames}
+                  title="Accounts"
+                  helper={accountNames.length === 0 ? "All accounts" : `${accountNames.length} selected`}
+                  search={accountSearch}
+                  emptySelectionLabel="No account filter. Budget applies to all accounts."
+                  onSearchChange={setAccountSearch}
+                  onToggle={(value) => setAccountNames((current) => toggleSelection(current, value))}
+                />
+              </div>
             </div>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
           </div>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 border-t px-6 py-4">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
