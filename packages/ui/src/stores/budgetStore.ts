@@ -113,9 +113,8 @@ export const useBudgetStore = create<BudgetStore>()((set, get) => ({
 
     try {
       const budgets = await budgetService.getBudgets();
-      set({ budgets, isLoading: false, isDbReady: false });
+      set({ budgets, isLoading: false, isDbReady: true });
       await get().refreshUsage();
-      set({ isDbReady: true });
     } catch (error) {
       set({
         isLoading: false,
@@ -132,9 +131,8 @@ export const useBudgetStore = create<BudgetStore>()((set, get) => ({
     try {
       const budget = await budgetService.addBudget(input);
       const budgets = [budget, ...get().budgets];
-      set({ budgets, isLoading: false, isDbReady: false });
+      set({ budgets, isLoading: false, isDbReady: true });
       await get().refreshUsage();
-      set({ isDbReady: true });
       return budget;
     } catch (error) {
       set({
@@ -153,10 +151,9 @@ export const useBudgetStore = create<BudgetStore>()((set, get) => ({
       set((state) => ({
         budgets: state.budgets.map((item) => (item.id === updated.id ? updated : item)),
         isLoading: false,
-        isDbReady: false,
+        isDbReady: true,
       }));
       await get().refreshUsage();
-      set({ isDbReady: true });
       return updated;
     } catch (error) {
       set({

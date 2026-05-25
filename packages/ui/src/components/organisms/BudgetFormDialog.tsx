@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { DollarSign, Layers, Wallet } from "lucide-react";
+import { Check, DollarSign, Layers, Wallet } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@money-insight/ui/components/atoms";
 import { DatePicker, FormField } from "@money-insight/ui/components/molecules";
-import { formatNumericInput, parseNumericInput } from "@money-insight/ui/lib";
+import { cn, formatNumericInput, parseNumericInput } from "@money-insight/ui/lib";
 import { SUPPORTED_CURRENCIES } from "@money-insight/shared";
 import type { Account, Budget, Category, NewBudget } from "@money-insight/ui/types";
 
@@ -36,6 +36,7 @@ interface ChecklistProps {
   title: string;
   helper: string;
   search: string;
+  emptySelectionLabel: string;
   onSearchChange: (value: string) => void;
   onToggle: (value: string) => void;
 }
@@ -46,12 +47,23 @@ function ChecklistField({
   title,
   helper,
   search,
+  emptySelectionLabel,
   onSearchChange,
   onToggle,
 }: ChecklistProps) {
-  const filteredItems = items.filter((item) =>
-    item.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredItems = items
+    .filter((item) => item.toLowerCase().includes(normalizedSearch))
+    .sort((left, right) => {
+      const leftSelected = selected.includes(left);
+      const rightSelected = selected.includes(right);
+
+      if (leftSelected !== rightSelected) {
+        return leftSelected ? -1 : 1;
+      }
+
+      return left.localeCompare(right);
+    });
 
   return (
     <div className="grid gap-2">
@@ -64,20 +76,72 @@ function ChecklistField({
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder={`Search ${title.toLowerCase()}`}
       />
-      <div className="max-h-36 space-y-2 overflow-y-auto rounded-md border border-border p-3">
-        {filteredItems.map((item) => (
-          <label key={item} className="flex items-center gap-2 text-sm text-foreground">
-            <input
-              type="checkbox"
-              checked={selected.includes(item)}
-              onChange={() => onToggle(item)}
-            />
-            <span>{item}</span>
-          </label>
-        ))}
-        {filteredItems.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No matching items.</p>
-        ) : null}
+      <div className="rounded-lg border border-border bg-background/70 p-3">
+        <div className="mb-3 flex min-h-8 flex-wrap gap-2">
+          {selected.length > 0 ? (
+            selected.map((item) => (
+              <span
+                key={item}
+                className="inline-flex items-center rounded-full bg-primary/12 px-2.5 py-1 text-xs font-medium text-primary"
+              >
+                {item}
+              </span>
+            ))
+          ) : (
+            <span className="text-xs text-muted-foreground">{emptySelectionLabel}</span>
+          )}
+        </div>
+        <div className="max-h-48 overflow-y-auto pr-1">
+          <div className="grid gap-2 pr-2">
+            {filteredItems.map((item) => {
+              const isSelected = selected.includes(item);
+
+              return (
+                <label
+                  key={item}
+                  className="block"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => onToggle(item)}
+                    className="sr-only"
+                  />
+                  <span
+                    className={cn(
+                      "flex w-full cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-colors select-none",
+                      isSelected
+                        ? "border-primary/40 bg-primary/10 text-foreground"
+                        : "border-border bg-background hover:border-primary/30 hover:bg-muted/40",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors",
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-transparent",
+                      )}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="flex-1 truncate">{item}</span>
+                    {isSelected ? (
+                      <span className="text-[11px] font-medium uppercase tracking-wide text-primary">
+                        Selected
+                      </span>
+                    ) : null}
+                  </span>
+                </label>
+              );
+            })}
+            {filteredItems.length === 0 ? (
+              <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+                No matching items.
+              </p>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -153,7 +217,7 @@ export function BudgetFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[720px]">
         <DialogHeader>
           <DialogTitle>{budget ? "Edit Budget" : "Create Budget"}</DialogTitle>
           <DialogDescription>
@@ -203,6 +267,7 @@ export function BudgetFormDialog({
                 title="Categories"
                 helper={`${categoryNames.length} selected`}
                 search={categorySearch}
+                emptySelectionLabel="No categories selected yet."
                 onSearchChange={setCategorySearch}
                 onToggle={(value) => setCategoryNames((current) => toggleSelection(current, value))}
               />
@@ -218,6 +283,7 @@ export function BudgetFormDialog({
                 title="Accounts"
                 helper={accountNames.length === 0 ? "All accounts" : `${accountNames.length} selected`}
                 search={accountSearch}
+                emptySelectionLabel="No account filter. Budget applies to all accounts."
                 onSearchChange={setAccountSearch}
                 onToggle={(value) => setAccountNames((current) => toggleSelection(current, value))}
               />

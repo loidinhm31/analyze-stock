@@ -103,6 +103,42 @@ describe("budgetStore", () => {
     expect(useBudgetStore.getState().isDbReady).toBe(true);
   });
 
+  it("keeps budget store ready while updating an existing budget", async () => {
+    const readinessStates: boolean[] = [];
+
+    setBudgetService({
+      getBudgets: vi.fn(),
+      getBudget: vi.fn(),
+      addBudget: vi.fn(),
+      updateBudget: vi.fn().mockResolvedValue({
+        ...budget,
+        amount: 1500,
+        updatedAt: "2024-01-02T00:00:00.000Z",
+      }),
+      deleteBudget: vi.fn(),
+      getNotificationEvents: vi.fn().mockResolvedValue([]),
+      enqueueNotificationEvent: vi.fn(),
+      updateNotificationEventStatus: vi.fn(),
+    });
+    useBudgetStore.setState({
+      budgets: [budget],
+      usage: {},
+      isLoading: false,
+      isDbReady: true,
+      error: null,
+    });
+
+    const unsubscribe = useBudgetStore.subscribe((state) => {
+      readinessStates.push(state.isDbReady);
+    });
+
+    await useBudgetStore.getState().updateBudget({ ...budget, amount: 1500 });
+    unsubscribe();
+
+    expect(readinessStates).not.toContain(false);
+    expect(useBudgetStore.getState().isDbReady).toBe(true);
+  });
+
   it("skips duplicate worsened events for the same transaction and cycle", async () => {
     const existingEvent: NotificationEvent = {
       id: "event-1",
