@@ -27,7 +27,7 @@ import {
 import { QmServerAuthAdapter } from "@money-insight/ui/adapters/shared";
 import { TauriAuthAdapter } from "@money-insight/ui/adapters/tauri";
 import { isTauri } from "@money-insight/ui/utils";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { AppShell } from "@money-insight/ui/components/templates";
 import {
@@ -93,17 +93,19 @@ export function MoneyInsightApp({
 }: MoneyInsightAppProps) {
   // Gate rendering on DB ready to prevent getDb() throws before initDb() completes
   const [dbReady, setDbReady] = useState(false);
+  const [tokensReady, setTokensReady] = useState(!embedded);
 
   useEffect(() => {
     // Embedded: use userId from hub. Standalone: userId=undefined → legacy "MoneyInsightDB"
     setDbReady(false);
+    setTokensReady(!embedded);
     initDb(authTokens?.userId)
       .then(async () => {
         await ensureCategoryBackfill();
         setDbReady(true);
       })
       .catch(console.error);
-  }, [authTokens?.userId]);
+  }, [authTokens?.userId, embedded]);
 
   // Register logout cleanup with hub after DB is ready
   useEffect(() => {
@@ -184,11 +186,12 @@ export function MoneyInsightApp({
   }, [dbReady]);
 
   const isAuthenticated = !!(authTokens?.accessToken && authTokens?.refreshToken);
-  const autoSyncEnabled = dbReady && isAuthenticated && embedded;
+  const autoSyncEnabled = dbReady && tokensReady && isAuthenticated && embedded;
 
-  // If external auth tokens are provided, save them to the auth service
-  useEffect(() => {
+  // Write embedded SSO tokens before child auto-sync effects are allowed to run.
+  useLayoutEffect(() => {
     if (
+      dbReady &&
       authTokens?.accessToken &&
       authTokens?.refreshToken &&
       services.auth &&
@@ -201,9 +204,10 @@ export function MoneyInsightApp({
           authTokens.refreshToken,
           authTokens.userId || "",
         )
+        .then(() => setTokensReady(true))
         .catch(console.error);
     }
-  }, [authTokens, services.auth]);
+  }, [dbReady, authTokens, services.auth]);
 
   const skipAuth = !!(authTokens?.accessToken && authTokens?.refreshToken);
 
