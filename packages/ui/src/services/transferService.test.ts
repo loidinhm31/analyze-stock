@@ -8,6 +8,7 @@ import {
   createTransferTransactions,
   getTransferDisplayNote,
   getTransferUserNote,
+  renameTransferAccountInNote,
 } from "./transferService";
 import {
   INCOMING_TRANSFER_CATEGORY,
@@ -77,9 +78,9 @@ describe("parseTransferNote", () => {
 
 describe("transfer note helpers", () => {
   it("stores the real user note alongside transfer metadata", () => {
-    expect(parseTransferNote(createOutgoingTransferNote("", "Savings"))).toEqual(
-      { userNote: "", toAccount: "Savings" },
-    );
+    expect(
+      parseTransferNote(createOutgoingTransferNote("", "Savings")),
+    ).toEqual({ userNote: "", toAccount: "Savings" });
     expect(parseTransferNote(createIncomingTransferNote("", "Cash"))).toEqual({
       userNote: "",
       fromAccount: "Cash",
@@ -88,8 +89,23 @@ describe("transfer note helpers", () => {
 
   it("preserves an explicit user note", () => {
     expect(
-      parseTransferNote(createOutgoingTransferNote("Monthly savings", "Savings")),
+      parseTransferNote(
+        createOutgoingTransferNote("Monthly savings", "Savings"),
+      ),
     ).toEqual({ userNote: "Monthly savings", toAccount: "Savings" });
+  });
+
+  it("renames only matching transfer account metadata", () => {
+    expect(
+      renameTransferAccountInNote(
+        createIncomingTransferNote("Move funds", "Wallet"),
+        "Wallet",
+        "Main wallet",
+      ),
+    ).toBe('{"userNote":"Move funds","fromAccount":"Main wallet"}');
+    expect(
+      renameTransferAccountInNote("plain note", "Wallet", "Main wallet"),
+    ).toBe("plain note");
   });
 });
 
@@ -111,8 +127,12 @@ describe("createTransferTransactions", () => {
     expect(pair.incoming.amount).toBe(100_000);
     expect(pair.outgoing.excludeReport).toBe(true);
     expect(pair.incoming.excludeReport).toBe(true);
-    expect(parseTransferNote(pair.outgoing.note)?.userNote).toBe("Move savings");
-    expect(parseTransferNote(pair.incoming.note)?.userNote).toBe("Move savings");
+    expect(parseTransferNote(pair.outgoing.note)?.userNote).toBe(
+      "Move savings",
+    );
+    expect(parseTransferNote(pair.incoming.note)?.userNote).toBe(
+      "Move savings",
+    );
     expect(pair.outgoing.transferId).toBe("tid-002");
     expect(pair.incoming.transferId).toBe("tid-002");
   });
@@ -162,7 +182,11 @@ describe("reconstructTransferParams", () => {
   const pair = [outgoing, incoming];
 
   it("reconstructs params when editing the outgoing leg", () => {
-    const editedLeg: Transaction = { ...outgoing, amount: -600_000, date: "2024-03-11" };
+    const editedLeg: Transaction = {
+      ...outgoing,
+      amount: -600_000,
+      date: "2024-03-11",
+    };
     const params = reconstructTransferParams(editedLeg, pair);
 
     expect(params).not.toBeNull();
@@ -206,9 +230,15 @@ describe("reconstructTransferParams", () => {
   });
 
   it("uses counterpart.account regardless of note JSON content", () => {
-    const corruptedCounterpart: Transaction = { ...incoming, note: "corrupted" };
+    const corruptedCounterpart: Transaction = {
+      ...incoming,
+      note: "corrupted",
+    };
     const editedLeg: Transaction = { ...outgoing };
-    const params = reconstructTransferParams(editedLeg, [outgoing, corruptedCounterpart]);
+    const params = reconstructTransferParams(editedLeg, [
+      outgoing,
+      corruptedCounterpart,
+    ]);
     // counterpart.account ("Savings") is used directly — note parsing is only for userNote
     expect(params!.toAccount).toBe("Savings");
   });
@@ -253,8 +283,12 @@ describe("transfer display helpers", () => {
       "Trip expenses",
     );
 
-    expect(getTransferDisplayNote(outgoing)).toBe("Trip expenses • Send to Savings");
-    expect(getTransferDisplayNote(incoming)).toBe("Trip expenses • Receive from Wallet");
+    expect(getTransferDisplayNote(outgoing)).toBe(
+      "Trip expenses • Send to Savings",
+    );
+    expect(getTransferDisplayNote(incoming)).toBe(
+      "Trip expenses • Receive from Wallet",
+    );
   });
 
   it("falls back to direction-only text when the user note is empty", () => {
@@ -283,7 +317,9 @@ describe("transfer display helpers", () => {
 
     expect(getTransferUserNote(legacyOutgoing)).toBe("");
     expect(getTransferUserNote(legacyIncoming)).toBe("");
-    expect(getTransferDisplayNote({ note: legacyOutgoing })).toBe("Send to Savings");
+    expect(getTransferDisplayNote({ note: legacyOutgoing })).toBe(
+      "Send to Savings",
+    );
     expect(getTransferDisplayNote({ note: legacyIncoming })).toBe(
       "Receive from Wallet",
     );

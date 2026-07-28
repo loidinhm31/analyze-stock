@@ -123,7 +123,7 @@ money-insight/
 ### State Management
 | File | LOC | Purpose |
 |------|-----|---------|
-| `packages/ui/src/stores/spendingStore.ts` | 789 | Transactions, accounts, analysis, filters, UI state. Actions: addTransaction, createTransfer, updateTransfer, deleteTransfer, importFromCSV, refreshAnalysis, adjustBalance. |
+| `packages/ui/src/stores/spendingStore.ts` | 789 | Transactions, accounts, analysis, filters, UI state. Actions: addTransaction, createTransfer, updateTransfer, deleteTransfer, updateAccount (including dependent-store refresh after rename), importFromCSV, refreshAnalysis, adjustBalance. |
 | `packages/ui/src/stores/categoryGroupStore.ts` | 279 | Categories, groups, mappings, lookup map. Debounced 50ms triggerAnalysisRefresh(). |
 
 ### Core Components
@@ -148,7 +148,8 @@ money-insight/
 | File | Purpose |
 |------|---------|
 | `packages/ui/src/adapters/factory/ServiceFactory.ts` | DI registry: setTransactionService, getTransactionService, etc. (7 services) |
-| `packages/ui/src/adapters/web/database.ts` | Dexie.js schema: transactions, accounts, categories, categoryGroups, categoryMappings, importBatches, _syncMeta, _pendingChanges |
+| `packages/ui/src/adapters/web/database.ts` | Dexie.js schema: transactions, accounts, categories, categoryGroups, categoryMappings, importBatches, debts, debtSettlements, budgets, _syncMeta, _pendingChanges |
+| `packages/ui/src/adapters/web/IndexedDBAccountAdapter.ts` | Account CRUD; validates names and atomically propagates renames to transactions, transfer notes, debts, settlements, and budgets. |
 | `packages/ui/src/adapters/web/IndexedDBTransactionAdapter.ts` | CRUD + transfer pair management |
 | `packages/ui/src/adapters/web/IndexedDBSyncAdapter.ts` | Checkpoint-based sync orchestration, concurrency lock, progress callbacks |
 | `packages/ui/src/adapters/shared/QmServerAuthAdapter.ts` | HTTP auth (login, register, logout, token refresh) |

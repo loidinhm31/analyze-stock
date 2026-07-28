@@ -30,10 +30,7 @@ import {
   TransferForm,
   AddTransactionForm,
 } from "@money-insight/ui/components/organisms";
-import {
-  formatCurrency,
-  type TimePeriodMode,
-} from "@money-insight/ui/lib";
+import { formatCurrency, type TimePeriodMode } from "@money-insight/ui/lib";
 import {
   loadStoredTransactionPagePreferences,
   resolveTransactionPagePreferences,
@@ -91,7 +88,7 @@ export function TransactionPage() {
       : transactions;
   const selectedAccountEntity =
     selectedAccount !== "__all__"
-      ? accounts.find((account) => account.name === selectedAccount) ?? null
+      ? (accounts.find((account) => account.name === selectedAccount) ?? null)
       : null;
   const maskValue = (value: string) => "*".repeat(value.length);
 
@@ -167,8 +164,14 @@ export function TransactionPage() {
   const handleAccountSubmit = useCallback(
     async (account: Account) => {
       await updateAccount(account);
+      if (
+        selectedAccount === editingAccount?.name &&
+        account.name !== selectedAccount
+      ) {
+        setSelectedAccount(account.name);
+      }
     },
-    [updateAccount],
+    [editingAccount?.name, selectedAccount, updateAccount],
   );
 
   const handleAccountDelete = useCallback(

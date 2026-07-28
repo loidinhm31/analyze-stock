@@ -17,7 +17,11 @@ import {
   SelectValue,
 } from "@money-insight/ui/components/atoms";
 import { FormField } from "@money-insight/ui/components/molecules";
-import { cn, formatNumericInput, parseNumericInput } from "@money-insight/ui/lib";
+import {
+  cn,
+  formatNumericInput,
+  parseNumericInput,
+} from "@money-insight/ui/lib";
 import type { Account, NewAccount } from "@money-insight/ui/types";
 
 interface BaseAccountFormProps {
@@ -41,7 +45,9 @@ interface EditAccountFormProps extends BaseAccountFormProps {
 export type AccountFormProps = AddAccountFormProps | EditAccountFormProps;
 
 function resolveIcon(iconVal: string | undefined, type: string): string {
-  return iconVal && ACCOUNT_ICONS[iconVal] ? iconVal : (ACCOUNT_TYPE_ICON[type] ?? "cash");
+  return iconVal && ACCOUNT_ICONS[iconVal]
+    ? iconVal
+    : (ACCOUNT_TYPE_ICON[type] ?? "cash");
 }
 
 export function AccountForm(props: AccountFormProps) {
@@ -53,14 +59,21 @@ export function AccountForm(props: AccountFormProps) {
   const [accountType, setAccountType] = useState(
     account?.accountType || "Cash",
   );
-  const [icon, setIcon] = useState(() => resolveIcon(account?.icon, account?.accountType || "Cash"));
+  const [icon, setIcon] = useState(() =>
+    resolveIcon(account?.icon, account?.accountType || "Cash"),
+  );
   const [initialBalance, setInitialBalance] = useState(
-    account ? formatNumericInput(account.initialBalance.toString(), { allowNegative: true }) : "0",
+    account
+      ? formatNumericInput(account.initialBalance.toString(), {
+          allowNegative: true,
+        })
+      : "0",
   );
   const [currency, setCurrency] = useState(account?.currency || "VND");
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [saveError, setSaveError] = useState<string>();
 
   // Reset form when switching between add/edit or when account changes
   useEffect(() => {
@@ -76,6 +89,7 @@ export function AccountForm(props: AccountFormProps) {
       );
       setCurrency(account.currency);
       setConfirmDelete(false);
+      setSaveError(undefined);
     } else if (mode === "add") {
       setName("");
       setAccountType("Cash");
@@ -83,6 +97,7 @@ export function AccountForm(props: AccountFormProps) {
       setInitialBalance("0");
       setCurrency("VND");
       setConfirmDelete(false);
+      setSaveError(undefined);
     }
   }, [mode, account]);
 
@@ -94,6 +109,7 @@ export function AccountForm(props: AccountFormProps) {
     }
 
     setLoading(true);
+    setSaveError(undefined);
 
     try {
       const numericBalance = parseNumericInput(initialBalance) || 0;
@@ -125,6 +141,11 @@ export function AccountForm(props: AccountFormProps) {
       onCancel();
     } catch (error) {
       console.error("Failed to save account:", error);
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : "Could not save account. Try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -180,8 +201,13 @@ export function AccountForm(props: AccountFormProps) {
               required
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                setSaveError(undefined);
+              }}
               placeholder="e.g., Main Wallet, Savings, Credit Card"
+              disabled={loading || deleting}
+              error={saveError}
             />
 
             {/* Account Type */}
@@ -192,6 +218,7 @@ export function AccountForm(props: AccountFormProps) {
             >
               <Select
                 value={accountType}
+                disabled={loading || deleting}
                 onValueChange={(val) => {
                   setAccountType(val);
                   setIcon(ACCOUNT_TYPE_ICON[val] ?? "cash");
@@ -219,6 +246,7 @@ export function AccountForm(props: AccountFormProps) {
                     key={key}
                     type="button"
                     onClick={() => setIcon(key)}
+                    disabled={loading || deleting}
                     title={entry.label}
                     className={cn(
                       "flex items-center justify-center h-10 w-10 rounded-md border transition-colors hover:bg-accent",
@@ -245,6 +273,7 @@ export function AccountForm(props: AccountFormProps) {
                   type="text"
                   inputMode="decimal"
                   value={initialBalance}
+                  disabled={loading || deleting}
                   onChange={(e) =>
                     setInitialBalance(
                       formatNumericInput(e.target.value, {
@@ -256,7 +285,11 @@ export function AccountForm(props: AccountFormProps) {
                   className="flex-1"
                   required
                 />
-                <Select value={currency} onValueChange={setCurrency}>
+                <Select
+                  value={currency}
+                  onValueChange={setCurrency}
+                  disabled={loading || deleting}
+                >
                   <SelectTrigger className="w-24">
                     <SelectValue />
                   </SelectTrigger>

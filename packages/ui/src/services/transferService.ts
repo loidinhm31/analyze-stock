@@ -25,6 +25,29 @@ export function parseTransferNote(note: string): TransferNote | null {
   }
 }
 
+export function renameTransferAccountInNote(
+  note: string,
+  oldAccountName: string,
+  newAccountName: string,
+): string {
+  const parsed = parseTransferNote(note);
+  if (!parsed) return note;
+
+  let changed = false;
+  const renamedNote: TransferNote = { ...parsed };
+
+  if (parsed.fromAccount === oldAccountName) {
+    renamedNote.fromAccount = newAccountName;
+    changed = true;
+  }
+  if (parsed.toAccount === oldAccountName) {
+    renamedNote.toAccount = newAccountName;
+    changed = true;
+  }
+
+  return changed ? JSON.stringify(renamedNote) : note;
+}
+
 export function createOutgoingTransferNote(
   userNote: string,
   toAccount: string,

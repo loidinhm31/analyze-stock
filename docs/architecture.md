@@ -286,6 +286,18 @@ Budget and notification event rows sync through the same app collection as trans
 
 **Key file:** `packages/ui/src/adapters/web/database.ts`
 
+### Account Rename Consistency
+
+Account names are the persisted references used by transactions and several
+account-scoped records. `IndexedDBAccountAdapter.updateAccount()` handles a
+rename in one read/write Dexie transaction: it trims the new name, rejects an
+empty or case-insensitive duplicate name, updates transaction `account` fields,
+rewrites both endpoints in transfer-note JSON, and migrates matching debt,
+settlement, and budget account references. Each changed row receives a new
+`updatedAt`, increments `syncVersion`, and is marked for sync. The spending
+store then reloads transactions and dependent budget/debt state and updates any
+active account filter so the UI follows the renamed account.
+
 ## State Management
 
 Two Zustand stores manage all client state.

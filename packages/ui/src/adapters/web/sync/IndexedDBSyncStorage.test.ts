@@ -88,13 +88,15 @@ vi.mock("@money-insight/ui/adapters/web", async () => {
       }
       await mockDb.debts.delete(debtId);
     }),
-    deleteRemoteSettlementAndLinkedTransaction: vi.fn(async (settlementId: string) => {
-      const settlement = await mockDb.debtSettlements.get(settlementId);
-      if (!settlement) return undefined;
-      await mockDb.debtSettlements.delete(settlementId);
-      await mockDb.transactions.delete(settlement.transactionId);
-      return settlement.debtId;
-    }),
+    deleteRemoteSettlementAndLinkedTransaction: vi.fn(
+      async (settlementId: string) => {
+        const settlement = await mockDb.debtSettlements.get(settlementId);
+        if (!settlement) return undefined;
+        await mockDb.debtSettlements.delete(settlementId);
+        await mockDb.transactions.delete(settlement.transactionId);
+        return settlement.debtId;
+      },
+    ),
     getDb: () => mockDb,
     getCurrentTimestamp: () => 123,
     SYNC_META_KEYS: {
@@ -159,7 +161,11 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
       count: vi.fn().mockResolvedValue(0),
     });
     mockDb.transaction.mockImplementation(
-      async (_mode: unknown, _tables: unknown, callback: () => Promise<unknown>) => callback(),
+      async (
+        _mode: unknown,
+        _tables: unknown,
+        callback: () => Promise<unknown>,
+      ) => callback(),
     );
   });
 
@@ -223,6 +229,55 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
         syncedAt: null,
       },
     ]);
+    mockDb.debts.toArray.mockResolvedValue([
+      {
+        id: "debt-1",
+        name: "Loan",
+        debtType: "payable",
+        counterpartyName: "Alex",
+        accountId: "Main wallet",
+        currency: "VND",
+        principalAmount: 100,
+        settledAmount: 0,
+        remainingAmount: 100,
+        isCompleted: false,
+        originatedAt: "2024-01-03",
+        createdAt: "2024-01-03T00:00:00.000Z",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+        syncVersion: 3,
+        syncedAt: null,
+      },
+    ]);
+    mockDb.debtSettlements.toArray.mockResolvedValue([
+      {
+        id: "settlement-1",
+        debtId: "debt-1",
+        transactionId: "tx-regular",
+        accountId: "Main wallet",
+        amount: 20,
+        settledAt: "2024-01-03",
+        createdAt: "2024-01-03T00:00:00.000Z",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+        syncVersion: 3,
+        syncedAt: null,
+      },
+    ]);
+    mockDb.budgets.toArray.mockResolvedValue([
+      {
+        id: "budget-1",
+        name: "Wallet budget",
+        amount: 500,
+        currency: "VND",
+        categoryNames: [],
+        accountNames: ["Main wallet"],
+        firstCycleStartDate: "2024-01-01",
+        status: "active",
+        createdAt: "2024-01-01T00:00:00.000Z",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+        syncVersion: 3,
+        syncedAt: null,
+      },
+    ]);
 
     const storage = new IndexedDBSyncStorage();
     const pendingChanges = await storage.getPendingChanges();
@@ -237,6 +292,165 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
       version: 2,
       deleted: false,
     });
+  });
+
+  it("exports a renamed account and every rewritten transaction", async () => {
+    mockDb.accounts.toArray.mockResolvedValue([
+      {
+        id: "account-wallet",
+        name: "Main wallet",
+        initialBalance: 0,
+        currency: "VND",
+        createdAt: "2024-01-01T00:00:00.000Z",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+        syncVersion: 4,
+        syncedAt: null,
+      },
+    ]);
+    mockDb.transactions.toArray.mockResolvedValue([
+      {
+        id: "tx-regular",
+        source: "manual",
+        note: "Lunch",
+        amount: -100,
+        category: "Food",
+        account: "Main wallet",
+        currency: "VND",
+        date: "2024-01-03",
+        excludeReport: false,
+        expense: 100,
+        income: 0,
+        yearMonth: "2024-01",
+        year: 2024,
+        month: 1,
+        createdAt: "2024-01-03T00:00:00.000Z",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+        syncVersion: 5,
+        syncedAt: null,
+      },
+      {
+        id: "tx-transfer-in",
+        source: "transfer",
+        transferId: "transfer-1",
+        note: '{"userNote":"Move funds","fromAccount":"Main wallet"}',
+        amount: 100,
+        category: "__transfer__",
+        account: "Savings",
+        currency: "VND",
+        date: "2024-01-03",
+        excludeReport: true,
+        expense: 0,
+        income: 100,
+        yearMonth: "2024-01",
+        year: 2024,
+        month: 1,
+        createdAt: "2024-01-03T00:00:00.000Z",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+        syncVersion: 5,
+        syncedAt: null,
+      },
+    ]);
+    mockDb.debts.toArray.mockResolvedValue([
+      {
+        id: "debt-1",
+        name: "Loan",
+        debtType: "payable",
+        counterpartyName: "Alex",
+        accountId: "Main wallet",
+        currency: "VND",
+        principalAmount: 100,
+        settledAmount: 0,
+        remainingAmount: 100,
+        isCompleted: false,
+        originatedAt: "2024-01-03",
+        createdAt: "2024-01-03T00:00:00.000Z",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+        syncVersion: 3,
+        syncedAt: null,
+      },
+    ]);
+    mockDb.debtSettlements.toArray.mockResolvedValue([
+      {
+        id: "settlement-1",
+        debtId: "debt-1",
+        transactionId: "tx-regular",
+        accountId: "Main wallet",
+        amount: 20,
+        settledAt: "2024-01-03",
+        createdAt: "2024-01-03T00:00:00.000Z",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+        syncVersion: 3,
+        syncedAt: null,
+      },
+    ]);
+    mockDb.budgets.toArray.mockResolvedValue([
+      {
+        id: "budget-1",
+        name: "Wallet budget",
+        amount: 500,
+        currency: "VND",
+        categoryNames: [],
+        accountNames: ["Main wallet"],
+        firstCycleStartDate: "2024-01-01",
+        status: "active",
+        createdAt: "2024-01-01T00:00:00.000Z",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+        syncVersion: 3,
+        syncedAt: null,
+      },
+    ]);
+
+    const pendingChanges = await new IndexedDBSyncStorage().getPendingChanges();
+
+    expect(pendingChanges).toContainEqual(
+      expect.objectContaining({
+        tableName: "accounts",
+        rowId: "account-wallet",
+        version: 4,
+      }),
+    );
+    expect(pendingChanges).toContainEqual(
+      expect.objectContaining({
+        tableName: "transactions",
+        rowId: "tx-regular",
+        data: expect.objectContaining({ account: "Main wallet" }),
+        version: 5,
+      }),
+    );
+    expect(pendingChanges).toContainEqual(
+      expect.objectContaining({
+        tableName: "transactions",
+        rowId: "tx-transfer-in",
+        data: expect.objectContaining({
+          note: '{"userNote":"Move funds","fromAccount":"Main wallet"}',
+        }),
+        version: 5,
+      }),
+    );
+    expect(pendingChanges).toContainEqual(
+      expect.objectContaining({
+        tableName: "debts",
+        rowId: "debt-1",
+        data: expect.objectContaining({ accountId: "Main wallet" }),
+        version: 3,
+      }),
+    );
+    expect(pendingChanges).toContainEqual(
+      expect.objectContaining({
+        tableName: "debtSettlements",
+        rowId: "settlement-1",
+        data: expect.objectContaining({ accountId: "Main wallet" }),
+        version: 3,
+      }),
+    );
+    expect(pendingChanges).toContainEqual(
+      expect.objectContaining({
+        tableName: "budgets",
+        rowId: "budget-1",
+        data: expect.objectContaining({ accountNames: ["Main wallet"] }),
+        version: 3,
+      }),
+    );
   });
 
   it("serializes unsynced debts and settlements", async () => {
@@ -383,7 +597,14 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
 
     const storage = new IndexedDBSyncStorage();
     await storage.applyRemoteChanges([
-      { tableName: "debtSettlements", rowId: "settlement-1", data: {}, version: 4, deleted: true, syncedAt: "2024-01-03T00:00:00.000Z" },
+      {
+        tableName: "debtSettlements",
+        rowId: "settlement-1",
+        data: {},
+        version: 4,
+        deleted: true,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
     ]);
 
     expect(mockDb.debtSettlements.delete).toHaveBeenCalledWith("settlement-1");
@@ -410,7 +631,14 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
 
     const storage = new IndexedDBSyncStorage();
     await storage.applyRemoteChanges([
-      { tableName: "debts", rowId: "debt-1", data: {}, version: 4, deleted: true, syncedAt: "2024-01-03T00:00:00.000Z" },
+      {
+        tableName: "debts",
+        rowId: "debt-1",
+        data: {},
+        version: 4,
+        deleted: true,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
     ]);
 
     expect(mockDb.transactions.delete).toHaveBeenCalledWith("tx-initial");
@@ -419,7 +647,7 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
     expect(mockDb.debts.delete).toHaveBeenCalledWith("debt-1");
   });
 
-  it("defaults a missing remote transaction source to manual", async () => {
+  it("applies renamed dependent records and defaults a legacy transaction source", async () => {
     const storage = new IndexedDBSyncStorage();
 
     await storage.applyRemoteChanges([
@@ -446,6 +674,61 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
         deleted: false,
         syncedAt: "2024-01-03T00:00:00.000Z",
       },
+      {
+        tableName: "debts",
+        rowId: "debt-1",
+        data: {
+          name: "Loan",
+          debtType: "payable",
+          counterpartyName: "Alex",
+          accountId: "Main wallet",
+          currency: "VND",
+          principalAmount: 100,
+          settledAmount: 0,
+          remainingAmount: 100,
+          isCompleted: false,
+          originatedAt: "2024-01-03",
+          createdAt: "2024-01-03T00:00:00.000Z",
+          updatedAt: "2024-01-03T00:00:00.000Z",
+        },
+        version: 3,
+        deleted: false,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
+      {
+        tableName: "debtSettlements",
+        rowId: "settlement-1",
+        data: {
+          debtId: "debt-1",
+          transactionId: "tx-wallet",
+          accountId: "Main wallet",
+          amount: 20,
+          settledAt: "2024-01-03",
+          createdAt: "2024-01-03T00:00:00.000Z",
+          updatedAt: "2024-01-03T00:00:00.000Z",
+        },
+        version: 3,
+        deleted: false,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
+      {
+        tableName: "budgets",
+        rowId: "budget-1",
+        data: {
+          name: "Wallet budget",
+          amount: 500,
+          currency: "VND",
+          categoryNames: [],
+          accountNames: ["Main wallet"],
+          firstCycleStartDate: "2024-01-01",
+          status: "active",
+          createdAt: "2024-01-01T00:00:00.000Z",
+          updatedAt: "2024-01-03T00:00:00.000Z",
+        },
+        version: 3,
+        deleted: false,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
     ]);
 
     expect(mockDb.transactions.put).toHaveBeenCalledWith(
@@ -453,6 +736,27 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
         id: "tx-legacy",
         source: "manual",
         syncVersion: 2,
+      }),
+    );
+    expect(mockDb.debts.put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "debt-1",
+        accountId: "Main wallet",
+        syncVersion: 3,
+      }),
+    );
+    expect(mockDb.debtSettlements.put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "settlement-1",
+        accountId: "Main wallet",
+        syncVersion: 3,
+      }),
+    );
+    expect(mockDb.budgets.put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "budget-1",
+        accountNames: ["Main wallet"],
+        syncVersion: 3,
       }),
     );
   });
@@ -494,6 +798,67 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
         source: "transfer",
         transferId: "transfer-1",
         syncVersion: 2,
+      }),
+    );
+  });
+
+  it("applies a renamed account and rewritten transaction history together", async () => {
+    const storage = new IndexedDBSyncStorage();
+
+    await storage.applyRemoteChanges([
+      {
+        tableName: "accounts",
+        rowId: "account-wallet",
+        data: {
+          name: "Main wallet",
+          accountType: "Cash",
+          initialBalance: 0,
+          currency: "VND",
+          createdAt: "2024-01-01T00:00:00.000Z",
+          updatedAt: "2024-01-03T00:00:00.000Z",
+        },
+        version: 4,
+        deleted: false,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
+      {
+        tableName: "transactions",
+        rowId: "tx-wallet",
+        data: {
+          source: "manual",
+          note: "Lunch",
+          amount: -100,
+          category: "Food",
+          account: "Main wallet",
+          currency: "VND",
+          date: "2024-01-03",
+          excludeReport: false,
+          expense: 100,
+          income: 0,
+          yearMonth: "2024-01",
+          year: 2024,
+          month: 1,
+          createdAt: "2024-01-03T00:00:00.000Z",
+          updatedAt: "2024-01-03T00:00:00.000Z",
+        },
+        version: 5,
+        deleted: false,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
+    ]);
+
+    expect(mockDb.accounts.put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "account-wallet",
+        name: "Main wallet",
+        syncVersion: 4,
+      }),
+    );
+    expect(mockDb.transactions.put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "tx-wallet",
+        account: "Main wallet",
+        syncVersion: 5,
       }),
     );
   });
