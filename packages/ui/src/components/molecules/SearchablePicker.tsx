@@ -73,13 +73,18 @@ export function SearchablePicker({
           type="button"
           variant="outline"
           id={triggerId}
-          className="w-full min-w-0 justify-between overflow-hidden bg-(--color-bg-white) text-(--color-text-primary) border-(--color-border-light)"
+          className="h-auto min-h-10 w-full min-w-0 justify-between overflow-hidden whitespace-normal bg-(--color-bg-white) px-4 py-2 text-left text-(--color-text-primary) border-(--color-border-light) sm:h-10 sm:min-h-0 sm:whitespace-nowrap"
           disabled={disabled}
         >
           {renderTriggerValue ? (
             renderTriggerValue(value)
           ) : (
-            <span className={cn("min-w-0 truncate", !value && "text-(--color-text-muted)")}>
+            <span
+              className={cn(
+                "min-w-0 flex-1 break-words leading-5 sm:truncate",
+                !value && "text-(--color-text-muted)",
+              )}
+            >
               {value || placeholder}
             </span>
           )}
@@ -108,7 +113,7 @@ export function SearchablePicker({
                   key={option.value}
                   type="button"
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-(--color-text-primary) hover:bg-(--color-primary-500)/10 focus:bg-(--color-primary-500)/15",
+                    "flex min-h-11 w-full items-start gap-2 rounded-md px-2 py-2 text-left text-sm text-(--color-text-primary) hover:bg-(--color-primary-500)/10 focus:bg-(--color-primary-500)/15",
                     selected && "bg-(--color-primary-500)/15",
                   )}
                   onClick={() => {
@@ -118,8 +123,12 @@ export function SearchablePicker({
                   }}
                 >
                   {renderOptionIcon ? renderOptionIcon(option) : null}
-                  <span className="flex-1 truncate">{option.label}</span>
-                  {selected ? <Check className="h-4 w-4 text-(--color-primary-500)" /> : null}
+                  <span className="min-w-0 flex-1 break-words leading-5">
+                    {option.label}
+                  </span>
+                  {selected ? (
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-(--color-primary-500)" />
+                  ) : null}
                 </button>
               );
             })

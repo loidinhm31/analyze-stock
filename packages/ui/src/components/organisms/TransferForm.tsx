@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
-import { ArrowRight, CreditCard, DollarSign, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowRight, CreditCard, DollarSign, Trash2 } from "lucide-react";
 import {
   Button,
   DialogDescription,
@@ -211,8 +211,8 @@ export function TransferForm(props: TransferFormProps) {
         <form onSubmit={handleSubmit} id={`transfer-form-${formId}`}>
           <div className="grid gap-4">
             {/* From → To accounts */}
-            <div className="flex items-end gap-2">
-              <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-2">
+              <div className="min-w-0 w-full sm:flex-1">
                 <FormField label="From Account" id="transfer-from" required>
                   <SearchablePicker
                     value={fromAccount}
@@ -231,7 +231,7 @@ export function TransferForm(props: TransferFormProps) {
                         <CreditCard className="h-4 w-4 text-(--color-text-muted)" />
                         <span
                           className={cn(
-                            "min-w-0 truncate",
+                            "min-w-0 flex-1 break-words leading-5 sm:truncate",
                             !value && "text-(--color-text-muted)",
                           )}
                         >
@@ -246,11 +246,12 @@ export function TransferForm(props: TransferFormProps) {
                 </FormField>
               </div>
 
-              <div className="pb-[2px] flex-shrink-0">
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              <div className="flex shrink-0 items-center justify-center sm:pb-[2px]">
+                <ArrowDown className="h-4 w-4 text-muted-foreground sm:hidden" />
+                <ArrowRight className="hidden h-4 w-4 text-muted-foreground sm:block" />
               </div>
 
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 w-full sm:flex-1">
                 <FormField label="To Account" id="transfer-to" required>
                   <SearchablePicker
                     value={toAccount}
@@ -269,7 +270,7 @@ export function TransferForm(props: TransferFormProps) {
                         <CreditCard className="h-4 w-4 text-(--color-text-muted)" />
                         <span
                           className={cn(
-                            "min-w-0 truncate",
+                            "min-w-0 flex-1 break-words leading-5 sm:truncate",
                             !value && "text-(--color-text-muted)",
                           )}
                         >
