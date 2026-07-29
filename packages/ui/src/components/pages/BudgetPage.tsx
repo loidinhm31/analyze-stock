@@ -2,14 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, PiggyBank, Plus } from "lucide-react";
 import { Alert, AlertDescription, Button } from "@money-insight/ui/components/atoms";
+import { BudgetCycleNavigator } from "@money-insight/ui/components/molecules";
 import { BudgetFormDialog, BudgetProgressList } from "@money-insight/ui/components/organisms";
 import { useNav } from "@money-insight/ui/hooks";
+import { moveBudgetHistoryReferenceDate } from "@money-insight/ui/lib";
 import { useBudgetStore, useCategoryGroupStore, useSpendingStore } from "@money-insight/ui/stores";
 import type { Budget, NewBudget } from "@money-insight/ui/types";
 
+function getTodayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function BudgetPage() {
   const { to } = useNav();
-  const { accounts, valuesHidden } = useSpendingStore();
+  const { accounts, transactions, valuesHidden } = useSpendingStore();
   const { categories } = useCategoryGroupStore();
   const {
     budgets,
@@ -23,10 +29,13 @@ export function BudgetPage() {
     pauseBudget,
     resumeBudget,
     deleteBudget,
+    refreshUsage,
   } = useBudgetStore();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const [selectedReferenceDate, setSelectedReferenceDate] = useState(getTodayIsoDate);
+  const today = getTodayIsoDate();
 
   useEffect(() => {
     if (!isDbReady) {
@@ -34,14 +43,64 @@ export function BudgetPage() {
     }
   }, [isDbReady, loadBudgets]);
 
-  const activeBudgets = useMemo(
-    () => budgets.filter((budget) => budget.status === "active"),
+  const earliestReferenceDate = useMemo(
+    () => budgets.reduce<string | null>(
+      (earliest, budget) => !earliest || budget.firstCycleStartDate < earliest
+        ? budget.firstCycleStartDate
+        : earliest,
+      null,
+    ),
     [budgets],
+  );
+  const effectiveReferenceDate = earliestReferenceDate && selectedReferenceDate < earliestReferenceDate
+    ? earliestReferenceDate
+    : selectedReferenceDate;
+  const visibleBudgets = useMemo(
+    () => budgets.filter((budget) => budget.firstCycleStartDate <= effectiveReferenceDate),
+    [budgets, effectiveReferenceDate],
+  );
+  const activeBudgets = useMemo(
+    () => visibleBudgets.filter((budget) => budget.status === "active"),
+    [visibleBudgets],
   );
   const pausedBudgets = useMemo(
-    () => budgets.filter((budget) => budget.status === "paused"),
-    [budgets],
+    () => visibleBudgets.filter((budget) => budget.status === "paused"),
+    [visibleBudgets],
   );
+
+  useEffect(() => {
+    if (earliestReferenceDate && selectedReferenceDate < earliestReferenceDate) {
+      setSelectedReferenceDate(earliestReferenceDate);
+    }
+  }, [earliestReferenceDate, selectedReferenceDate]);
+
+  useEffect(() => {
+    if (!isDbReady) return;
+    void refreshUsage(transactions, effectiveReferenceDate);
+  }, [budgets, effectiveReferenceDate, isDbReady, refreshUsage, transactions]);
+
+  const previousReferenceDate = useMemo(
+    () => moveBudgetHistoryReferenceDate(
+      effectiveReferenceDate,
+      -1,
+      visibleBudgets,
+      earliestReferenceDate ?? undefined,
+      today,
+    ),
+    [earliestReferenceDate, effectiveReferenceDate, today, visibleBudgets],
+  );
+  const nextReferenceDate = useMemo(
+    () => moveBudgetHistoryReferenceDate(
+      effectiveReferenceDate,
+      1,
+      visibleBudgets,
+      earliestReferenceDate ?? undefined,
+      today,
+    ),
+    [earliestReferenceDate, effectiveReferenceDate, today, visibleBudgets],
+  );
+  const canGoToPreviousMonth = previousReferenceDate !== effectiveReferenceDate;
+  const canGoToNextMonth = nextReferenceDate !== effectiveReferenceDate;
 
   const openCreateDialog = useCallback(() => {
     setEditingBudget(null);
@@ -90,6 +149,14 @@ export function BudgetPage() {
       ) : null}
 
       <div className="flex-1 overflow-auto px-4 pb-4">
+        <BudgetCycleNavigator
+          referenceDate={effectiveReferenceDate}
+          canGoToPreviousMonth={canGoToPreviousMonth}
+          canGoToNextMonth={canGoToNextMonth}
+          onPreviousMonth={() => setSelectedReferenceDate(previousReferenceDate)}
+          onNextMonth={() => setSelectedReferenceDate(nextReferenceDate)}
+        />
+
         {!isLoading && budgets.length === 0 ? (
           <Alert>
             <PiggyBank className="h-4 w-4" />

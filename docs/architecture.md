@@ -283,6 +283,11 @@ Budget and notification event rows sync through the same app collection as trans
    - first cross: `money-insight:budget_overrun:{budgetId}:{cycleKey}`
    - worsened edit: `money-insight:budget_overrun:{budgetId}:{cycleKey}:worsened:{transactionId}`
 6. `budgetStore.enqueueBudgetEvent()` skips duplicates by budget/cycle/reason/source row before save.
+7. The Budgets page keeps a page-local reference date, including earlier
+   months, and recomputes each cycle from the current recurring budget
+   definition plus stored transactions. History is recalculated on demand, not
+   stored as immutable snapshots; navigation cannot precede a budget's
+   `firstCycleStartDate` or exceed today.
 
 **Key file:** `packages/ui/src/adapters/web/database.ts`
 

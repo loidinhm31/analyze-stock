@@ -75,6 +75,60 @@ describe("budgetStore", () => {
     vi.useRealTimers();
   });
 
+  it("refreshes usage for a selected historical cycle", async () => {
+    useBudgetStore.setState({ budgets: [budget], isDbReady: true });
+    const transactions = [
+      {
+        id: "tx-january",
+        source: "manual" as const,
+        note: "",
+        amount: -400,
+        category: "Food",
+        account: "Cash",
+        currency: "VND",
+        date: "2024-01-15",
+        excludeReport: false,
+        expense: 400,
+        income: 0,
+        yearMonth: "2024-01",
+        year: 2024,
+        month: 1,
+        createdAt: "2024-01-15T00:00:00.000Z",
+        updatedAt: "2024-01-15T00:00:00.000Z",
+        syncVersion: 1,
+        syncedAt: null,
+      },
+      {
+        id: "tx-february",
+        source: "manual" as const,
+        note: "",
+        amount: -300,
+        category: "Food",
+        account: "Cash",
+        currency: "VND",
+        date: "2024-02-15",
+        excludeReport: false,
+        expense: 300,
+        income: 0,
+        yearMonth: "2024-02",
+        year: 2024,
+        month: 2,
+        createdAt: "2024-02-15T00:00:00.000Z",
+        updatedAt: "2024-02-15T00:00:00.000Z",
+        syncVersion: 1,
+        syncedAt: null,
+      },
+    ];
+
+    await useBudgetStore.getState().refreshUsage(transactions, "2024-01-31");
+
+    expect(useBudgetStore.getState().usage["budget-1"]).toMatchObject({
+      cycleKey: "2024-01-01",
+      spent: 400,
+      matchingTransactionIds: ["tx-january"],
+    });
+  });
+
   it("marks updateBudget store state ready after update", async () => {
     setBudgetService({
       getBudgets: vi.fn(),

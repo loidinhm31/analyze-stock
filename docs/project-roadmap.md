@@ -1,6 +1,6 @@
 # Money Insight project roadmap
 
-Last updated: 2026-07-29
+Last updated: 2026-07-30
 
 ## Completed milestones
 
@@ -20,4 +20,12 @@ for acceptance criteria and validation details.
     smoke checks, and final review 9.5/10 with no critical findings or warnings.
 
 See [the implementation plan](../plans/260729-2214-transaction-account-search/plan.md)
+for acceptance criteria and validation details.
+
+- **Budget cycle history — 100% (2026-07-30)**
+  - Added bounded previous/current month browsing for budget usage, including first-cycle and future-month guards.
+  - Historical usage is recalculated from current transactions and budget definitions; no snapshots or sync/schema changes.
+  - Quality gates: full suite 159/159, focused cycle tests 10/10, direct UI/web TypeScript checks, and production web build (existing Vite chunking warnings only).
+
+See [the implementation plan](../plans/260730-0119-budget-cycle-history/plan.md)
 for acceptance criteria and validation details.

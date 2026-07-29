@@ -18,6 +18,11 @@ export {
   type BudgetUsagePreview,
 } from "./budget-calculations";
 export {
+  formatBudgetReferenceMonth,
+  moveBudgetHistoryReferenceDate,
+  shiftUtcMonth,
+} from "./budget-cycle-history";
+export {
   getTransactionBudgetWarning,
   type TransactionBudgetWarning,
 } from "./transaction-budget-warning";

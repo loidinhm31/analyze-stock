@@ -20,6 +20,7 @@ export {
   type TimePeriodGroupHeaderProps,
 } from "./TimePeriodGroupHeader";
 export { IconPicker, type IconPickerProps } from "./IconPicker";
+export { BudgetCycleNavigator } from "./BudgetCycleNavigator";
 export {
   SearchablePicker,
   type SearchablePickerOption,
