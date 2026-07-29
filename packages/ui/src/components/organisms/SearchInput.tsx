@@ -7,6 +7,7 @@ export interface SearchInputProps {
   onChange: (value: string) => void;
   placeholder?: string;
   debounceMs?: number;
+  ariaLabel?: string;
 }
 
 export function SearchInput({
@@ -14,6 +15,7 @@ export function SearchInput({
   onChange,
   placeholder = "Search transactions...",
   debounceMs = 300,
+  ariaLabel,
 }: SearchInputProps) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -50,6 +52,7 @@ export function SearchInput({
         value={localValue}
         onChange={handleChange}
         placeholder={placeholder}
+        aria-label={ariaLabel}
         className="pl-9 pr-9 w-full sm:w-[250px]"
       />
       {localValue && (

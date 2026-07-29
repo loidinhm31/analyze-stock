@@ -402,7 +402,7 @@ flowchart TB
 | Path | Page | Description |
 |------|------|-------------|
 | `/dashboard` | DashboardPage | Charts, stats, recent transactions |
-| `/transactions` | TransactionPage | Full transaction list + filters |
+| `/transactions` | TransactionPage | Full transaction list + local transaction/account search and filters |
 | `/add` | AddTransactionPage | Manual entry / transfer |
 | `/reports` | ReportsPage | Analytics + reports |
 | `/settings` | SettingsPage | Accounts, sync, preferences |

@@ -29,8 +29,13 @@ import {
   AdjustBalanceDialog,
   TransferForm,
   AddTransactionForm,
+  SearchInput,
 } from "@money-insight/ui/components/organisms";
-import { formatCurrency, type TimePeriodMode } from "@money-insight/ui/lib";
+import {
+  formatCurrency,
+  matchesSearch,
+  type TimePeriodMode,
+} from "@money-insight/ui/lib";
 import {
   loadStoredTransactionPagePreferences,
   resolveTransactionPagePreferences,
@@ -72,6 +77,8 @@ export function TransactionPage() {
   const [selectedAccount, setSelectedAccount] = useState<string>(
     initialPreferences.selectedAccount,
   );
+  const [transactionSearchQuery, setTransactionSearchQuery] = useState("");
+  const [accountSearchQuery, setAccountSearchQuery] = useState("");
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
@@ -82,10 +89,27 @@ export function TransactionPage() {
     useState<Account | null>(null);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
 
-  const displayTransactions =
-    selectedAccount !== "__all__"
-      ? transactions.filter((t) => t.account === selectedAccount)
-      : transactions;
+  const displayTransactions = useMemo(
+    () =>
+      transactions.filter(
+        (transaction) =>
+          (selectedAccount === "__all__" ||
+            transaction.account === selectedAccount) &&
+          matchesSearch(transaction, transactionSearchQuery),
+      ),
+    [selectedAccount, transactionSearchQuery, transactions],
+  );
+  const displayAccounts = useMemo(() => {
+    const normalizedQuery = accountSearchQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return accounts;
+    }
+
+    return accounts.filter((account) =>
+      account.name.toLowerCase().includes(normalizedQuery),
+    );
+  }, [accountSearchQuery, accounts]);
   const selectedAccountEntity =
     selectedAccount !== "__all__"
       ? (accounts.find((account) => account.name === selectedAccount) ?? null)
@@ -290,6 +314,12 @@ export function TransactionPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <SearchInput
+                value={transactionSearchQuery}
+                onChange={setTransactionSearchQuery}
+                placeholder="Search transactions..."
+                ariaLabel="Search transactions"
+              />
             </div>
 
             {/* Grouped transaction list */}
@@ -365,8 +395,14 @@ export function TransactionPage() {
                   accountBalances={accountBalances}
                 />
               )}
+              <SearchInput
+                value={accountSearchQuery}
+                onChange={setAccountSearchQuery}
+                placeholder="Search accounts..."
+                ariaLabel="Search accounts"
+              />
               <AccountList
-                accounts={accounts}
+                accounts={displayAccounts}
                 accountBalances={accountBalances}
                 onAccountClick={handleAccountClick}
                 onAccountDelete={handleAccountDelete}

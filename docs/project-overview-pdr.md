@@ -24,13 +24,14 @@
 - **Transfer pairs**: Link related debit/credit transactions (e.g., moving money between accounts)
 - **Balance adjustments**: Manual corrections for discrepancies (stored as special transactions)
 - **Soft delete**: Deleted records kept for 60 days (enables sync propagation)
-- **Transaction search**: Filter by date range, account, category, amount range, keyword
+- **Transaction search**: On the Transactions page, locally filter the loaded list by account and keyword (matching transaction text, amount, or date); dashboard/report filters additionally support date range, account, category, amount range, and keyword.
 
 ### Account Management
 - **Multi-account**: Create/edit checking, savings, credit card, wallet accounts
 - **Account balances**: Track running balance; auto-compute from transaction history
 - **Manual balance adjustments**: Reconcile without creating transactions
 - **Account icons**: Assign visual icons for quick recognition
+- **Account search**: On the Transactions page, locally filter the loaded account list by account name.
 
 ### Category System
 - **Hierarchical**: Parent groups (Food & Drink, Transport) → child categories (Coffee, Gas)
