@@ -27,6 +27,7 @@ export {
   type TransactionBudgetWarning,
 } from "./transaction-budget-warning";
 export {
+  groupTransactionsByDate,
   groupTransactionsByTimePeriod,
   TIME_PERIOD_OPTIONS,
   type TimePeriodMode,

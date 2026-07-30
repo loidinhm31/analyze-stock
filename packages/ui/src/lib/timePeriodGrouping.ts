@@ -63,12 +63,9 @@ function getGroupLabel(
   mode: TimePeriodMode,
   referenceDate: Date = new Date(),
 ): string {
-  if (isFuture(date)) {
-    return "Future";
-  }
-
   switch (mode) {
     case "day": {
+      if (isFuture(date)) return `Future — ${format(date, "MMM d, yyyy")}`;
       if (isToday(date)) return "Today";
       if (isYesterday(date)) return "Yesterday";
       return format(date, "MMM d, yyyy");
@@ -145,10 +142,11 @@ function shouldIncludeTransaction(
   }
 }
 
-export function groupTransactionsByTimePeriod(
+function buildTransactionGroups(
   transactions: Transaction[],
   mode: TimePeriodMode,
-  referenceDate: Date = new Date(),
+  referenceDate: Date,
+  applyTimeRange: boolean,
 ): TimePeriodGroup[] {
   const groupMap = new Map<
     string,
@@ -166,7 +164,10 @@ export function groupTransactionsByTimePeriod(
     const date = new Date(transaction.date);
 
     // Skip transactions outside the time range for the selected mode
-    if (!shouldIncludeTransaction(date, mode, referenceDate)) {
+    if (
+      applyTimeRange &&
+      !shouldIncludeTransaction(date, mode, referenceDate)
+    ) {
       continue;
     }
 
@@ -225,6 +226,21 @@ export function groupTransactionsByTimePeriod(
       totalIncome,
     }),
   );
+}
+
+export function groupTransactionsByTimePeriod(
+  transactions: Transaction[],
+  mode: TimePeriodMode,
+  referenceDate: Date = new Date(),
+): TimePeriodGroup[] {
+  return buildTransactionGroups(transactions, mode, referenceDate, true);
+}
+
+export function groupTransactionsByDate(
+  transactions: Transaction[],
+  referenceDate: Date = new Date(),
+): TimePeriodGroup[] {
+  return buildTransactionGroups(transactions, "day", referenceDate, false);
 }
 
 export const TIME_PERIOD_OPTIONS: { value: TimePeriodMode; label: string }[] = [

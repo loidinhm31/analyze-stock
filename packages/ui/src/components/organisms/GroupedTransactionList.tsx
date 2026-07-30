@@ -1,22 +1,23 @@
-import { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { ArrowLeftRight, ChevronDown, HandCoins, Scale } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
-  Badge,
-  CategoryIcon,
+  AccordionTrigger,
 } from "@money-insight/ui/components/atoms";
-import { useCategoryIcon } from "@money-insight/ui/hooks";
 import {
   cn,
   formatCurrency,
+  groupTransactionsByDate,
   groupTransactionsByTimePeriod,
   type TimePeriodMode,
 } from "@money-insight/ui/lib";
-import { getTransferDisplayNote } from "@money-insight/ui/services/transferService";
+import {
+  getInitialOpenGroupKeys,
+  reconcileOpenGroupKeys,
+} from "../../lib/transactionGroupOpenState";
 import type { Transaction } from "@money-insight/ui/types";
+import { DateTransactionGroup } from "./DateTransactionGroup";
 
 export interface GroupedTransactionListProps {
   transactions: Transaction[];
@@ -25,39 +26,64 @@ export interface GroupedTransactionListProps {
   onTransactionClick?: (transaction: Transaction) => void;
 }
 
+function formatSummaryValue(
+  value: number,
+  sign: "-" | "+" | "",
+  valuesHidden: boolean,
+) {
+  const formatted = formatCurrency(Math.abs(value));
+  return valuesHidden ? "*".repeat(formatted.length) : `${sign}${formatted}`;
+}
+
 export function GroupedTransactionList({
   transactions,
   periodMode,
   valuesHidden = false,
   onTransactionClick,
 }: GroupedTransactionListProps) {
-  const { getIcon } = useCategoryIcon();
-  const maskValue = (value: string) => "*".repeat(value.length);
-
-  const groups = groupTransactionsByTimePeriod(transactions, periodMode);
-  const groupKeysStr = groups.map((g) => g.key).join(",");
-
-  // Default open the first group (most recent)
-  const [openGroups, setOpenGroups] = useState<string[]>(
-    groups.length > 0 ? [groups[0].key] : [],
+  const groups = useMemo(
+    () => groupTransactionsByTimePeriod(transactions, periodMode),
+    [transactions, periodMode],
+  );
+  const groupsWithDateSections = useMemo(
+    () =>
+      groups.map((group) => ({
+        ...group,
+        dateGroups:
+          periodMode === "day"
+            ? [group]
+            : groupTransactionsByDate(group.transactions),
+      })),
+    [groups, periodMode],
+  );
+  const groupKeys = groupsWithDateSections.map((group) => group.key);
+  const groupKeysFingerprint = groupKeys.join(",");
+  const previousPeriodMode = useRef(periodMode);
+  const hasInitializedOpenGroups = useRef(false);
+  const [openGroups, setOpenGroups] = useState(() =>
+    getInitialOpenGroupKeys(groupKeys, periodMode),
   );
 
-  // Prune stale keys and fall back to first group when all open groups disappear
-  // (e.g. after delete removes the last transaction in an open group, or periodMode changes)
   useEffect(() => {
-    if (groups.length === 0) return;
-    const keySet = new Set(groups.map((g) => g.key));
-    setOpenGroups((prev) => {
-      const valid = prev.filter((k) => keySet.has(k));
-      return valid.length > 0 ? valid : [groups[0].key];
-    });
-    // groupKeysStr is a stable string fingerprint of the group set — safe dep
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodMode, groupKeysStr]);
+    setOpenGroups((previousOpenGroups) =>
+      periodMode === "day" && !hasInitializedOpenGroups.current
+        ? groupKeys
+        : reconcileOpenGroupKeys(
+            previousOpenGroups,
+            groupKeys,
+            previousPeriodMode.current,
+            periodMode,
+          ),
+    );
+    if (groupKeys.length > 0) {
+      hasInitializedOpenGroups.current = true;
+    }
+    previousPeriodMode.current = periodMode;
+  }, [groupKeysFingerprint, periodMode]);
 
-  if (groups.length === 0) {
+  if (groupsWithDateSections.length === 0) {
     return (
-      <div className="text-center py-12">
+      <div className="py-12 text-center">
         <p className="text-sm text-muted-foreground">No transactions found</p>
       </div>
     );
@@ -70,206 +96,123 @@ export function GroupedTransactionList({
       onValueChange={setOpenGroups}
       className="space-y-2"
     >
-      {groups.map((group) => {
-        const isOpen = openGroups.includes(group.key);
+      {groupsWithDateSections.map((group) => {
+        const net = group.totalIncome - group.totalExpense;
+        const netClass =
+          net > 0
+            ? "text-success"
+            : net < 0
+              ? "text-destructive"
+              : "text-muted-foreground";
 
         return (
           <AccordionItem
             key={group.key}
             value={group.key}
-            className="border rounded-lg overflow-hidden"
+            className={cn(
+              "overflow-hidden rounded-lg border border-border bg-card",
+              periodMode === "day" && "border-l-4 border-l-primary shadow-sm",
+            )}
           >
-            {/* Custom Accordion Trigger with Group Header */}
-            <button
-              type="button"
-              onClick={() => {
-                if (isOpen) {
-                  setOpenGroups(openGroups.filter((k) => k !== group.key));
-                } else {
-                  setOpenGroups([...openGroups, group.key]);
-                }
-              }}
+            <AccordionTrigger
               className={cn(
-                "flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-accent/50",
-                isOpen && "bg-accent/30",
+                "min-h-11 px-3 py-2.5 no-underline hover:bg-accent/50 hover:no-underline focus-visible:z-10 focus-visible:ring-inset sm:px-4",
+                periodMode === "day" && "bg-primary/5 hover:bg-primary/10",
               )}
             >
-              <div className="flex items-center gap-3">
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 shrink-0 transition-transform duration-200",
-                    isOpen && "rotate-180",
-                  )}
-                />
-                <div>
-                  <span className="text-sm font-semibold text-foreground">
+              <span className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-foreground">
                     {group.label}
                   </span>
-                  <span className="text-xs ml-2 text-muted-foreground">
-                    ({group.transactions.length} transaction
-                    {group.transactions.length !== 1 ? "s" : ""})
+                  <span className="block text-xs text-muted-foreground">
+                    {group.transactions.length} transaction
+                    {group.transactions.length === 1 ? "" : "s"}
                   </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 text-xs">
-                {group.totalExpense > 0 && (
-                  <span className="font-medium text-destructive">
-                    {valuesHidden
-                      ? maskValue(formatCurrency(group.totalExpense))
-                      : `-${formatCurrency(group.totalExpense)}`}
+                </span>
+                <span className="hidden items-center gap-4 text-right text-xs sm:flex">
+                  <SummaryMetric
+                    label="Expense"
+                    value={formatSummaryValue(
+                      group.totalExpense,
+                      "-",
+                      valuesHidden,
+                    )}
+                    className="text-destructive"
+                  />
+                  <SummaryMetric
+                    label="Income"
+                    value={formatSummaryValue(
+                      group.totalIncome,
+                      "+",
+                      valuesHidden,
+                    )}
+                    className="text-success"
+                  />
+                  <SummaryMetric
+                    label="Net"
+                    value={formatSummaryValue(
+                      net,
+                      net > 0 ? "+" : net < 0 ? "-" : "",
+                      valuesHidden,
+                    )}
+                    className={netClass}
+                  />
+                </span>
+                <span className="grid text-right text-xs sm:hidden">
+                  <span className={cn("font-semibold tabular-nums", netClass)}>
+                    {formatSummaryValue(
+                      net,
+                      net > 0 ? "+" : net < 0 ? "-" : "",
+                      valuesHidden,
+                    )}
                   </span>
-                )}
-                {group.totalIncome > 0 && (
-                  <span className="font-medium text-success">
-                    {valuesHidden
-                      ? maskValue(formatCurrency(group.totalIncome))
-                      : `+${formatCurrency(group.totalIncome)}`}
+                  <span className="text-[11px] text-muted-foreground tabular-nums">
+                    {formatSummaryValue(group.totalExpense, "-", valuesHidden)}{" "}
+                    · {formatSummaryValue(group.totalIncome, "+", valuesHidden)}
                   </span>
-                )}
-              </div>
-            </button>
-
-            <AccordionContent className="px-4 pb-4 pt-0">
-              <div className="space-y-2">
-                {group.transactions.map((transaction) => {
-                  const isExpense = transaction.expense > 0;
-                  const isAdjustment =
-                    transaction.source === "balance_adjustment";
-                  const isTransfer = transaction.source === "transfer";
-                  const isDebtInitialization =
-                    transaction.source === "debt_initialization";
-                  const isDebtSettlement =
-                    transaction.source === "debt_settlement";
-                  const transactionDate = new Date(transaction.date);
-
-                  let displayCategory: string;
-                  let displayNote: string | undefined;
-                  if (isAdjustment) {
-                    displayCategory = "Balance Adjustment";
-                  } else if (isTransfer) {
-                    displayCategory =
-                      transaction.category === "__transfer__"
-                        ? "Transfer"
-                        : transaction.category;
-                    displayNote = getTransferDisplayNote(transaction);
-                  } else if (isDebtInitialization) {
-                    displayCategory = transaction.category;
-                    displayNote = transaction.note || "Debt initialization";
-                  } else if (isDebtSettlement) {
-                    displayCategory = transaction.category;
-                    displayNote = transaction.note || "Debt settlement";
-                  } else {
-                    displayCategory = transaction.category;
-                    displayNote = transaction.note || undefined;
-                  }
-
-                  const amountColor = isAdjustment
-                    ? "var(--color-primary-500)"
-                    : isTransfer
-                      ? "var(--color-text-secondary)"
-                      : isDebtSettlement
-                        ? isExpense
-                          ? "#a16207"
-                          : "#047857"
-                        : isDebtInitialization
-                          ? isExpense
-                            ? "var(--color-destructive)"
-                            : "#047857"
-                        : isExpense
-                          ? "var(--color-destructive)"
-                          : "var(--color-success)";
-
-                  return (
-                    <div
-                      key={transaction.id}
-                      className={cn(
-                        "flex items-center justify-between p-3 border rounded-lg hover:bg-accent transition-colors",
-                        onTransactionClick && "cursor-pointer",
-                        isAdjustment && "border-primary/20 bg-primary/5",
-                        isTransfer && "border-muted-foreground/20 bg-muted/20",
-                        isDebtInitialization &&
-                          "border-emerald-500/20 bg-emerald-500/5",
-                        isDebtSettlement &&
-                          "border-amber-500/20 bg-amber-500/5",
-                      )}
-                      onClick={() => onTransactionClick?.(transaction)}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {isAdjustment && (
-                            <Scale className="h-4 w-4 text-primary" />
-                          )}
-                          {isTransfer && (
-                            <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
-                          )}
-                          {isDebtInitialization && (
-                            <HandCoins className="h-4 w-4 text-emerald-600" />
-                          )}
-                          {isDebtSettlement && (
-                            <HandCoins className="h-4 w-4 text-amber-600" />
-                          )}
-                          <span className="text-sm font-medium text-secondary-foreground">
-                            {format(transactionDate, "MMM dd")}
-                          </span>
-                          <Badge variant={isAdjustment ? "default" : "outline"}>
-                            <span className="inline-flex items-center gap-1">
-                              {!isAdjustment &&
-                                !isTransfer &&
-                                !isDebtInitialization &&
-                                !isDebtSettlement &&
-                                getIcon(transaction.category) && (
-                                  <CategoryIcon
-                                    name={getIcon(transaction.category)}
-                                    size={16}
-                                    className="inline-block shrink-0"
-                                  />
-                                )}
-                              {displayCategory}
-                            </span>
-                          </Badge>
-                          <Badge variant="secondary">
-                            {transaction.account}
-                          </Badge>
-                        </div>
-                        {displayNote && !isAdjustment && (
-                          <p className="text-sm truncate mt-1 text-muted-foreground">
-                            {displayNote}
-                          </p>
-                        )}
-                        {isAdjustment && (
-                          <p className="text-sm mt-1 text-primary">
-                            Auto-adjusting entry
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right ml-2">
-                        <p
-                          className="font-semibold"
-                          style={{ color: amountColor }}
-                        >
-                          {valuesHidden
-                            ? maskValue(
-                                formatCurrency(
-                                  isExpense
-                                    ? transaction.expense
-                                    : transaction.income,
-                                ),
-                              )
-                            : isExpense
-                              ? `-${formatCurrency(transaction.expense)}`
-                              : transaction.income > 0
-                                ? `+${formatCurrency(transaction.income)}`
-                                : formatCurrency(0)}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+                </span>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="border-t border-border bg-muted/20 px-2 py-1.5 sm:px-3">
+              <div
+                className={
+                  periodMode === "day" ? "divide-y divide-border" : "space-y-2"
+                }
+              >
+                {group.dateGroups.map((dateGroup) => (
+                  <DateTransactionGroup
+                    key={dateGroup.key}
+                    group={dateGroup}
+                    showHeader={periodMode !== "day"}
+                    valuesHidden={valuesHidden}
+                    onTransactionClick={onTransactionClick}
+                  />
+                ))}
               </div>
             </AccordionContent>
           </AccordionItem>
         );
       })}
     </Accordion>
+  );
+}
+
+function SummaryMetric({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className: string;
+}) {
+  return (
+    <span className="min-w-16">
+      <span className="block text-[11px] text-muted-foreground">{label}</span>
+      <span className={cn("block font-semibold tabular-nums", className)}>
+        {value}
+      </span>
+    </span>
   );
 }

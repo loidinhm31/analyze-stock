@@ -8,7 +8,7 @@ export interface TransactionPagePreferences {
   selectedAccount: string;
 }
 
-const DEFAULT_PERIOD_MODE: TimePeriodMode = "month";
+const DEFAULT_PERIOD_MODE: TimePeriodMode = "day";
 const DEFAULT_SELECTED_ACCOUNT = "__all__";
 const VALID_PERIOD_MODES = new Set<TimePeriodMode>([
   "day",

@@ -80,7 +80,7 @@ describe("transactionPagePreferences", () => {
     );
 
     expect(resolveTransactionPagePreferences(["Cash"])).toEqual({
-      periodMode: "month",
+      periodMode: "day",
       selectedAccount: "__all__",
     });
   });

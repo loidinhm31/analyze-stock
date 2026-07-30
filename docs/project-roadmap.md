@@ -29,3 +29,12 @@ for acceptance criteria and validation details.
 
 See [the implementation plan](../plans/260730-0119-budget-cycle-history/plan.md)
 for acceptance criteria and validation details.
+
+- **Transaction date-grouped list — 100% (2026-07-30)**
+  - Transactions now default to expanded daily groups; non-day periods retain bordered date sections so same-date rows remain clear.
+  - Compact rows preserve special transaction states, privacy masking, and keyboard activation; current periods keep This Month/Week/etc. labels while future dates use exact dates.
+  - No API, schema, sync, or service changes.
+  - Quality gates: full UI Vitest 171/171, production web and native builds, and clean code review after fixes. Browser verification was limited by the local app having no populated transaction fixture; the Day default empty state was verified.
+
+See [the implementation plan](../plans/260730-0206-transaction-date-grouped-list/plan.md)
+for acceptance criteria and validation details.
