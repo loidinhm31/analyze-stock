@@ -28,6 +28,7 @@ const {
     },
     transactions: {
       get: vi.fn(),
+      bulkGet: vi.fn().mockResolvedValue([]),
       delete: vi.fn(),
     },
     accounts: {},

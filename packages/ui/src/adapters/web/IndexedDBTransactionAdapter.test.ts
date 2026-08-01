@@ -1,29 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { IndexedDBTransactionAdapter } from "./IndexedDBTransactionAdapter";
 
-const { mockDb, generateIdMock, deleteTransactionWithTrackingMock, reconcileDebtByTransactionIdMock } =
-  vi.hoisted(() => ({
-    mockDb: {
-      transactions: {
-        toArray: vi.fn(),
-        toCollection: vi.fn(),
-        add: vi.fn(),
-        get: vi.fn(),
-        put: vi.fn(),
-      },
-      debts: {},
-      debtSettlements: {},
-      accounts: {
-        toArray: vi.fn(),
-        add: vi.fn(),
-      },
-      _pendingChanges: {},
-      transaction: vi.fn(),
+const {
+  mockDb,
+  generateIdMock,
+  deleteTransactionWithTrackingMock,
+  reconcileDebtByTransactionIdMock,
+} = vi.hoisted(() => ({
+  mockDb: {
+    transactions: {
+      toArray: vi.fn(),
+      toCollection: vi.fn(),
+      add: vi.fn(),
+      get: vi.fn(),
+      put: vi.fn(),
     },
-    generateIdMock: vi.fn(),
-    deleteTransactionWithTrackingMock: vi.fn(),
-    reconcileDebtByTransactionIdMock: vi.fn(),
-  }));
+    debts: {},
+    debtSettlements: {},
+    accounts: {
+      toArray: vi.fn(),
+      add: vi.fn(),
+    },
+    notificationEvents: {},
+    _pendingChanges: {},
+    transaction: vi.fn(),
+  },
+  generateIdMock: vi.fn(),
+  deleteTransactionWithTrackingMock: vi.fn(),
+  reconcileDebtByTransactionIdMock: vi.fn(),
+}));
 
 vi.mock("./database", () => ({
   getDb: () => mockDb,
@@ -31,9 +36,10 @@ vi.mock("./database", () => ({
 }));
 
 vi.mock("./indexedDbHelpers", async () => {
-  const actual = await vi.importActual<
-    typeof import("./indexedDbHelpers")
-  >("./indexedDbHelpers");
+  const actual =
+    await vi.importActual<typeof import("./indexedDbHelpers")>(
+      "./indexedDbHelpers",
+    );
 
   return {
     ...actual,
@@ -41,6 +47,10 @@ vi.mock("./indexedDbHelpers", async () => {
     reconcileDebtByTransactionId: reconcileDebtByTransactionIdMock,
   };
 });
+
+vi.mock("./credit-card-payment-reminder-repository", () => ({
+  reconcileCreditCardPaymentRemindersByAccountNames: vi.fn(),
+}));
 
 describe("IndexedDBTransactionAdapter", () => {
   beforeEach(() => {
@@ -141,7 +151,10 @@ describe("IndexedDBTransactionAdapter", () => {
     const legacyOutgoing = {
       id: "tx-out",
       source: "transfer",
-      note: JSON.stringify({ userNote: "Send to Savings", toAccount: "Savings" }),
+      note: JSON.stringify({
+        userNote: "Send to Savings",
+        toAccount: "Savings",
+      }),
       amount: -100,
       category: "__transfer__",
       account: "Wallet",
@@ -161,7 +174,10 @@ describe("IndexedDBTransactionAdapter", () => {
     const legacyIncoming = {
       id: "tx-in",
       source: "transfer",
-      note: JSON.stringify({ userNote: "Receive from Wallet", fromAccount: "Wallet" }),
+      note: JSON.stringify({
+        userNote: "Receive from Wallet",
+        fromAccount: "Wallet",
+      }),
       amount: 100,
       category: "__transfer__",
       account: "Savings",
@@ -179,7 +195,10 @@ describe("IndexedDBTransactionAdapter", () => {
       syncedAt: 123,
     };
 
-    mockDb.transactions.toArray.mockResolvedValue([legacyOutgoing, legacyIncoming]);
+    mockDb.transactions.toArray.mockResolvedValue([
+      legacyOutgoing,
+      legacyIncoming,
+    ]);
     mockDb.transactions.toCollection.mockReturnValue({
       toArray: vi.fn().mockResolvedValue([
         { ...legacyOutgoing, transferId: "transfer-repaired" },
@@ -209,7 +228,10 @@ describe("IndexedDBTransactionAdapter", () => {
       }),
     );
     expect(transactions).toEqual([
-      expect.objectContaining({ id: "tx-out", transferId: "transfer-repaired" }),
+      expect.objectContaining({
+        id: "tx-out",
+        transferId: "transfer-repaired",
+      }),
       expect.objectContaining({ id: "tx-in", transferId: "transfer-repaired" }),
     ]);
   });

@@ -1,10 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import type { Budget, NotificationEvent, Transaction } from "@money-insight/ui/types";
+import type {
+  Budget,
+  NotificationEvent,
+  Transaction,
+} from "@money-insight/ui/types";
 import { MoneyInsightAnalyzer } from "@money-insight/ui/lib";
 import {
   setTransactionService,
   setAccountService,
   setBudgetService,
+  setNotificationEventService,
   setCategoryGroupService,
   setCategoryService,
   resetServices,
@@ -139,6 +144,7 @@ describe("spendingStore.initFromDatabase", () => {
       addAccount: vi.fn(),
       updateAccount: vi.fn(),
       deleteAccount: vi.fn(),
+      confirmCreditCardPayment: vi.fn(),
     });
     setCategoryGroupService({
       getCategoryGroups: vi.fn().mockResolvedValue([group]),
@@ -210,7 +216,10 @@ describe("spendingStore.updateTransfer", () => {
       createTransfer: vi.fn(),
       updateTransfer: vi
         .fn()
-        .mockResolvedValue({ outgoing: updatedOutgoing, incoming: updatedIncoming }),
+        .mockResolvedValue({
+          outgoing: updatedOutgoing,
+          incoming: updatedIncoming,
+        }),
       deleteTransfer: vi.fn(),
       getTransferPair: vi.fn(),
     });
@@ -219,6 +228,7 @@ describe("spendingStore.updateTransfer", () => {
       addAccount: vi.fn(),
       updateAccount: vi.fn(),
       deleteAccount: vi.fn(),
+      confirmCreditCardPayment: vi.fn(),
     });
 
     // Seed store with original pair
@@ -228,16 +238,14 @@ describe("spendingStore.updateTransfer", () => {
     });
 
     // Act
-    await useSpendingStore
-      .getState()
-      .updateTransfer(transferId, {
-        fromAccount: "Cash",
-        toAccount: "Savings",
-        amount: 750_000,
-        date: "2024-01-15",
-        note: "",
-        currency: "VND",
-      });
+    await useSpendingStore.getState().updateTransfer(transferId, {
+      fromAccount: "Cash",
+      toAccount: "Savings",
+      amount: 750_000,
+      date: "2024-01-15",
+      note: "",
+      currency: "VND",
+    });
 
     const txs = useSpendingStore.getState().transactions;
 
@@ -283,8 +291,16 @@ describe("spendingStore.updateTransfer", () => {
       updatedAt: "2024-01-10T00:00:00Z",
     };
 
-    const updatedOutgoing: Transaction = { ...outgoing, amount: -200_000, expense: 200_000 };
-    const updatedIncoming: Transaction = { ...incoming, amount: 200_000, income: 200_000 };
+    const updatedOutgoing: Transaction = {
+      ...outgoing,
+      amount: -200_000,
+      expense: 200_000,
+    };
+    const updatedIncoming: Transaction = {
+      ...incoming,
+      amount: 200_000,
+      income: 200_000,
+    };
 
     setTransactionService({
       getTransactions: vi.fn().mockResolvedValue([]),
@@ -295,7 +311,10 @@ describe("spendingStore.updateTransfer", () => {
       createTransfer: vi.fn(),
       updateTransfer: vi
         .fn()
-        .mockResolvedValue({ outgoing: updatedOutgoing, incoming: updatedIncoming }),
+        .mockResolvedValue({
+          outgoing: updatedOutgoing,
+          incoming: updatedIncoming,
+        }),
       deleteTransfer: vi.fn(),
       getTransferPair: vi.fn(),
     });
@@ -304,6 +323,7 @@ describe("spendingStore.updateTransfer", () => {
       addAccount: vi.fn(),
       updateAccount: vi.fn(),
       deleteAccount: vi.fn(),
+      confirmCreditCardPayment: vi.fn(),
     });
 
     useSpendingStore.setState({
@@ -369,6 +389,7 @@ describe("spendingStore budget notifications", () => {
       addAccount: vi.fn(),
       updateAccount: vi.fn(),
       deleteAccount: vi.fn(),
+      confirmCreditCardPayment: vi.fn(),
     });
     setBudgetService({
       getBudgets: vi.fn().mockResolvedValue([budget]),
@@ -376,6 +397,8 @@ describe("spendingStore budget notifications", () => {
       addBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+    });
+    setNotificationEventService({
       getNotificationEvents: vi.fn().mockResolvedValue([]),
       enqueueNotificationEvent: vi.fn().mockImplementation(
         async (input): Promise<NotificationEvent> => ({
@@ -433,6 +456,8 @@ describe("spendingStore budget notifications", () => {
       addBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+    });
+    setNotificationEventService({
       getNotificationEvents: vi.fn().mockResolvedValue([]),
       enqueueNotificationEvent: enqueueMock,
       updateNotificationEventStatus: vi.fn(),
@@ -511,6 +536,8 @@ describe("spendingStore budget notifications", () => {
       addBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+    });
+    setNotificationEventService({
       getNotificationEvents: vi.fn().mockResolvedValue([]),
       enqueueNotificationEvent: enqueueMock,
       updateNotificationEventStatus: vi.fn(),
@@ -573,6 +600,8 @@ describe("spendingStore budget notifications", () => {
       addBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+    });
+    setNotificationEventService({
       getNotificationEvents: vi.fn().mockResolvedValue([]),
       enqueueNotificationEvent: vi
         .fn()
@@ -634,6 +663,8 @@ describe("spendingStore budget notifications", () => {
       addBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+    });
+    setNotificationEventService({
       getNotificationEvents: vi.fn().mockResolvedValue([]),
       enqueueNotificationEvent: enqueueMock,
       updateNotificationEventStatus: vi.fn(),
@@ -742,7 +773,9 @@ describe("spendingStore.refreshAnalysis", () => {
           transactions,
           processedTransactions,
           analyzer: new MoneyInsightAnalyzer(
-            processedTransactions.filter((t: { excludeReport: boolean }) => !t.excludeReport),
+            processedTransactions.filter(
+              (t: { excludeReport: boolean }) => !t.excludeReport,
+            ),
           ),
         };
       })([normalTransaction, transfer.outgoing, transfer.incoming]),

@@ -34,6 +34,7 @@
     "./services/transferService": "./src/services/transferService.ts",
     "./services/debtService": "./src/services/debtService.ts",
     "./services/budgetService": "./src/services/budgetService.ts",
+    "./services/notification-event-service": "./src/services/notification-event-service.ts",
     "./stores": "./src/stores/index.ts",
     "./stores/spendingStore": "./src/stores/spendingStore.ts",
     "./stores/categoryGroupStore": "./src/stores/categoryGroupStore.ts",

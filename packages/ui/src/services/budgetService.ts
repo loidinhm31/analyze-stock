@@ -1,11 +1,5 @@
 import { getBudgetService } from "@money-insight/ui/adapters";
-import type {
-  Budget,
-  NewBudget,
-  NewNotificationEvent,
-  NotificationEvent,
-  NotificationEventStatus,
-} from "@money-insight/ui/types";
+import type { Budget, NewBudget } from "@money-insight/ui/types";
 
 export async function getBudgets(): Promise<Budget[]> {
   return getBudgetService().getBudgets();
@@ -25,29 +19,4 @@ export async function updateBudget(budget: Budget): Promise<Budget> {
 
 export async function deleteBudget(id: string): Promise<void> {
   return getBudgetService().deleteBudget(id);
-}
-
-export async function getNotificationEvents(): Promise<NotificationEvent[]> {
-  return getBudgetService().getNotificationEvents();
-}
-
-export async function enqueueNotificationEvent(
-  input: NewNotificationEvent,
-): Promise<NotificationEvent> {
-  return getBudgetService().enqueueNotificationEvent(input);
-}
-
-export async function updateNotificationEventStatus(
-  id: string,
-  status: NotificationEventStatus,
-  options: {
-    sentAt?: string;
-    lastError?: string;
-    attemptCount?: number;
-  } = {},
-): Promise<NotificationEvent> {
-  return getBudgetService().updateNotificationEventStatus(id, {
-    status,
-    ...options,
-  });
 }

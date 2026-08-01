@@ -18,6 +18,7 @@ import {
   getTransferUserNote,
   parseTransferNote,
 } from "../../services/transferService";
+import { reconcileCreditCardPaymentRemindersByAccountNames } from "./credit-card-payment-reminder-repository";
 export class IndexedDBTransactionAdapter implements ITransactionService {
   async getTransactions(filter?: TransactionFilter): Promise<Transaction[]> {
     await this.repairLegacyTransferPairs();
@@ -25,7 +26,9 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
     let collection = getDb().transactions.toCollection();
 
     if (filter?.categories?.length) {
-      collection = getDb().transactions.where("category").anyOf(filter.categories);
+      collection = getDb()
+        .transactions.where("category")
+        .anyOf(filter.categories);
     }
 
     let results = await collection.toArray();
@@ -189,6 +192,17 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
   }
 
   async addTransaction(tx: NewTransaction): Promise<Transaction> {
+    const db = getDb();
+    return db.transaction(
+      "rw",
+      [db.transactions, db.accounts, db.notificationEvents, db._pendingChanges],
+      () => this.addTransactionInCurrentTransaction(tx),
+    );
+  }
+
+  private async addTransactionInCurrentTransaction(
+    tx: NewTransaction,
+  ): Promise<Transaction> {
     const now = new Date().toISOString();
     const date = tx.date;
     const parsedDate = new Date(date);
@@ -227,10 +241,24 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
     };
 
     await getDb().transactions.add(transaction);
+    await reconcileCreditCardPaymentRemindersByAccountNames([
+      transaction.account,
+    ]);
     return transaction;
   }
 
   async updateTransaction(tx: Transaction): Promise<Transaction> {
+    const db = getDb();
+    return db.transaction(
+      "rw",
+      [db.transactions, db.accounts, db.notificationEvents, db._pendingChanges],
+      () => this.updateTransactionInCurrentTransaction(tx),
+    );
+  }
+
+  private async updateTransactionInCurrentTransaction(
+    tx: Transaction,
+  ): Promise<Transaction> {
     assertTransactionSource(tx.source);
 
     const existing = await getDb().transactions.get(tx.id);
@@ -246,8 +274,8 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
     ) {
       const transferId = tx.transferId ?? existing?.transferId;
       if (transferId) {
-        const pairCount = await getDb().transactions
-          .where("transferId")
+        const pairCount = await getDb()
+          .transactions.where("transferId")
           .equals(transferId)
           .count();
         if (pairCount < 2) {
@@ -266,19 +294,32 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
       syncedAt: null,
     };
     await getDb().transactions.put(updated);
+    await reconcileCreditCardPaymentRemindersByAccountNames(
+      new Set([existing?.account ?? tx.account, updated.account]),
+    );
     return updated;
   }
 
   async deleteTransaction(id: string): Promise<void> {
     await getDb().transaction(
       "rw",
-      getDb().transactions,
-      getDb().debts,
-      getDb().debtSettlements,
-      getDb()._pendingChanges,
+      [
+        getDb().transactions,
+        getDb().accounts,
+        getDb().notificationEvents,
+        getDb().debts,
+        getDb().debtSettlements,
+        getDb()._pendingChanges,
+      ],
       async () => {
+        const existing = await getDb().transactions.get(id);
         await deleteTransactionWithTracking(id);
         await reconcileDebtByTransactionId(id);
+        if (existing) {
+          await reconcileCreditCardPaymentRemindersByAccountNames([
+            existing.account,
+          ]);
+        }
       },
     );
   }
@@ -293,9 +334,13 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
 
     await getDb().transaction(
       "rw",
-      getDb().transactions,
-      getDb().importBatches,
-      getDb().accounts,
+      [
+        getDb().transactions,
+        getDb().importBatches,
+        getDb().accounts,
+        getDb().notificationEvents,
+        getDb()._pendingChanges,
+      ],
       async () => {
         // Auto-create missing accounts from imported transactions
         await this.ensureAccountsExist(transactions);
@@ -383,12 +428,21 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
       transferId,
     });
 
-    return getDb().transaction("rw", getDb().transactions, getDb().accounts, async () => {
-      await this.ensureAccountsExist([outTx, inTx]);
-      const outgoing = await this.addTransaction(outTx);
-      const incoming = await this.addTransaction(inTx);
-      return { outgoing, incoming };
-    });
+    return getDb().transaction(
+      "rw",
+      [
+        getDb().transactions,
+        getDb().accounts,
+        getDb().notificationEvents,
+        getDb()._pendingChanges,
+      ],
+      async () => {
+        await this.ensureAccountsExist([outTx, inTx]);
+        const outgoing = await this.addTransaction(outTx);
+        const incoming = await this.addTransaction(inTx);
+        return { outgoing, incoming };
+      },
+    );
   }
 
   async updateTransfer(
@@ -398,64 +452,75 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
     const { outgoing: newOutTx, incoming: newInTx } =
       createTransferTransactions({ ...params, transferId });
 
-    return getDb().transaction("rw", getDb().transactions, getDb().accounts, async () => {
-      const pair = await getDb().transactions
-        .where("transferId")
-        .equals(transferId)
-        .toArray();
+    return getDb().transaction(
+      "rw",
+      [
+        getDb().transactions,
+        getDb().accounts,
+        getDb().notificationEvents,
+        getDb()._pendingChanges,
+      ],
+      async () => {
+        const pair = await getDb()
+          .transactions.where("transferId")
+          .equals(transferId)
+          .toArray();
 
-      const outgoing = pair.find((t) => t.amount < 0);
-      const incoming = pair.find((t) => t.amount > 0);
+        const outgoing = pair.find((t) => t.amount < 0);
+        const incoming = pair.find((t) => t.amount > 0);
 
-      if (!outgoing || !incoming) {
-        throw new Error(
-          `Transfer pair incomplete for transferId: ${transferId}`,
-        );
-      }
+        if (!outgoing || !incoming) {
+          throw new Error(
+            `Transfer pair incomplete for transferId: ${transferId}`,
+          );
+        }
 
-      await this.ensureAccountsExist([newOutTx, newInTx]);
+        await this.ensureAccountsExist([newOutTx, newInTx]);
 
-      // Recalculate derived fields that NewTransaction omits but Transaction requires.
-      // Without this, expense/income and date-bucketing fields stay stale after edits.
-      const parsedDate = new Date(params.date);
-      const yearMonth = `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, "0")}`;
-      const year = parsedDate.getFullYear();
-      const month = parsedDate.getMonth() + 1;
+        // Recalculate derived fields that NewTransaction omits but Transaction requires.
+        // Without this, expense/income and date-bucketing fields stay stale after edits.
+        const parsedDate = new Date(params.date);
+        const yearMonth = `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, "0")}`;
+        const year = parsedDate.getFullYear();
+        const month = parsedDate.getMonth() + 1;
 
-      const updatedOut = await this.updateTransaction({
-        ...outgoing,
-        ...newOutTx,
-        id: outgoing.id,
-        expense: Math.abs(params.amount),
-        income: 0,
-        excludeReport: newOutTx.excludeReport,
-        yearMonth,
-        year,
-        month,
-      });
-      const updatedIn = await this.updateTransaction({
-        ...incoming,
-        ...newInTx,
-        id: incoming.id,
-        expense: 0,
-        income: params.amount,
-        excludeReport: newInTx.excludeReport,
-        yearMonth,
-        year,
-        month,
-      });
-      return { outgoing: updatedOut, incoming: updatedIn };
-    });
+        const updatedOut = await this.updateTransaction({
+          ...outgoing,
+          ...newOutTx,
+          id: outgoing.id,
+          expense: Math.abs(params.amount),
+          income: 0,
+          excludeReport: newOutTx.excludeReport,
+          yearMonth,
+          year,
+          month,
+        });
+        const updatedIn = await this.updateTransaction({
+          ...incoming,
+          ...newInTx,
+          id: incoming.id,
+          expense: 0,
+          income: params.amount,
+          excludeReport: newInTx.excludeReport,
+          yearMonth,
+          year,
+          month,
+        });
+        return { outgoing: updatedOut, incoming: updatedIn };
+      },
+    );
   }
 
   async deleteTransfer(transferId: string): Promise<void> {
     await getDb().transaction(
       "rw",
       getDb().transactions,
+      getDb().accounts,
+      getDb().notificationEvents,
       getDb()._pendingChanges,
       async () => {
-        const pair = await getDb().transactions
-          .where("transferId")
+        const pair = await getDb()
+          .transactions.where("transferId")
           .equals(transferId)
           .toArray();
 
@@ -466,15 +531,22 @@ export class IndexedDBTransactionAdapter implements ITransactionService {
           );
         }
 
+        const affectedAccounts = new Set(pair.map((tx) => tx.account));
         for (const tx of pair) {
           await deleteTransactionWithTracking(tx.id);
         }
+        await reconcileCreditCardPaymentRemindersByAccountNames(
+          affectedAccounts,
+        );
       },
     );
   }
 
   async getTransferPair(transferId: string): Promise<Transaction[]> {
-    return getDb().transactions.where("transferId").equals(transferId).toArray();
+    return getDb()
+      .transactions.where("transferId")
+      .equals(transferId)
+      .toArray();
   }
 
   /**

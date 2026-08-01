@@ -11,12 +11,6 @@ const { mockDb, generateIdMock, trackDeleteMock, assertPositiveAmountMock } =
         put: vi.fn(),
         delete: vi.fn(),
       },
-      notificationEvents: {
-        toArray: vi.fn(),
-        get: vi.fn(),
-        add: vi.fn(),
-        put: vi.fn(),
-      },
     },
     generateIdMock: vi.fn(),
     trackDeleteMock: vi.fn(),
@@ -39,8 +33,6 @@ describe("IndexedDBBudgetAdapter", () => {
     generateIdMock.mockReturnValue("generated-id");
     mockDb.budgets.toArray.mockResolvedValue([]);
     mockDb.budgets.get.mockResolvedValue(undefined);
-    mockDb.notificationEvents.toArray.mockResolvedValue([]);
-    mockDb.notificationEvents.get.mockResolvedValue(undefined);
   });
 
   it("creates budgets with sync metadata and active default status", async () => {
@@ -79,66 +71,5 @@ describe("IndexedDBBudgetAdapter", () => {
 
     expect(trackDeleteMock).toHaveBeenCalledWith("budgets", "budget-1", 3);
     expect(mockDb.budgets.delete).toHaveBeenCalledWith("budget-1");
-  });
-
-  it("enqueues notification events with pending defaults", async () => {
-    generateIdMock.mockReturnValueOnce("event-1");
-
-    const adapter = new IndexedDBBudgetAdapter();
-    const event = await adapter.enqueueNotificationEvent({
-      eventType: "budget_overrun",
-      title: "Budget exceeded",
-      body: "Food budget is over limit",
-      payload: { budgetId: "budget-1" },
-      triggeredAt: "2024-01-20T00:00:00.000Z",
-      sourceTable: "transactions",
-      sourceRowId: "tx-1",
-    });
-
-    expect(mockDb.notificationEvents.add).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "event-1",
-        priority: "normal",
-        status: "pending",
-        attemptCount: 0,
-      }),
-    );
-    expect(event.payload).toEqual({ budgetId: "budget-1" });
-  });
-
-  it("updates notification event status with a bumped sync version", async () => {
-    mockDb.notificationEvents.get.mockResolvedValue({
-      id: "event-1",
-      eventType: "budget_overrun",
-      title: "Budget exceeded",
-      body: "Food budget is over limit",
-      priority: "high",
-      status: "pending",
-      triggeredAt: "2024-01-20T00:00:00.000Z",
-      attemptCount: 0,
-      createdAt: "2024-01-20T00:00:00.000Z",
-      updatedAt: "2024-01-20T00:00:00.000Z",
-      syncVersion: 2,
-      syncedAt: 100,
-    });
-
-    const adapter = new IndexedDBBudgetAdapter();
-    const event = await adapter.updateNotificationEventStatus("event-1", {
-      status: "failed",
-      lastError: "network",
-      attemptCount: 1,
-    });
-
-    expect(mockDb.notificationEvents.put).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "event-1",
-        status: "failed",
-        lastError: "network",
-        attemptCount: 1,
-        syncVersion: 3,
-        syncedAt: null,
-      }),
-    );
-    expect(event.status).toBe("failed");
   });
 });

@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Budget, NotificationEvent } from "@money-insight/ui/types";
-import { setBudgetService, resetServices } from "@money-insight/ui/adapters";
+import {
+  resetServices,
+  setBudgetService,
+  setNotificationEventService,
+} from "@money-insight/ui/adapters";
 import { useSpendingStore } from "./spendingStore";
 import { useBudgetStore } from "./budgetStore";
 
@@ -24,6 +28,11 @@ describe("budgetStore", () => {
     resetServices();
     useBudgetStore.getState().reset();
     useSpendingStore.getState().reset();
+    setNotificationEventService({
+      getNotificationEvents: vi.fn().mockResolvedValue([]),
+      enqueueNotificationEvent: vi.fn(),
+      updateNotificationEventStatus: vi.fn(),
+    });
   });
 
   it("refreshes usage against today by default instead of latest transaction date", async () => {
@@ -36,9 +45,6 @@ describe("budgetStore", () => {
       addBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
-      getNotificationEvents: vi.fn().mockResolvedValue([]),
-      enqueueNotificationEvent: vi.fn(),
-      updateNotificationEventStatus: vi.fn(),
     });
     useSpendingStore.setState({
       transactions: [
@@ -140,9 +146,6 @@ describe("budgetStore", () => {
         updatedAt: "2024-01-02T00:00:00.000Z",
       }),
       deleteBudget: vi.fn(),
-      getNotificationEvents: vi.fn().mockResolvedValue([]),
-      enqueueNotificationEvent: vi.fn(),
-      updateNotificationEventStatus: vi.fn(),
     });
     useBudgetStore.setState({
       budgets: [budget],
@@ -170,9 +173,6 @@ describe("budgetStore", () => {
         updatedAt: "2024-01-02T00:00:00.000Z",
       }),
       deleteBudget: vi.fn(),
-      getNotificationEvents: vi.fn().mockResolvedValue([]),
-      enqueueNotificationEvent: vi.fn(),
-      updateNotificationEventStatus: vi.fn(),
     });
     useBudgetStore.setState({
       budgets: [budget],
@@ -205,7 +205,8 @@ describe("budgetStore", () => {
         cycleKey: "2024-01-01",
         reason: "worsened",
       },
-      dedupeKey: "money-insight:budget_overrun:budget-1:2024-01-01:worsened:tx-2",
+      dedupeKey:
+        "money-insight:budget_overrun:budget-1:2024-01-01:worsened:tx-2",
       status: "pending",
       triggeredAt: "2024-01-10T00:00:00.000Z",
       attemptCount: 0,
@@ -218,12 +219,7 @@ describe("budgetStore", () => {
     };
     const enqueueMock = vi.fn();
 
-    setBudgetService({
-      getBudgets: vi.fn(),
-      getBudget: vi.fn(),
-      addBudget: vi.fn(),
-      updateBudget: vi.fn(),
-      deleteBudget: vi.fn(),
+    setNotificationEventService({
       getNotificationEvents: vi.fn().mockResolvedValue([existingEvent]),
       enqueueNotificationEvent: enqueueMock,
       updateNotificationEventStatus: vi.fn(),
@@ -239,7 +235,8 @@ describe("budgetStore", () => {
         cycleKey: "2024-01-01",
         reason: "worsened",
       },
-      dedupeKey: "money-insight:budget_overrun:budget-1:2024-01-01:worsened:tx-2",
+      dedupeKey:
+        "money-insight:budget_overrun:budget-1:2024-01-01:worsened:tx-2",
       triggeredAt: "2024-01-11T00:00:00.000Z",
       sourceTable: "transactions",
       sourceRowId: "tx-2",

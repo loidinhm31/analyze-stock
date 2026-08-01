@@ -7,6 +7,8 @@ const { mockDb } = vi.hoisted(() => ({
       get: vi.fn(),
       toArray: vi.fn(),
       put: vi.fn(),
+      add: vi.fn(),
+      delete: vi.fn(),
     },
     transactions: {
       where: vi.fn(),
@@ -24,6 +26,8 @@ const { mockDb } = vi.hoisted(() => ({
       toArray: vi.fn(),
       bulkPut: vi.fn(),
     },
+    notificationEvents: {},
+    _pendingChanges: {},
     transaction: vi.fn(),
   },
 }));
@@ -35,6 +39,15 @@ vi.mock("./database", () => ({
 
 vi.mock("./indexedDbHelpers", () => ({
   trackDelete: vi.fn(),
+}));
+
+vi.mock("./credit-card-payment-reminder-repository", () => ({
+  reconcileCreditCardPaymentReminder: vi.fn(),
+  removeUnsyncedCreditCardPaymentReminderEvents: vi.fn(),
+}));
+
+vi.mock("./credit-card-payment-confirmation-repository", () => ({
+  confirmCreditCardPayment: vi.fn(),
 }));
 
 const account = {
@@ -124,16 +137,14 @@ describe("IndexedDBAccountAdapter.updateAccount", () => {
     }));
     mockDb.debts.where.mockReturnValue({
       equals: () => ({
-        toArray: vi
-          .fn()
-          .mockResolvedValue([
-            {
-              id: "debt-1",
-              accountId: "Wallet",
-              syncVersion: 2,
-              syncedAt: 123,
-            },
-          ]),
+        toArray: vi.fn().mockResolvedValue([
+          {
+            id: "debt-1",
+            accountId: "Wallet",
+            syncVersion: 2,
+            syncedAt: 123,
+          },
+        ]),
       }),
     });
     mockDb.debtSettlements.where.mockReturnValue({

@@ -39,6 +39,23 @@
         { "name": "icon", "type": "string", "nullable": true },
         { "name": "initialBalance", "type": "number", "nullable": false },
         { "name": "currency", "type": "string", "nullable": false },
+        { "name": "paymentDueDay", "type": "integer", "nullable": true },
+        {
+          "name": "paymentReminderEnabled",
+          "type": "boolean",
+          "nullable": true
+        },
+        { "name": "nextPaymentDueDate", "type": "string", "nullable": true },
+        {
+          "name": "lastPaymentConfirmedDueDate",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "lastPaymentConfirmedAt",
+          "type": "string",
+          "nullable": true
+        },
         { "name": "createdAt", "type": "string", "nullable": false },
         { "name": "updatedAt", "type": "string", "nullable": false }
       ],
@@ -105,8 +122,12 @@
         { "name": "sentAt", "type": "string", "nullable": true },
         { "name": "attemptCount", "type": "integer", "nullable": false },
         { "name": "lastError", "type": "string", "nullable": true },
+        { "name": "deliveryMode", "type": "string", "nullable": true },
         { "name": "sourceTable", "type": "string", "nullable": true },
         { "name": "sourceRowId", "type": "string", "nullable": true },
+        { "name": "sourceVersion", "type": "integer", "nullable": true },
+        { "name": "nextAttemptAt", "type": "string", "nullable": true },
+        { "name": "lastSentAt", "type": "string", "nullable": true },
         { "name": "createdAt", "type": "string", "nullable": false },
         { "name": "updatedAt", "type": "string", "nullable": false }
       ],

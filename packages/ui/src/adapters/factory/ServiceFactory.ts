@@ -9,6 +9,7 @@ import type {
   IStatisticsService,
   IDebtService,
   IBudgetService,
+  INotificationEventService,
   ISyncService,
   IAuthService,
 } from "./interfaces";
@@ -21,6 +22,7 @@ let accountService: IAccountService | null = null;
 let statisticsService: IStatisticsService | null = null;
 let debtService: IDebtService | null = null;
 let budgetService: IBudgetService | null = null;
+let notificationEventService: INotificationEventService | null = null;
 let authService: IAuthService | null = null;
 let syncService: ISyncService | null = null;
 
@@ -58,6 +60,13 @@ export const setDebtService = (svc: IDebtService): void => {
 export const setBudgetService = (svc: IBudgetService): void => {
   budgetService = svc;
   serviceLogger.factory("Set custom BudgetService");
+};
+
+export const setNotificationEventService = (
+  svc: INotificationEventService,
+): void => {
+  notificationEventService = svc;
+  serviceLogger.factory("Set custom NotificationEventService");
 };
 
 export const setAuthService = (svc: IAuthService): void => {
@@ -133,6 +142,15 @@ export const getBudgetService = (): IBudgetService => {
   return budgetService;
 };
 
+export const getNotificationEventService = (): INotificationEventService => {
+  if (!notificationEventService) {
+    throw new Error(
+      "NotificationEventService not initialized. Call setNotificationEventService() first.",
+    );
+  }
+  return notificationEventService;
+};
+
 export const getAuthService = (): IAuthService => {
   if (!authService) {
     throw new Error(
@@ -159,6 +177,7 @@ export const getAllServices = () => ({
   statistics: getStatisticsService(),
   debt: getDebtService(),
   budget: getBudgetService(),
+  notificationEvent: getNotificationEventService(),
   auth: getAuthService(),
   sync: getSyncService(),
 });
@@ -171,6 +190,7 @@ export const resetServices = (): void => {
   statisticsService = null;
   debtService = null;
   budgetService = null;
+  notificationEventService = null;
   authService = null;
   syncService = null;
   serviceLogger.factory("Reset all services");

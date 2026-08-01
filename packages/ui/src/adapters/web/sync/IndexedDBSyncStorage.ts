@@ -83,6 +83,11 @@ export class IndexedDBSyncStorage {
             icon: acc.icon,
             initialBalance: acc.initialBalance,
             currency: acc.currency,
+            paymentDueDay: acc.paymentDueDay,
+            paymentReminderEnabled: acc.paymentReminderEnabled,
+            nextPaymentDueDate: acc.nextPaymentDueDate,
+            lastPaymentConfirmedDueDate: acc.lastPaymentConfirmedDueDate,
+            lastPaymentConfirmedAt: acc.lastPaymentConfirmedAt,
             createdAt: acc.createdAt,
             updatedAt: acc.updatedAt,
           },
@@ -185,8 +190,12 @@ export class IndexedDBSyncStorage {
             sentAt: event.sentAt,
             attemptCount: event.attemptCount,
             lastError: event.lastError,
+            deliveryMode: event.deliveryMode,
             sourceTable: event.sourceTable,
             sourceRowId: event.sourceRowId,
+            sourceVersion: event.sourceVersion,
+            nextAttemptAt: event.nextAttemptAt,
+            lastSentAt: event.lastSentAt,
             createdAt: event.createdAt,
             updatedAt: event.updatedAt,
           },
@@ -197,8 +206,8 @@ export class IndexedDBSyncStorage {
     }
 
     // Pending deletes
-    const pendingDeletes = await getDb()._pendingChanges
-      .filter((change) => change.operation === "delete")
+    const pendingDeletes = await getDb()
+      ._pendingChanges.filter((change) => change.operation === "delete")
       .toArray();
     for (const change of pendingDeletes) {
       records.push({
@@ -214,8 +223,8 @@ export class IndexedDBSyncStorage {
   }
 
   async hasPendingChanges(): Promise<boolean> {
-    const pendingDeletes = await getDb()._pendingChanges
-      .filter((c) => c.operation === "delete")
+    const pendingDeletes = await getDb()
+      ._pendingChanges.filter((c) => c.operation === "delete")
       .count();
     if (pendingDeletes > 0) return true;
     const tables = [
@@ -249,8 +258,8 @@ export class IndexedDBSyncStorage {
       count += await this.countUnsyncedRecords(tableName);
     }
 
-    count += await getDb()._pendingChanges
-      .filter((change) => change.operation === "delete")
+    count += await getDb()
+      ._pendingChanges.filter((change) => change.operation === "delete")
       .count();
 
     return count;
@@ -410,8 +419,8 @@ export class IndexedDBSyncStorage {
     }
 
     if (record.tableName === "transactions") {
-      const initializedDebt = await getDb().debts
-        .where("initialTransactionId")
+      const initializedDebt = await getDb()
+        .debts.where("initialTransactionId")
         .equals(record.rowId)
         .first();
       if (initializedDebt) {
@@ -419,8 +428,8 @@ export class IndexedDBSyncStorage {
         return undefined;
       }
 
-      const settlement = await getDb().debtSettlements
-        .where("transactionId")
+      const settlement = await getDb()
+        .debtSettlements.where("transactionId")
         .equals(record.rowId)
         .first();
       if (settlement) {
@@ -448,7 +457,10 @@ export class IndexedDBSyncStorage {
   }
 
   async saveCheckpoint(checkpoint: Checkpoint): Promise<void> {
-    await getDb().setSyncMeta(SYNC_META_KEYS.CHECKPOINT, JSON.stringify(checkpoint));
+    await getDb().setSyncMeta(
+      SYNC_META_KEYS.CHECKPOINT,
+      JSON.stringify(checkpoint),
+    );
   }
 
   async getLastSyncAt(): Promise<number | undefined> {
@@ -457,7 +469,10 @@ export class IndexedDBSyncStorage {
   }
 
   async saveLastSyncAt(timestamp: number): Promise<void> {
-    await getDb().setSyncMeta(SYNC_META_KEYS.LAST_SYNC_AT, timestamp.toString());
+    await getDb().setSyncMeta(
+      SYNC_META_KEYS.LAST_SYNC_AT,
+      timestamp.toString(),
+    );
   }
 
   async clearPendingChanges(): Promise<void> {
@@ -473,9 +488,7 @@ export class IndexedDBSyncStorage {
     // Dexie/IndexedDB indexes do not accept null as a query key.
     // Unsynced local records can have syncedAt missing or null, so count them
     // via a predicate instead of an indexed equals(null) lookup.
-    return table
-      .filter((record) => record.syncedAt == null)
-      .count();
+    return table.filter((record) => record.syncedAt == null).count();
   }
 
   private getTable(tableName: string) {

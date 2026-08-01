@@ -108,6 +108,7 @@ function installBaseServices() {
     addAccount: vi.fn(),
     updateAccount: vi.fn(),
     deleteAccount: vi.fn(),
+    confirmCreditCardPayment: vi.fn(),
   });
   setCategoryGroupService({
     getCategoryGroups: vi.fn().mockResolvedValue([]),
@@ -208,9 +209,9 @@ describe("debtStore", () => {
 
   it("adds a debt and refreshes spending history for the initialization transaction", async () => {
     const debt = makeDebt({ initialTransactionId: "tx-initial" });
-    const getTransactions = vi.fn().mockResolvedValue([
-      makeDebtInitializationTransaction(),
-    ]);
+    const getTransactions = vi
+      .fn()
+      .mockResolvedValue([makeDebtInitializationTransaction()]);
     setTransactionService({
       getTransactions,
       addTransaction: vi.fn(),

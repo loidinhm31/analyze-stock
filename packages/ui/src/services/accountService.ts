@@ -1,5 +1,10 @@
 import { getAccountService } from "@money-insight/ui/adapters";
-import type { Account, NewAccount } from "@money-insight/ui/types";
+import type {
+  Account,
+  CreditCardPaymentConfirmationInput,
+  CreditCardPaymentConfirmationResult,
+  NewAccount,
+} from "@money-insight/ui/types";
 
 export async function getAccounts(): Promise<Account[]> {
   return getAccountService().getAccounts();
@@ -15,4 +20,10 @@ export async function updateAccount(account: Account): Promise<Account> {
 
 export async function deleteAccount(id: string): Promise<void> {
   return getAccountService().deleteAccount(id);
+}
+
+export async function confirmCreditCardPayment(
+  input: CreditCardPaymentConfirmationInput,
+): Promise<CreditCardPaymentConfirmationResult> {
+  return getAccountService().confirmCreditCardPayment(input);
 }

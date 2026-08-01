@@ -192,7 +192,16 @@ export interface Budget extends NewBudget {
 
 export type NotificationEventPriority = "low" | "normal" | "high" | "critical";
 
-export type NotificationEventStatus = "pending" | "sent" | "failed";
+export type NotificationEventStatus =
+  | "pending"
+  | "processing"
+  | "sent"
+  | "failed"
+  | "superseded";
+
+export type NotificationEventDeliveryMode =
+  | "once"
+  | "daily_until_source_change";
 
 export type JsonPrimitive = string | number | boolean | null;
 
@@ -217,8 +226,12 @@ export interface NewNotificationEvent {
   sentAt?: string;
   attemptCount?: number;
   lastError?: string;
+  deliveryMode?: NotificationEventDeliveryMode;
   sourceTable?: string;
   sourceRowId?: string;
+  sourceVersion?: number;
+  nextAttemptAt?: string;
+  lastSentAt?: string;
 }
 
 export interface NotificationEvent extends NewNotificationEvent {
@@ -241,7 +254,7 @@ export interface AdjustmentNote {
 // Transfer metadata encoded in transaction note field
 export interface TransferNote {
   userNote: string;
-  toAccount?: string;   // present on outgoing tx (debit)
+  toAccount?: string; // present on outgoing tx (debit)
   fromAccount?: string; // present on incoming tx (credit)
 }
 
@@ -308,7 +321,15 @@ export interface Category {
 }
 
 // Account definition
-export interface Account {
+export interface CreditCardPaymentReminderFields {
+  paymentDueDay?: number;
+  paymentReminderEnabled?: boolean;
+  nextPaymentDueDate?: string;
+  lastPaymentConfirmedDueDate?: string;
+  lastPaymentConfirmedAt?: string;
+}
+
+export interface Account extends CreditCardPaymentReminderFields {
   id: string;
   name: string;
   accountType?: string;
@@ -322,13 +343,34 @@ export interface Account {
 }
 
 // New account for creation
-export interface NewAccount {
+export interface NewAccount extends CreditCardPaymentReminderFields {
   name: string;
   accountType?: string;
   icon?: string;
   initialBalance: number;
   currency: string;
 }
+
+export interface CreditCardPaymentConfirmationInput {
+  accountId: string;
+  expectedDueDate: string;
+  fundingAccountId: string;
+  amount: number;
+  paymentDate: string;
+  note?: string;
+}
+
+export type CreditCardPaymentConfirmationResult =
+  | {
+      alreadyConfirmed: true;
+      account: Account;
+    }
+  | {
+      alreadyConfirmed: false;
+      account: Account;
+      outgoing: Transaction;
+      incoming: Transaction;
+    };
 
 // Import batch tracking
 export interface ImportBatch {

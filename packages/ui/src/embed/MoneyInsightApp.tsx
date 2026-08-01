@@ -6,6 +6,7 @@ import {
   IndexedDBTransactionAdapter,
   IndexedDBDebtAdapter,
   IndexedDBBudgetAdapter,
+  IndexedDBNotificationEventAdapter,
   createIndexedDBSyncAdapter,
   setAccountService,
   setAuthService,
@@ -14,6 +15,7 @@ import {
   setStatisticsService,
   setDebtService,
   setBudgetService,
+  setNotificationEventService,
   setSyncService,
   setTransactionService,
   getSyncService,
@@ -122,7 +124,10 @@ export function MoneyInsightApp({
         await deleteCurrentDb();
         return { success: true };
       } catch (e) {
-        return { success: false, error: e instanceof Error ? e.message : "Cleanup failed" };
+        return {
+          success: false,
+          error: e instanceof Error ? e.message : "Cleanup failed",
+        };
       }
     });
     return unregister;
@@ -148,6 +153,7 @@ export function MoneyInsightApp({
     const statistics = new IndexedDBStatisticsAdapter();
     const debt = new IndexedDBDebtAdapter();
     const budget = new IndexedDBBudgetAdapter();
+    const notificationEvent = new IndexedDBNotificationEventAdapter();
     setTransactionService(transaction);
     setCategoryService(category);
     setCategoryGroupService(categoryGroup);
@@ -155,6 +161,7 @@ export function MoneyInsightApp({
     setStatisticsService(statistics);
     setDebtService(debt);
     setBudgetService(budget);
+    setNotificationEventService(notificationEvent);
 
     // Initialize auth service based on platform
     const auth = isTauri() ? new TauriAuthAdapter() : new QmServerAuthAdapter();
@@ -180,12 +187,15 @@ export function MoneyInsightApp({
       statistics,
       debt,
       budget,
+      notificationEvent,
       auth,
       sync,
     };
   }, [dbReady]);
 
-  const isAuthenticated = !!(authTokens?.accessToken && authTokens?.refreshToken);
+  const isAuthenticated = !!(
+    authTokens?.accessToken && authTokens?.refreshToken
+  );
   const autoSyncEnabled = dbReady && tokensReady && isAuthenticated && embedded;
 
   // Write embedded SSO tokens before child auto-sync effects are allowed to run.

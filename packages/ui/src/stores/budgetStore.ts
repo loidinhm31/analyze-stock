@@ -7,8 +7,12 @@ import type {
   JsonObject,
   Transaction,
 } from "@money-insight/ui/types";
-import { calculateBudgetUsage, type BudgetUsage } from "@money-insight/ui/lib/budget-calculations";
+import {
+  calculateBudgetUsage,
+  type BudgetUsage,
+} from "@money-insight/ui/lib/budget-calculations";
 import * as budgetService from "@money-insight/ui/services/budgetService";
+import * as notificationEventService from "@money-insight/ui/services/notification-event-service";
 import { useCategoryGroupStore } from "./categoryGroupStore";
 
 interface BudgetStore {
@@ -48,7 +52,9 @@ function buildUsageMap(
   return Object.fromEntries(
     budgets.map((budget) => [
       budget.id,
-      calculateBudgetUsage(budget, transactions, asOfDate, { resolveCategoryName }),
+      calculateBudgetUsage(budget, transactions, asOfDate, {
+        resolveCategoryName,
+      }),
     ]),
   );
 }
@@ -119,7 +125,8 @@ export const useBudgetStore = create<BudgetStore>()((set, get) => ({
       set({
         isLoading: false,
         isDbReady: false,
-        error: error instanceof Error ? error.message : "Failed to load budgets",
+        error:
+          error instanceof Error ? error.message : "Failed to load budgets",
       });
       throw error;
     }
@@ -149,7 +156,9 @@ export const useBudgetStore = create<BudgetStore>()((set, get) => ({
     try {
       const updated = await budgetService.updateBudget(budget);
       set((state) => ({
-        budgets: state.budgets.map((item) => (item.id === updated.id ? updated : item)),
+        budgets: state.budgets.map((item) =>
+          item.id === updated.id ? updated : item,
+        ),
         isLoading: false,
         isDbReady: true,
       }));
@@ -158,7 +167,8 @@ export const useBudgetStore = create<BudgetStore>()((set, get) => ({
     } catch (error) {
       set({
         isLoading: false,
-        error: error instanceof Error ? error.message : "Failed to update budget",
+        error:
+          error instanceof Error ? error.message : "Failed to update budget",
       });
       throw error;
     }
@@ -193,14 +203,16 @@ export const useBudgetStore = create<BudgetStore>()((set, get) => ({
     } catch (error) {
       set({
         isLoading: false,
-        error: error instanceof Error ? error.message : "Failed to delete budget",
+        error:
+          error instanceof Error ? error.message : "Failed to delete budget",
       });
       throw error;
     }
   },
 
   refreshUsage: async (transactions, asOfDate) => {
-    const currentTransactions = transactions ?? (await loadCurrentTransactions());
+    const currentTransactions =
+      transactions ?? (await loadCurrentTransactions());
     const budgets = get().budgets;
     const effectiveDate = asOfDate ?? getTodayIsoDate();
     const usage = buildUsageMap(budgets, currentTransactions, effectiveDate);
@@ -210,14 +222,14 @@ export const useBudgetStore = create<BudgetStore>()((set, get) => ({
 
   enqueueBudgetEvent: async (input) => {
     const existingEvent = shouldSkipDuplicateEvent(
-      await budgetService.getNotificationEvents(),
+      await notificationEventService.getNotificationEvents(),
       input,
     );
     if (existingEvent) {
       return existingEvent;
     }
 
-    return budgetService.enqueueNotificationEvent(input);
+    return notificationEventService.enqueueNotificationEvent(input);
   },
 
   reset: () => {

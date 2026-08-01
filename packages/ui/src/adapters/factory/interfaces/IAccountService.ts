@@ -1,4 +1,9 @@
-import type { Account, NewAccount } from "@money-insight/ui/types";
+import type {
+  Account,
+  CreditCardPaymentConfirmationInput,
+  CreditCardPaymentConfirmationResult,
+  NewAccount,
+} from "@money-insight/ui/types";
 
 /**
  * Account service interface
@@ -23,4 +28,8 @@ export interface IAccountService {
    * Delete an account
    */
   deleteAccount(id: string): Promise<void>;
+
+  confirmCreditCardPayment(
+    input: CreditCardPaymentConfirmationInput,
+  ): Promise<CreditCardPaymentConfirmationResult>;
 }

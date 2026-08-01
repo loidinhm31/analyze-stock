@@ -23,13 +23,16 @@ import {
   recomputeDebt,
 } from "./indexedDbHelpers";
 import { IndexedDBTransactionAdapter } from "./IndexedDBTransactionAdapter";
+import { reconcileCreditCardPaymentRemindersByAccountNames } from "./credit-card-payment-reminder-repository";
 
 export class IndexedDBDebtAdapter implements IDebtService {
   private readonly transactionAdapter = new IndexedDBTransactionAdapter();
 
   async getDebts(): Promise<Debt[]> {
     const debts = await getDb().debts.toArray();
-    return debts.sort((left, right) => right.originatedAt.localeCompare(left.originatedAt));
+    return debts.sort((left, right) =>
+      right.originatedAt.localeCompare(left.originatedAt),
+    );
   }
 
   async getDebt(id: string): Promise<Debt | undefined> {
@@ -57,9 +60,13 @@ export class IndexedDBDebtAdapter implements IDebtService {
 
     return getDb().transaction(
       "rw",
-      getDb().debts,
-      getDb().transactions,
-      getDb().accounts,
+      [
+        getDb().debts,
+        getDb().transactions,
+        getDb().accounts,
+        getDb().notificationEvents,
+        getDb()._pendingChanges,
+      ],
       async () => {
         const transaction = await this.transactionAdapter.addTransaction({
           note: buildDebtInitializationTransactionNote(debt),
@@ -120,28 +127,57 @@ export class IndexedDBDebtAdapter implements IDebtService {
         getDb().debts,
         getDb().debtSettlements,
         getDb().transactions,
+        getDb().accounts,
+        getDb().notificationEvents,
         getDb()._pendingChanges,
       ],
       async () => {
+        const debt = await getDb().debts.get(id);
+        const settlements = await getDb()
+          .debtSettlements.where("debtId")
+          .equals(id)
+          .toArray();
+        const transactionIds = [
+          debt?.initialTransactionId,
+          ...settlements.map((settlement) => settlement.transactionId),
+        ].filter((value): value is string => !!value);
+        const transactions = await getDb().transactions.bulkGet(transactionIds);
         await deleteDebtWithSettlements(id);
+        await reconcileCreditCardPaymentRemindersByAccountNames(
+          transactions.flatMap((transaction) =>
+            transaction ? [transaction.account] : [],
+          ),
+        );
       },
     );
   }
 
   async getSettlements(debtId: string): Promise<DebtSettlement[]> {
-    const settlements = await getDb().debtSettlements.where("debtId").equals(debtId).toArray();
-    return settlements.sort((left, right) => right.settledAt.localeCompare(left.settledAt));
+    const settlements = await getDb()
+      .debtSettlements.where("debtId")
+      .equals(debtId)
+      .toArray();
+    return settlements.sort((left, right) =>
+      right.settledAt.localeCompare(left.settledAt),
+    );
   }
 
-  async addSettlement(debtId: string, input: DebtSettlementInput): Promise<DebtSettlement> {
+  async addSettlement(
+    debtId: string,
+    input: DebtSettlementInput,
+  ): Promise<DebtSettlement> {
     assertPositiveAmount(input.amount);
 
     return getDb().transaction(
       "rw",
-      getDb().debts,
-      getDb().debtSettlements,
-      getDb().transactions,
-      getDb().accounts,
+      [
+        getDb().debts,
+        getDb().debtSettlements,
+        getDb().transactions,
+        getDb().accounts,
+        getDb().notificationEvents,
+        getDb()._pendingChanges,
+      ],
       async () => {
         const debt = await getDb().debts.get(debtId);
         if (!debt) {
@@ -153,7 +189,10 @@ export class IndexedDBDebtAdapter implements IDebtService {
         const settlementAmount = Math.abs(input.amount);
         const transactionInput: NewTransaction = {
           note: buildDebtSettlementTransactionNote(debt, input.note),
-          amount: buildDebtSettlementTransactionAmount(debt.debtType, settlementAmount),
+          amount: buildDebtSettlementTransactionAmount(
+            debt.debtType,
+            settlementAmount,
+          ),
           category: getDebtSettlementCategory(debt.debtType),
           account: input.accountId,
           currency: debt.currency,
@@ -162,9 +201,10 @@ export class IndexedDBDebtAdapter implements IDebtService {
           source: "debt_settlement",
         };
 
-        const transaction = await this.transactionAdapter.addTransaction(transactionInput);
-        const duplicate = await getDb().debtSettlements
-          .where("transactionId")
+        const transaction =
+          await this.transactionAdapter.addTransaction(transactionInput);
+        const duplicate = await getDb()
+          .debtSettlements.where("transactionId")
           .equals(transaction.id)
           .first();
         if (duplicate) {
@@ -196,12 +236,25 @@ export class IndexedDBDebtAdapter implements IDebtService {
   async deleteSettlement(id: string): Promise<void> {
     await getDb().transaction(
       "rw",
-      getDb().debts,
-      getDb().debtSettlements,
-      getDb().transactions,
-      getDb()._pendingChanges,
+      [
+        getDb().debts,
+        getDb().debtSettlements,
+        getDb().transactions,
+        getDb().accounts,
+        getDb().notificationEvents,
+        getDb()._pendingChanges,
+      ],
       async () => {
+        const settlement = await getDb().debtSettlements.get(id);
+        const transaction = settlement
+          ? await getDb().transactions.get(settlement.transactionId)
+          : undefined;
         await deleteDebtSettlementById(id);
+        if (transaction) {
+          await reconcileCreditCardPaymentRemindersByAccountNames([
+            transaction.account,
+          ]);
+        }
       },
     );
   }
