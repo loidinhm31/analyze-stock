@@ -27,6 +27,7 @@ import {
   AccountList,
   EditAccountDialog,
   AdjustBalanceDialog,
+  AccountPaymentConfirmationDialog,
   TransferForm,
   AddTransactionForm,
   SearchInput,
@@ -67,6 +68,7 @@ export function TransactionPage() {
     addAccount,
     updateAccount,
     deleteAccount,
+    confirmCreditCardPayment,
     adjustBalance,
   } = useSpendingStore();
 
@@ -85,6 +87,8 @@ export function TransactionPage() {
   const [adjustingAccount, setAdjustingAccount] = useState<Account | null>(
     null,
   );
+  const [confirmingPaymentAccount, setConfirmingPaymentAccount] =
+    useState<Account | null>(null);
   const [transferFromAccount, setTransferFromAccount] =
     useState<Account | null>(null);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
@@ -207,6 +211,10 @@ export function TransactionPage() {
 
   const handleAdjustBalance = useCallback((account: Account) => {
     setAdjustingAccount(account);
+  }, []);
+
+  const handleConfirmPaymentOpen = useCallback((account: Account) => {
+    setConfirmingPaymentAccount(account);
   }, []);
 
   const handleTransferOpen = useCallback((account?: Account) => {
@@ -409,6 +417,7 @@ export function TransactionPage() {
                 onAccountAdd={addAccount}
                 onAdjustBalance={handleAdjustBalance}
                 onTransfer={handleTransferOpen}
+                onConfirmPayment={handleConfirmPaymentOpen}
               />
             </div>
           </TabsContent>
@@ -457,6 +466,20 @@ export function TransactionPage() {
         open={!!adjustingAccount}
         onOpenChange={(open) => !open && setAdjustingAccount(null)}
         onSubmit={handleAdjustBalanceSubmit}
+      />
+
+      <AccountPaymentConfirmationDialog
+        account={confirmingPaymentAccount}
+        accounts={accounts}
+        currentBalance={
+          confirmingPaymentAccount
+            ? (accountBalances.get(confirmingPaymentAccount.name) ??
+              confirmingPaymentAccount.initialBalance)
+            : 0
+        }
+        open={!!confirmingPaymentAccount}
+        onOpenChange={(open) => !open && setConfirmingPaymentAccount(null)}
+        onSubmit={confirmCreditCardPayment}
       />
 
       {/* Transfer Money Dialog */}

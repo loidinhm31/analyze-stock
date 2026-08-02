@@ -12,6 +12,8 @@ import type {
   ProcessedTransaction,
   MonthlyReport,
   TransferParams,
+  CreditCardPaymentConfirmationInput,
+  CreditCardPaymentConfirmationResult,
 } from "@money-insight/ui/types";
 import {
   buildBudgetOverrunEvent,
@@ -91,6 +93,8 @@ async function refreshAccountDependentStores(): Promise<void> {
       : Promise.resolve(),
   ]);
 }
+
+const creditCardConfirmationsInFlight = new Set<string>();
 
 async function refreshBudgetStoreForTransactionChange(
   beforeTransactions: Transaction[],
@@ -219,6 +223,9 @@ interface SpendingStore {
   addAccount: (account: NewAccount) => Promise<Account>;
   updateAccount: (account: Account) => Promise<Account>;
   deleteAccount: (id: string) => Promise<void>;
+  confirmCreditCardPayment: (
+    input: CreditCardPaymentConfirmationInput,
+  ) => Promise<CreditCardPaymentConfirmationResult>;
 
   // Balance adjustment actions
   adjustBalance: (
@@ -773,6 +780,45 @@ export const useSpendingStore = create<SpendingStore>()((set, get) => ({
           error instanceof Error ? error.message : "Failed to delete account",
       });
       throw error;
+    }
+  },
+
+  confirmCreditCardPayment: async (input) => {
+    if (creditCardConfirmationsInFlight.has(input.accountId)) {
+      throw new Error("Payment confirmation is already in progress");
+    }
+
+    creditCardConfirmationsInFlight.add(input.accountId);
+    set({ isLoading: true, error: null });
+
+    try {
+      const result = await accountService.confirmCreditCardPayment(input);
+      set((state) => ({
+        ...(result.alreadyConfirmed
+          ? {}
+          : buildAnalyzerState([
+              ...state.transactions,
+              result.outgoing,
+              result.incoming,
+            ])),
+        accounts: state.accounts.map((account) =>
+          account.id === result.account.id ? result.account : account,
+        ),
+        isLoading: false,
+      }));
+      get().refreshAnalysis();
+      return result;
+    } catch (error) {
+      set({
+        isLoading: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to confirm credit card payment",
+      });
+      throw error;
+    } finally {
+      creditCardConfirmationsInFlight.delete(input.accountId);
     }
   },
 

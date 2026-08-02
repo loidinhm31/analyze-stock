@@ -15,6 +15,7 @@ export interface DatePickerProps {
   onDateChange: (date: Date | undefined) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export function DatePicker({
@@ -22,15 +23,20 @@ export function DatePicker({
   onDateChange,
   placeholder = "Pick a date",
   className,
+  disabled = false,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => !disabled && setOpen(nextOpen)}
+    >
       <PopoverTrigger asChild>
         <Button
           type="button"
           variant="outline"
+          disabled={disabled}
           className={cn(
             "justify-start text-left font-normal",
             !date && "text-muted-foreground",

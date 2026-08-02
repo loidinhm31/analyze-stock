@@ -16,7 +16,10 @@ export {
   AddTransactionForm,
   type AddTransactionFormProps,
 } from "./AddTransactionForm";
-export { DebtDetailDialog, type DebtDetailDialogProps } from "./DebtDetailDialog";
+export {
+  DebtDetailDialog,
+  type DebtDetailDialogProps,
+} from "./DebtDetailDialog";
 export { DebtForm, type DebtFormProps } from "./DebtForm";
 export { DebtList, type DebtListProps } from "./DebtList";
 export {
@@ -38,6 +41,10 @@ export {
   type EditAccountDialogProps,
 } from "./EditAccountDialog";
 export { AccountList, type AccountListProps } from "./AccountList";
+export {
+  AccountPaymentConfirmationDialog,
+  type AccountPaymentConfirmationDialogProps,
+} from "./account-payment-confirmation-dialog";
 export {
   CategoryPieChart,
   type CategoryPieChartProps,

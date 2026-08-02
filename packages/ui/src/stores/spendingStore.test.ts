@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import type {
+  Account,
   Budget,
   NotificationEvent,
   Transaction,
@@ -214,12 +215,10 @@ describe("spendingStore.updateTransfer", () => {
       deleteTransaction: vi.fn(),
       importTransactions: vi.fn(),
       createTransfer: vi.fn(),
-      updateTransfer: vi
-        .fn()
-        .mockResolvedValue({
-          outgoing: updatedOutgoing,
-          incoming: updatedIncoming,
-        }),
+      updateTransfer: vi.fn().mockResolvedValue({
+        outgoing: updatedOutgoing,
+        incoming: updatedIncoming,
+      }),
       deleteTransfer: vi.fn(),
       getTransferPair: vi.fn(),
     });
@@ -309,12 +308,10 @@ describe("spendingStore.updateTransfer", () => {
       deleteTransaction: vi.fn(),
       importTransactions: vi.fn(),
       createTransfer: vi.fn(),
-      updateTransfer: vi
-        .fn()
-        .mockResolvedValue({
-          outgoing: updatedOutgoing,
-          incoming: updatedIncoming,
-        }),
+      updateTransfer: vi.fn().mockResolvedValue({
+        outgoing: updatedOutgoing,
+        incoming: updatedIncoming,
+      }),
       deleteTransfer: vi.fn(),
       getTransferPair: vi.fn(),
     });
@@ -350,6 +347,127 @@ describe("spendingStore.updateTransfer", () => {
     // Transfer legs must be updated
     expect(txs.find((t) => t.id === outgoing.id)!.amount).toBe(-200_000);
     expect(txs.find((t) => t.id === incoming.id)!.amount).toBe(200_000);
+  });
+});
+
+describe("spendingStore.confirmCreditCardPayment", () => {
+  const card: Account = {
+    id: "card-1",
+    name: "Everyday Card",
+    accountType: "Credit Card",
+    initialBalance: 0,
+    currency: "VND",
+    paymentDueDay: 15,
+    paymentReminderEnabled: true,
+    nextPaymentDueDate: "2026-08-15",
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
+    syncVersion: 1,
+    syncedAt: null,
+  };
+  const otherCard: Account = {
+    ...card,
+    id: "card-2",
+    name: "Travel Card",
+  };
+  const confirmationInput = {
+    accountId: card.id,
+    expectedDueDate: card.nextPaymentDueDate!,
+    fundingAccountId: "cash-1",
+    amount: 500_000,
+    paymentDate: "2026-08-10",
+  };
+
+  beforeEach(() => {
+    useSpendingStore.getState().reset();
+    resetServices();
+  });
+
+  it("replaces only the confirmed account and appends the returned transfer pair", async () => {
+    const transfer = makeTransferPair(
+      "card-payment-1",
+      "Cash",
+      card.name,
+      confirmationInput.amount,
+      confirmationInput.paymentDate,
+    );
+    const updatedCard: Account = {
+      ...card,
+      nextPaymentDueDate: "2026-09-15",
+      lastPaymentConfirmedDueDate: "2026-08-15",
+      syncVersion: 2,
+    };
+    const confirmMock = vi.fn().mockResolvedValue({
+      alreadyConfirmed: false,
+      account: updatedCard,
+      ...transfer,
+    });
+
+    setAccountService({
+      getAccounts: vi.fn(),
+      addAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+      confirmCreditCardPayment: confirmMock,
+    });
+    useSpendingStore.setState({
+      accounts: [card, otherCard],
+      transactions: [],
+    });
+
+    await useSpendingStore
+      .getState()
+      .confirmCreditCardPayment(confirmationInput);
+
+    const state = useSpendingStore.getState();
+    expect(state.accounts).toEqual([updatedCard, otherCard]);
+    expect(state.transactions).toEqual([transfer.outgoing, transfer.incoming]);
+    expect(state.transactions.every((tx) => tx.excludeReport)).toBe(true);
+    expect(confirmMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks a duplicate in-flight submission and allows retry after an error", async () => {
+    let resolveFirst!: (value: {
+      alreadyConfirmed: true;
+      account: Account;
+    }) => void;
+    const firstResult = new Promise<{
+      alreadyConfirmed: true;
+      account: Account;
+    }>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const confirmMock = vi
+      .fn()
+      .mockReturnValueOnce(firstResult)
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce({ alreadyConfirmed: true, account: card });
+
+    setAccountService({
+      getAccounts: vi.fn(),
+      addAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+      confirmCreditCardPayment: confirmMock,
+    });
+    useSpendingStore.setState({ accounts: [card], transactions: [] });
+
+    const first = useSpendingStore
+      .getState()
+      .confirmCreditCardPayment(confirmationInput);
+    await expect(
+      useSpendingStore.getState().confirmCreditCardPayment(confirmationInput),
+    ).rejects.toThrow("already in progress");
+    resolveFirst({ alreadyConfirmed: true, account: card });
+    await first;
+
+    await expect(
+      useSpendingStore.getState().confirmCreditCardPayment(confirmationInput),
+    ).rejects.toThrow("temporary failure");
+    await expect(
+      useSpendingStore.getState().confirmCreditCardPayment(confirmationInput),
+    ).resolves.toMatchObject({ alreadyConfirmed: true });
+    expect(confirmMock).toHaveBeenCalledTimes(3);
   });
 });
 

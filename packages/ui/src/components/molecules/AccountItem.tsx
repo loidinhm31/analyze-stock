@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { ArrowLeftRight, Trash2, Scale } from "lucide-react";
+import { ArrowLeftRight, CheckCircle2, Scale, Trash2 } from "lucide-react";
 import {
   AccountIcon,
   ACCOUNT_ICONS,
   Badge,
   Button,
 } from "@money-insight/ui/components/atoms";
-import { cn } from "@money-insight/ui/lib";
+import {
+  cn,
+  getCreditCardPaymentDueStatus,
+  getCreditCardPaymentDueStatusLabel,
+} from "@money-insight/ui/lib";
 
 export interface AccountItemProps {
   id: string;
@@ -20,6 +24,12 @@ export interface AccountItemProps {
   onDelete?: (id: string) => void;
   onAdjustBalance?: (id: string) => void;
   onTransfer?: () => void;
+  paymentDueDay?: number;
+  paymentReminderEnabled?: boolean;
+  nextPaymentDueDate?: string;
+  lastPaymentConfirmedDueDate?: string;
+  lastPaymentConfirmedAt?: string;
+  onConfirmPayment?: (id: string) => void;
 }
 
 function formatCurrencyWithCode(amount: number, currency: string): string {
@@ -67,11 +77,25 @@ export function AccountItem({
   onDelete,
   onAdjustBalance,
   onTransfer,
+  paymentReminderEnabled,
+  nextPaymentDueDate,
+  lastPaymentConfirmedDueDate,
+  onConfirmPayment,
 }: AccountItemProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Use calculated balance if available, otherwise use initialBalance
   const displayBalance = balance !== undefined ? balance : initialBalance;
+  const isCreditCard = accountType === "Credit Card";
+  const paymentStatus = getCreditCardPaymentDueStatus({
+    nextPaymentDueDate,
+    lastPaymentConfirmedDueDate,
+  });
+  const canConfirmPayment =
+    isCreditCard &&
+    paymentReminderEnabled === true &&
+    !!nextPaymentDueDate &&
+    displayBalance < 0;
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -95,23 +119,52 @@ export function AccountItem({
     onTransfer?.();
   };
 
+  const handleConfirmPayment = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onConfirmPayment?.(id);
+  };
+
   return (
     <div
-      className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent transition-colors cursor-pointer"
+      className="flex flex-col items-stretch gap-3 p-3 border rounded-lg hover:bg-accent transition-colors cursor-pointer sm:flex-row sm:items-center sm:justify-between"
       onClick={onClick}
     >
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          {icon && (
-            ACCOUNT_ICONS[icon]
-              ? <AccountIcon name={icon} size={24} />
-              : <span className="text-2xl">{icon}</span>
-          )}
+          {icon &&
+            (ACCOUNT_ICONS[icon] ? (
+              <AccountIcon name={icon} size={24} />
+            ) : (
+              <span className="text-2xl">{icon}</span>
+            ))}
           <span className="font-medium">{name}</span>
           {accountType && <Badge variant="outline">{accountType}</Badge>}
         </div>
+        {isCreditCard && paymentReminderEnabled && nextPaymentDueDate && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <Badge
+              variant={
+                paymentStatus === "overdue"
+                  ? "destructive"
+                  : paymentStatus === "confirmed"
+                    ? "success"
+                    : "warning"
+              }
+            >
+              {getCreditCardPaymentDueStatusLabel(paymentStatus)}
+            </Badge>
+            <span className="text-muted-foreground">
+              Due {nextPaymentDueDate}
+            </span>
+            {lastPaymentConfirmedDueDate && (
+              <span className="text-muted-foreground">
+                Last confirmed cycle {lastPaymentConfirmedDueDate}
+              </span>
+            )}
+          </div>
+        )}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex w-full shrink-0 items-center justify-between gap-1 sm:w-auto sm:justify-end sm:gap-2">
         <div className="text-right">
           <p
             className={cn(
@@ -123,10 +176,27 @@ export function AccountItem({
           </p>
           <p className="text-xs text-muted-foreground">{currency}</p>
         </div>
+        {canConfirmPayment && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-11 min-w-11 gap-1.5 px-3"
+            onClick={handleConfirmPayment}
+            title={`Confirm payment for ${name}`}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Confirm payment</span>
+            <span className="sr-only sm:hidden">
+              Confirm payment for {name}
+            </span>
+          </Button>
+        )}
         {onAdjustBalance && (
           <Button
             variant="ghost"
             size="icon"
+            className="min-h-11 min-w-11"
             onClick={handleAdjust}
             title="Adjust balance"
           >
@@ -137,6 +207,7 @@ export function AccountItem({
           <Button
             variant="ghost"
             size="icon"
+            className="min-h-11 min-w-11"
             onClick={handleTransfer}
             title="Transfer money"
           >
@@ -147,6 +218,7 @@ export function AccountItem({
           <Button
             variant={confirmDelete ? "destructive" : "ghost"}
             size="icon"
+            className="min-h-11 min-w-11"
             onClick={handleDelete}
           >
             <Trash2 className="h-4 w-4" />

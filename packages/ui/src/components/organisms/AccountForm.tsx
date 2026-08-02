@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Trash2, DollarSign, CreditCard, Tag } from "lucide-react";
 import {
   AccountIcon,
@@ -20,6 +20,8 @@ import { FormField } from "@money-insight/ui/components/molecules";
 import {
   cn,
   formatNumericInput,
+  deriveNextPaymentDueDate,
+  getLocalIsoDate,
   parseNumericInput,
 } from "@money-insight/ui/lib";
 import type { Account, NewAccount } from "@money-insight/ui/types";
@@ -70,6 +72,13 @@ export function AccountForm(props: AccountFormProps) {
       : "0",
   );
   const [currency, setCurrency] = useState(account?.currency || "VND");
+  const [paymentReminderEnabled, setPaymentReminderEnabled] = useState(
+    account?.paymentReminderEnabled === true,
+  );
+  const [paymentDueDay, setPaymentDueDay] = useState(
+    account?.paymentDueDay?.toString() ?? "",
+  );
+  const [paymentDueDayError, setPaymentDueDayError] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -88,6 +97,9 @@ export function AccountForm(props: AccountFormProps) {
         }),
       );
       setCurrency(account.currency);
+      setPaymentReminderEnabled(account.paymentReminderEnabled === true);
+      setPaymentDueDay(account.paymentDueDay?.toString() ?? "");
+      setPaymentDueDayError(undefined);
       setConfirmDelete(false);
       setSaveError(undefined);
     } else if (mode === "add") {
@@ -96,15 +108,57 @@ export function AccountForm(props: AccountFormProps) {
       setIcon("cash");
       setInitialBalance("0");
       setCurrency("VND");
+      setPaymentReminderEnabled(false);
+      setPaymentDueDay("");
+      setPaymentDueDayError(undefined);
       setConfirmDelete(false);
       setSaveError(undefined);
     }
   }, [mode, account]);
 
+  const isCreditCard = accountType === "Credit Card";
+  const parsedPaymentDueDay = Number(paymentDueDay);
+  const nextDueDate = useMemo(() => {
+    if (
+      !isCreditCard ||
+      !paymentReminderEnabled ||
+      !Number.isInteger(parsedPaymentDueDay) ||
+      parsedPaymentDueDay < 1 ||
+      parsedPaymentDueDay > 31
+    ) {
+      return "";
+    }
+    if (
+      account?.paymentReminderEnabled &&
+      account.paymentDueDay === parsedPaymentDueDay &&
+      account.nextPaymentDueDate
+    ) {
+      return account.nextPaymentDueDate;
+    }
+    return deriveNextPaymentDueDate(parsedPaymentDueDay, getLocalIsoDate());
+  }, [
+    account?.nextPaymentDueDate,
+    account?.paymentDueDay,
+    account?.paymentReminderEnabled,
+    isCreditCard,
+    parsedPaymentDueDay,
+    paymentReminderEnabled,
+  ]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     if (!name.trim()) {
+      return;
+    }
+
+    const dueDay = Number(paymentDueDay);
+    if (
+      isCreditCard &&
+      paymentReminderEnabled &&
+      (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31)
+    ) {
+      setPaymentDueDayError("Enter a due day from 1 to 31.");
       return;
     }
 
@@ -122,6 +176,16 @@ export function AccountForm(props: AccountFormProps) {
           icon: icon || undefined,
           initialBalance: numericBalance,
           currency,
+          paymentReminderEnabled: isCreditCard && paymentReminderEnabled,
+          paymentDueDay:
+            isCreditCard && paymentReminderEnabled ? dueDay : undefined,
+          ...(isCreditCard && paymentReminderEnabled
+            ? {}
+            : {
+                nextPaymentDueDate: undefined,
+                lastPaymentConfirmedDueDate: undefined,
+                lastPaymentConfirmedAt: undefined,
+              }),
           updatedAt: new Date().toISOString(),
         };
 
@@ -133,6 +197,9 @@ export function AccountForm(props: AccountFormProps) {
           icon: icon || undefined,
           initialBalance: numericBalance,
           currency,
+          paymentReminderEnabled: isCreditCard && paymentReminderEnabled,
+          paymentDueDay:
+            isCreditCard && paymentReminderEnabled ? dueDay : undefined,
         };
 
         await props.onSubmit(newAccount);
@@ -222,6 +289,11 @@ export function AccountForm(props: AccountFormProps) {
                 onValueChange={(val) => {
                   setAccountType(val);
                   setIcon(ACCOUNT_TYPE_ICON[val] ?? "cash");
+                  if (val !== "Credit Card") {
+                    setPaymentReminderEnabled(false);
+                    setPaymentDueDay("");
+                    setPaymentDueDayError(undefined);
+                  }
                 }}
               >
                 <SelectTrigger>
@@ -236,6 +308,102 @@ export function AccountForm(props: AccountFormProps) {
                 </SelectContent>
               </Select>
             </FormField>
+
+            {isCreditCard && (
+              <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="payment-reminder-enabled"
+                      className="text-sm font-medium leading-none"
+                    >
+                      Payment reminder
+                    </label>
+                    <p
+                      id="payment-reminder-hint"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Starts three days before the due date and repeats daily
+                      until payment is confirmed.
+                    </p>
+                  </div>
+                  <input
+                    id="payment-reminder-enabled"
+                    type="checkbox"
+                    checked={paymentReminderEnabled}
+                    disabled={loading || deleting}
+                    aria-describedby="payment-reminder-hint"
+                    onChange={(event) => {
+                      setPaymentReminderEnabled(event.target.checked);
+                      setPaymentDueDayError(undefined);
+                    }}
+                    className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
+                  />
+                </div>
+
+                {paymentReminderEnabled && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="payment-due-day"
+                        className="text-sm font-medium"
+                      >
+                        Monthly due day
+                      </label>
+                      <Input
+                        id="payment-due-day"
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={31}
+                        value={paymentDueDay}
+                        disabled={loading || deleting}
+                        aria-invalid={!!paymentDueDayError}
+                        aria-describedby={
+                          paymentDueDayError
+                            ? "payment-due-day-error"
+                            : undefined
+                        }
+                        onInvalid={(event) => {
+                          event.preventDefault();
+                          setPaymentDueDayError(
+                            "Enter a due day from 1 to 31.",
+                          );
+                        }}
+                        onChange={(event) => {
+                          setPaymentDueDay(event.target.value);
+                          setPaymentDueDayError(undefined);
+                        }}
+                      />
+                      {paymentDueDayError && (
+                        <p
+                          id="payment-due-day-error"
+                          className="text-xs text-destructive"
+                          role="alert"
+                        >
+                          {paymentDueDayError}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="next-payment-due-date"
+                        className="text-sm font-medium"
+                      >
+                        Next due date
+                      </label>
+                      <Input
+                        id="next-payment-due-date"
+                        value={nextDueDate || "Enter a valid due day"}
+                        readOnly
+                        aria-readonly="true"
+                        className="bg-muted text-muted-foreground"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Icon picker */}
             <div className="flex flex-col gap-1.5">

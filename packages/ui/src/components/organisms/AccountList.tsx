@@ -12,6 +12,7 @@ export interface AccountListProps {
   onAccountAdd: (account: NewAccount) => Promise<Account | void>;
   onAdjustBalance?: (account: Account) => void;
   onTransfer?: (account?: Account) => void;
+  onConfirmPayment?: (account: Account) => void;
 }
 
 export function AccountList({
@@ -22,6 +23,7 @@ export function AccountList({
   onAccountAdd,
   onAdjustBalance,
   onTransfer,
+  onConfirmPayment,
 }: AccountListProps) {
   // Sort accounts alphabetically by name
   const sortedAccounts = [...accounts].sort((a, b) =>
@@ -30,13 +32,13 @@ export function AccountList({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           {accounts.length === 0
             ? "No accounts yet"
             : `Showing ${accounts.length} account${accounts.length !== 1 ? "s" : ""}`}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
           {onTransfer && (
             <Button
               type="button"
@@ -66,6 +68,9 @@ export function AccountList({
                 onAdjustBalance ? () => onAdjustBalance(account) : undefined
               }
               onTransfer={onTransfer ? () => onTransfer(account) : undefined}
+              onConfirmPayment={
+                onConfirmPayment ? () => onConfirmPayment(account) : undefined
+              }
             />
           ))}
         </div>
