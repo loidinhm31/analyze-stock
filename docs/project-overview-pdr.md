@@ -32,6 +32,8 @@
 - **Manual balance adjustments**: Reconcile without creating transactions
 - **Account icons**: Assign visual icons for quick recognition
 - **Account search**: On the Transactions page, locally filter the loaded account list by account name.
+- **Credit-card due cycles**: Credit Card accounts optionally persist a monthly due-day (1–31) and reminder toggle; the next due date is derived locally with month-end clamping and shown as upcoming, overdue, confirmed, or not configured.
+- **Payment confirmation**: The per-card confirmation dialog requires a same-currency funding account, positive amount, payment date, and optional note. The amount must clear the negative card balance; confirmation atomically creates an excluded transfer pair, advances that card's cycle, and is idempotent for duplicate submissions.
 
 ### Category System
 - **Hierarchical**: Parent groups (Food & Drink, Transport) → child categories (Coffee, Gas)

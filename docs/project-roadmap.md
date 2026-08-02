@@ -2,6 +2,15 @@
 
 Last updated: 2026-07-30
 
+## Credit-card due/payment confirmation UX (2026-08-02)
+
+- **Credit-card due/payment confirmation UX — complete**
+  - Credit Card-only recurring due-day/reminder settings with derived date-only status (`upcoming`, `overdue`, `confirmed`, `not-configured`).
+  - Responsive accessible per-card confirmation dialog; same-currency funding account, clearing amount, date, note, negative-balance gate, duplicate/error handling.
+  - Confirmation remains local/atomic: excluded paired transfer, account cycle advance, and targeted store refresh; transfer legs stay out of reports.
+
+See [the implementation plan](../plans/260801-1053-credit-card-payment-due-notifications/phase-04-add-account-payment-confirmation-ux.md).
+
 ## Completed milestones
 
 - **Account rename transaction migration — 100% (2026-07-28)**

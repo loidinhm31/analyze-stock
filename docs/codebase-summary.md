@@ -123,7 +123,7 @@ money-insight/
 ### State Management
 | File | LOC | Purpose |
 |------|-----|---------|
-| `packages/ui/src/stores/spendingStore.ts` | 789 | Transactions, accounts, analysis, filters, UI state. Actions: addTransaction, createTransfer, updateTransfer, deleteTransfer, updateAccount (including dependent-store refresh after rename), importFromCSV, refreshAnalysis, adjustBalance. |
+| `packages/ui/src/stores/spendingStore.ts` | - | Transactions, accounts, analysis, filters, UI state. Includes transfer CRUD, account updates, and `confirmCreditCardPayment` (per-account in-flight guard, atomic result insertion, idempotent already-confirmed handling). |
 | `packages/ui/src/stores/categoryGroupStore.ts` | 279 | Categories, groups, mappings, lookup map. Debounced 50ms triggerAnalysisRefresh(). |
 
 ### Core Components
@@ -132,6 +132,7 @@ money-insight/
 | `packages/ui/src/components/atoms/CategoryIcon.tsx` | 500+ | 35 inline SVGs (two-tone outlined style), fallback wallet icon |
 | `packages/ui/src/components/organisms/TransactionForm.tsx` | 427 | Manual transaction entry (amount, category, account, date, note) |
 | `packages/ui/src/components/organisms/TransferForm.tsx` | 349 | Paired transfer creation (from/to accounts) |
+| `packages/ui/src/components/organisms/account-payment-confirmation-dialog.tsx` | - | Accessible responsive Credit Card payment dialog; same-currency funding filter, clearing-amount default/validation, date and note, retryable errors. |
 | `packages/ui/src/components/organisms/GroupedTransactionList.tsx` | 242 | Transaction list grouped by date, with item actions |
 | `packages/ui/src/components/pages/CategorySetupPage.tsx` | 1149 | Category groups + mappings UI, icon picker |
 | `packages/ui/src/components/pages/DashboardPage.tsx` | - | Pie chart, trend line, bottleneck alerts |
@@ -151,6 +152,8 @@ money-insight/
 | `packages/ui/src/adapters/web/database.ts` | Dexie.js schema: transactions, accounts, categories, categoryGroups, categoryMappings, importBatches, debts, debtSettlements, budgets, _syncMeta, _pendingChanges |
 | `packages/ui/src/adapters/web/IndexedDBAccountAdapter.ts` | Account CRUD; validates names and atomically propagates renames to transactions, transfer notes, debts, settlements, and budgets. |
 | `packages/ui/src/adapters/web/IndexedDBTransactionAdapter.ts` | CRUD + transfer pair management |
+| `packages/ui/src/lib/credit-card-payment-status.ts` | Pure date-only due status derivation and labels; avoids locale date comparisons. |
+| `packages/ui/src/lib/credit-card-payment-reminder.ts` | Due-day/month-clamping, reminder event, balance, and confirmation lifecycle helpers. |
 | `packages/ui/src/adapters/web/IndexedDBSyncAdapter.ts` | Checkpoint-based sync orchestration, concurrency lock, progress callbacks |
 | `packages/ui/src/adapters/shared/QmServerAuthAdapter.ts` | HTTP auth (login, register, logout, token refresh) |
 | `packages/ui/src/adapters/tauri/TauriAuthAdapter.ts` | IPC-based auth for Tauri desktop |
