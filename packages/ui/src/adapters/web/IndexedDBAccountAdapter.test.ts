@@ -43,7 +43,7 @@ vi.mock("./indexedDbHelpers", () => ({
 
 vi.mock("./credit-card-payment-reminder-repository", () => ({
   reconcileCreditCardPaymentReminder: vi.fn(),
-  removeUnsyncedCreditCardPaymentReminderEvents: vi.fn(),
+  removeCreditCardPaymentReminderEvents: vi.fn(),
 }));
 
 vi.mock("./credit-card-payment-confirmation-repository", () => ({

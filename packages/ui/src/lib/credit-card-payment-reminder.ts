@@ -170,7 +170,7 @@ export function buildCreditCardPaymentReminderEvent(
   return {
     eventType: "credit_card_payment_due",
     title: "Credit card payment due",
-    body: `${account.name} is due on ${account.nextPaymentDueDate}. Confirm payment in Money Insight.`,
+    body: `Your credit card payment is due on ${account.nextPaymentDueDate}. Confirm payment in Money Insight.`,
     priority: "high",
     payload: {
       accountId: account.id,

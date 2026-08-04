@@ -1,4 +1,8 @@
-import type { Debt, DebtSettlement, Transaction } from "@money-insight/ui/types";
+import type {
+  Debt,
+  DebtSettlement,
+  Transaction,
+} from "@money-insight/ui/types";
 import { getDb, generateId, getCurrentTimestamp } from "./database";
 
 interface SyncTracked {
@@ -21,6 +25,7 @@ export async function trackDelete(
   tableName: string,
   id: string,
   syncVersion: number,
+  serverVersion?: number,
 ): Promise<void> {
   await getDb()._pendingChanges.add({
     tableName,
@@ -28,6 +33,7 @@ export async function trackDelete(
     operation: "delete",
     data: {},
     version: (syncVersion || 0) + 1,
+    serverVersion,
     createdAt: getCurrentTimestamp(),
   });
 }
@@ -35,8 +41,13 @@ export async function trackDelete(
 export function recomputeDebt(
   debt: Debt,
   settlements: DebtSettlement[],
-): Pick<Debt, "settledAmount" | "remainingAmount" | "isCompleted" | "completedAt"> {
-  const activeSettlements = settlements.filter((settlement) => settlement.amount > 0);
+): Pick<
+  Debt,
+  "settledAmount" | "remainingAmount" | "isCompleted" | "completedAt"
+> {
+  const activeSettlements = settlements.filter(
+    (settlement) => settlement.amount > 0,
+  );
   const settledAmount = activeSettlements.reduce(
     (total, settlement) => total + settlement.amount,
     0,
@@ -57,7 +68,9 @@ export function recomputeDebt(
   };
 }
 
-export async function deleteTransactionWithTracking(transactionId: string): Promise<void> {
+export async function deleteTransactionWithTracking(
+  transactionId: string,
+): Promise<void> {
   const existing = await getDb().transactions.get(transactionId);
   if (!existing) return;
 
@@ -65,8 +78,14 @@ export async function deleteTransactionWithTracking(transactionId: string): Prom
   await getDb().transactions.delete(transactionId);
 }
 
-export async function deleteSettlementWithTracking(settlement: DebtSettlement): Promise<void> {
-  await trackDelete("debtSettlements", settlement.id, settlement.syncVersion || 0);
+export async function deleteSettlementWithTracking(
+  settlement: DebtSettlement,
+): Promise<void> {
+  await trackDelete(
+    "debtSettlements",
+    settlement.id,
+    settlement.syncVersion || 0,
+  );
   await getDb().debtSettlements.delete(settlement.id);
 }
 
@@ -80,7 +99,10 @@ export async function deleteSettlementAndTransaction(
 export async function deleteDebtSettlementByTransactionId(
   transactionId: string,
 ): Promise<string | undefined> {
-  const settlement = await getDb().debtSettlements.where("transactionId").equals(transactionId).first();
+  const settlement = await getDb()
+    .debtSettlements.where("transactionId")
+    .equals(transactionId)
+    .first();
   if (!settlement) return undefined;
 
   await deleteSettlementWithTracking(settlement);
@@ -88,7 +110,9 @@ export async function deleteDebtSettlementByTransactionId(
   return settlement.debtId;
 }
 
-export async function deleteDebtSettlementById(id: string): Promise<DebtSettlement | undefined> {
+export async function deleteDebtSettlementById(
+  id: string,
+): Promise<DebtSettlement | undefined> {
   const settlement = await getDb().debtSettlements.get(id);
   if (!settlement) return undefined;
 
@@ -105,7 +129,10 @@ export async function deleteDebtWithSettlements(id: string): Promise<void> {
     await deleteTransactionWithTracking(debt.initialTransactionId);
   }
 
-  const settlements = await getDb().debtSettlements.where("debtId").equals(id).toArray();
+  const settlements = await getDb()
+    .debtSettlements.where("debtId")
+    .equals(id)
+    .toArray();
   for (const settlement of settlements) {
     await deleteSettlementAndTransaction(settlement);
   }
@@ -129,7 +156,10 @@ export async function deleteRemoteDebtAndLinkedTransactions(
   debtId: string,
 ): Promise<void> {
   const debt = await getDb().debts.get(debtId);
-  const settlements = await getDb().debtSettlements.where("debtId").equals(debtId).toArray();
+  const settlements = await getDb()
+    .debtSettlements.where("debtId")
+    .equals(debtId)
+    .toArray();
 
   if (debt?.initialTransactionId) {
     await getDb().transactions.delete(debt.initialTransactionId);
@@ -142,7 +172,9 @@ export async function deleteRemoteDebtAndLinkedTransactions(
   await getDb().debts.delete(debtId);
 }
 
-export function assertDebtType(value: string): asserts value is Debt["debtType"] {
+export function assertDebtType(
+  value: string,
+): asserts value is Debt["debtType"] {
   if (value !== "payable" && value !== "receivable") {
     throw new Error("Invalid debt type");
   }
@@ -163,7 +195,10 @@ export function assertTransactionSource(
   }
 }
 
-export function assertPositiveAmount(amount: number, fieldName = "amount"): void {
+export function assertPositiveAmount(
+  amount: number,
+  fieldName = "amount",
+): void {
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error(`${fieldName} must be positive`);
   }
@@ -189,7 +224,9 @@ export function buildDebtInitializationTransactionAmount(debt: Debt): number {
     : -Math.abs(debt.principalAmount);
 }
 
-export function getDebtInitializationCategory(debtType: Debt["debtType"]): string {
+export function getDebtInitializationCategory(
+  debtType: Debt["debtType"],
+): string {
   return debtType === "payable" ? "Debt Borrowed" : "Debt Lent";
 }
 
@@ -205,11 +242,16 @@ export function getDebtSettlementCategory(debtType: Debt["debtType"]): string {
   return debtType === "payable" ? "Debt Payment" : "Debt Collection";
 }
 
-export async function reconcileDebtFromSettlements(debtId: string): Promise<void> {
+export async function reconcileDebtFromSettlements(
+  debtId: string,
+): Promise<void> {
   const debt = await getDb().debts.get(debtId);
   if (!debt) return;
 
-  const settlements = await getDb().debtSettlements.where("debtId").equals(debtId).toArray();
+  const settlements = await getDb()
+    .debtSettlements.where("debtId")
+    .equals(debtId)
+    .toArray();
   const aggregate = recomputeDebt(debt, settlements);
   await getDb().debts.update(debtId, {
     ...aggregate,
@@ -219,9 +261,11 @@ export async function reconcileDebtFromSettlements(debtId: string): Promise<void
   });
 }
 
-export async function reconcileDebtByTransactionId(transactionId: string): Promise<void> {
-  const debt = await getDb().debts
-    .where("initialTransactionId")
+export async function reconcileDebtByTransactionId(
+  transactionId: string,
+): Promise<void> {
+  const debt = await getDb()
+    .debts.where("initialTransactionId")
     .equals(transactionId)
     .first();
   if (debt) {

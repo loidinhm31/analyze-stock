@@ -14,6 +14,25 @@ import {
   SYNC_META_KEYS,
   reconcileDebtFromSettlements,
 } from "@money-insight/ui/adapters/web";
+import {
+  reconcileCreditCardPaymentReminder,
+  reconcileCreditCardPaymentRemindersByAccountNames,
+  removeCreditCardPaymentReminderEvents,
+} from "../credit-card-payment-reminder-repository";
+
+function addReminderAccountIds(value: unknown, accountIds: Set<string>): void {
+  if (!value || typeof value !== "object") return;
+  const record = value as Record<string, unknown>;
+  if (typeof record.sourceRowId === "string") {
+    accountIds.add(record.sourceRowId);
+  }
+  if (record.payload && typeof record.payload === "object") {
+    const payload = record.payload as Record<string, unknown>;
+    if (typeof payload.accountId === "string") {
+      accountIds.add(payload.accountId);
+    }
+  }
+}
 
 export class IndexedDBSyncStorage {
   async getPendingChanges(): Promise<SyncRecord[]> {
@@ -185,21 +204,16 @@ export class IndexedDBSyncStorage {
             priority: event.priority,
             payload: event.payload,
             dedupeKey: event.dedupeKey,
-            status: event.status,
             triggeredAt: event.triggeredAt,
-            sentAt: event.sentAt,
-            attemptCount: event.attemptCount,
-            lastError: event.lastError,
             deliveryMode: event.deliveryMode,
             sourceTable: event.sourceTable,
             sourceRowId: event.sourceRowId,
             sourceVersion: event.sourceVersion,
-            nextAttemptAt: event.nextAttemptAt,
-            lastSentAt: event.lastSentAt,
             createdAt: event.createdAt,
             updatedAt: event.updatedAt,
           },
           version: event.syncVersion || 1,
+          serverVersion: event.serverVersion,
           deleted: false,
         });
       }
@@ -215,6 +229,7 @@ export class IndexedDBSyncStorage {
         rowId: change.rowId,
         data: {},
         version: change.version,
+        serverVersion: change.serverVersion,
         deleted: true,
       });
     }
@@ -266,7 +281,7 @@ export class IndexedDBSyncStorage {
   }
 
   async markSynced(
-    recordIds: Array<{ tableName: string; rowId: string }>,
+    recordIds: Array<{ tableName: string; rowId: string; version: number }>,
   ): Promise<void> {
     const now = getCurrentTimestamp();
 
@@ -283,13 +298,22 @@ export class IndexedDBSyncStorage {
         getDb().notificationEvents,
       ],
       async () => {
-        for (const { tableName, rowId } of recordIds) {
-          await getDb()._pendingChanges.where({ tableName, rowId }).delete();
+        for (const { tableName, rowId, version } of recordIds) {
+          // A push acknowledgement identifies the exact client mutation that
+          // the server accepted. Do not delete a newer pending delete/update
+          // for the same row.
+          await getDb()
+            ._pendingChanges.where({ tableName, rowId })
+            .filter((change) => change.version === version)
+            .delete();
 
           const table = this.getTable(tableName);
           if (table) {
             const exists = await table.get(rowId);
-            if (exists) {
+            if (
+              exists &&
+              (exists as { syncVersion?: unknown }).syncVersion === version
+            ) {
               await table.update(rowId, { syncedAt: now });
             }
           }
@@ -300,6 +324,9 @@ export class IndexedDBSyncStorage {
 
   async applyRemoteChanges(records: PullRecord[]): Promise<void> {
     const now = getCurrentTimestamp();
+    const reminderAccountNames = new Set<string>();
+    const reminderAccountIds = new Set<string>();
+    const deletedAccountIds = new Set<string>();
 
     const nonDeleted = records.filter((r) => !r.deleted);
     const deleted = records.filter((r) => r.deleted);
@@ -329,6 +356,25 @@ export class IndexedDBSyncStorage {
         const debtIdsToReconcile = new Set<string>();
 
         for (const record of nonDeleted) {
+          if (record.tableName === "accounts") {
+            const previous = await getDb().accounts.get(record.rowId);
+            if (previous?.name) reminderAccountNames.add(previous.name);
+            const name = (record.data as { name?: unknown }).name;
+            if (typeof name === "string") reminderAccountNames.add(name);
+          }
+          if (record.tableName === "transactions") {
+            const previous = await getDb().transactions.get(record.rowId);
+            if (previous?.account) reminderAccountNames.add(previous.account);
+            const account = (record.data as { account?: unknown }).account;
+            if (typeof account === "string") reminderAccountNames.add(account);
+          }
+          if (record.tableName === "notificationEvents") {
+            addReminderAccountIds(
+              await getDb().notificationEvents.get(record.rowId),
+              reminderAccountIds,
+            );
+            addReminderAccountIds(record.data, reminderAccountIds);
+          }
           await this.upsertRecord(record, now);
           if (record.tableName === "debts") {
             debtIdsToReconcile.add(record.rowId);
@@ -339,6 +385,22 @@ export class IndexedDBSyncStorage {
           }
         }
         for (const record of deleted) {
+          if (record.tableName === "accounts") {
+            deletedAccountIds.add(record.rowId);
+            const previous = await getDb().accounts.get(record.rowId);
+            if (previous?.name) reminderAccountNames.add(previous.name);
+          }
+          if (record.tableName === "transactions") {
+            const previous = await getDb().transactions.get(record.rowId);
+            if (previous?.account) reminderAccountNames.add(previous.account);
+          }
+          if (record.tableName === "notificationEvents") {
+            addReminderAccountIds(
+              await getDb().notificationEvents.get(record.rowId),
+              reminderAccountIds,
+            );
+            addReminderAccountIds(record.data, reminderAccountIds);
+          }
           const deletedDebtId = await this.deleteRecord(record);
           if (record.tableName === "debts") {
             debtIdsToReconcile.delete(record.rowId);
@@ -352,6 +414,22 @@ export class IndexedDBSyncStorage {
           await reconcileDebtFromSettlements(debtId);
         }
       },
+    );
+
+    for (const accountId of deletedAccountIds) {
+      await removeCreditCardPaymentReminderEvents(accountId);
+    }
+    for (const accountId of reminderAccountIds) {
+      if (deletedAccountIds.has(accountId)) continue;
+      const account = await getDb().accounts.get(accountId);
+      if (account) {
+        await reconcileCreditCardPaymentReminder(account);
+      } else {
+        await removeCreditCardPaymentReminderEvents(accountId);
+      }
+    }
+    await reconcileCreditCardPaymentRemindersByAccountNames(
+      reminderAccountNames,
     );
   }
 
@@ -401,6 +479,10 @@ export class IndexedDBSyncStorage {
       syncVersion: record.version,
       syncedAt: syncedAt,
     };
+
+    if (record.tableName === "notificationEvents") {
+      data.serverVersion = record.version;
+    }
 
     if (!data.createdAt) {
       data.createdAt = new Date(syncedAt * 1000).toISOString();

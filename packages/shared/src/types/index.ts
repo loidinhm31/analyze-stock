@@ -203,6 +203,8 @@ export type NotificationEventDeliveryMode =
   | "once"
   | "daily_until_source_change";
 
+export type NotificationEventChannel = "sse" | "push" | "email" | "webhook";
+
 export type JsonPrimitive = string | number | boolean | null;
 
 export type JsonValue =
@@ -232,6 +234,11 @@ export interface NewNotificationEvent {
   sourceVersion?: number;
   nextAttemptAt?: string;
   lastSentAt?: string;
+  retryChannels?: NotificationEventChannel[];
+  processingStartedAt?: string;
+  leaseExpiresAt?: string;
+  leaseId?: string;
+  terminal?: boolean;
 }
 
 export interface NotificationEvent extends NewNotificationEvent {
@@ -244,6 +251,8 @@ export interface NotificationEvent extends NewNotificationEvent {
   updatedAt: string;
   syncVersion: number;
   syncedAt: number | null;
+  /** Last server row version used for optimistic push conflict detection. */
+  serverVersion?: number;
 }
 
 // Parsed adjustment note structure

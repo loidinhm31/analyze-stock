@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --config ../../packages/eslint-config/react-internal.js",
     "preview": "vite preview",
     "clean": "rm -rf dist"
   },

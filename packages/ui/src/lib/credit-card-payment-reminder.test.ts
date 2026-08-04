@@ -100,6 +100,8 @@ describe("credit card payment reminder lifecycle helpers", () => {
       dedupeKey: "money-insight:credit_card_payment_due:card-1:2026-02-28",
       payload: { accountId: "card-1", paymentDueDate: "2026-02-28" },
     });
-    expect(event.body).not.toContain("500");
+    expect(event.body).toBe(
+      "Your credit card payment is due on 2026-02-28. Confirm payment in Money Insight.",
+    );
   });
 });

@@ -17,7 +17,7 @@ import {
 } from "./account-rename-repository";
 import {
   reconcileCreditCardPaymentReminder,
-  removeUnsyncedCreditCardPaymentReminderEvents,
+  removeCreditCardPaymentReminderEvents,
 } from "./credit-card-payment-reminder-repository";
 import { confirmCreditCardPayment } from "./credit-card-payment-confirmation-repository";
 
@@ -120,7 +120,7 @@ export class IndexedDBAccountAdapter implements IAccountService {
         const existing = await db.accounts.get(id);
         if (existing) {
           await trackDelete("accounts", id, existing.syncVersion || 0);
-          await removeUnsyncedCreditCardPaymentReminderEvents(id);
+          await removeCreditCardPaymentReminderEvents(id);
         }
         await db.accounts.delete(id);
       },

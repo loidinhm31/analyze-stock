@@ -2,6 +2,7 @@ import type {
   Account,
   JsonObject,
   NotificationEvent,
+  NotificationEventStatus,
 } from "@money-insight/ui/types";
 import {
   buildCreditCardPaymentReminderEvent,
@@ -12,6 +13,8 @@ import { getDb } from "./database";
 import { IndexedDBNotificationEventAdapter } from "./indexed-db-notification-event-adapter";
 
 const EVENT_TYPE = "credit_card_payment_due";
+const RECONCILABLE_EVENT_STATUSES: ReadonlySet<NotificationEventStatus> =
+  new Set(["pending", "processing", "failed", "sent"]);
 
 function payloadString(
   payload: JsonObject | undefined,
@@ -21,16 +24,26 @@ function payloadString(
   return typeof value === "string" ? value : undefined;
 }
 
-function isActiveAccountEvent(
+function isAccountReminderEvent(
   event: NotificationEvent,
   account: Account,
 ): boolean {
   return (
     event.eventType === EVENT_TYPE &&
-    event.status === "pending" &&
     event.sourceTable === "accounts" &&
-    event.sourceRowId === account.id &&
-    event.sourceVersion === account.syncVersion
+    event.sourceRowId === account.id
+  );
+}
+
+function isCurrentCycleEvent(
+  event: NotificationEvent,
+  account: Account,
+): boolean {
+  return (
+    isAccountReminderEvent(event, account) &&
+    event.sourceVersion === account.syncVersion &&
+    event.terminal !== true &&
+    RECONCILABLE_EVENT_STATUSES.has(event.status)
   );
 }
 
@@ -38,7 +51,12 @@ async function deleteNotificationEvent(
   event: NotificationEvent,
 ): Promise<void> {
   if (event.syncedAt !== undefined && event.syncedAt !== null) {
-    await trackDelete("notificationEvents", event.id, event.syncVersion || 0);
+    await trackDelete(
+      "notificationEvents",
+      event.id,
+      event.syncVersion || 0,
+      event.serverVersion,
+    );
   }
   await getDb().notificationEvents.delete(event.id);
 }
@@ -51,8 +69,11 @@ export async function reconcileCreditCardPaymentReminder(
     db.transactions.where("account").equals(account.name).toArray(),
     db.notificationEvents.toArray(),
   ]);
-  const activeEvents = events.filter((event) =>
-    isActiveAccountEvent(event, account),
+  const accountEvents = events.filter((event) =>
+    isAccountReminderEvent(event, account),
+  );
+  const currentCycleEvents = accountEvents.filter((event) =>
+    isCurrentCycleEvent(event, account),
   );
   const activeCycleIsUnconfirmed =
     !!account.nextPaymentDueDate &&
@@ -64,17 +85,19 @@ export async function reconcileCreditCardPaymentReminder(
     calculateAccountBalance(account, transactions) < 0;
 
   if (!shouldHaveReminder) {
-    for (const event of activeEvents) await deleteNotificationEvent(event);
+    for (const event of accountEvents) await deleteNotificationEvent(event);
     return undefined;
   }
 
-  const matchingEvent = activeEvents.find(
+  const matchingEvent = currentCycleEvents.find(
     (event) =>
       payloadString(event.payload, "paymentDueDate") ===
       account.nextPaymentDueDate,
   );
-  for (const event of activeEvents) {
-    if (event.id !== matchingEvent?.id) await deleteNotificationEvent(event);
+  for (const event of accountEvents) {
+    if (event.id !== matchingEvent?.id) {
+      await deleteNotificationEvent(event);
+    }
   }
   if (matchingEvent) return matchingEvent;
 
@@ -91,23 +114,19 @@ export async function reconcileCreditCardPaymentRemindersByAccountNames(
 
   const accounts = await getDb().accounts.toArray();
   for (const account of accounts) {
-    if (names.has(account.name) && account.accountType === "Credit Card") {
+    if (names.has(account.name)) {
       await reconcileCreditCardPaymentReminder(account);
     }
   }
 }
 
-export async function removeUnsyncedCreditCardPaymentReminderEvents(
+export async function removeCreditCardPaymentReminderEvents(
   accountId: string,
 ): Promise<void> {
   const events = await getDb().notificationEvents.toArray();
   for (const event of events) {
-    if (
-      event.eventType === EVENT_TYPE &&
-      event.sourceRowId === accountId &&
-      (event.syncedAt === undefined || event.syncedAt === null)
-    ) {
-      await getDb().notificationEvents.delete(event.id);
+    if (event.eventType === EVENT_TYPE && event.sourceRowId === accountId) {
+      await deleteNotificationEvent(event);
     }
   }
 }

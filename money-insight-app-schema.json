@@ -128,6 +128,11 @@
         { "name": "sourceVersion", "type": "integer", "nullable": true },
         { "name": "nextAttemptAt", "type": "string", "nullable": true },
         { "name": "lastSentAt", "type": "string", "nullable": true },
+        { "name": "retryChannels", "type": "array", "nullable": true },
+        { "name": "processingStartedAt", "type": "string", "nullable": true },
+        { "name": "leaseExpiresAt", "type": "string", "nullable": true },
+        { "name": "leaseId", "type": "string", "nullable": true },
+        { "name": "terminal", "type": "boolean", "nullable": true },
         { "name": "createdAt", "type": "string", "nullable": false },
         { "name": "updatedAt", "type": "string", "nullable": false }
       ],

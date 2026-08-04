@@ -79,8 +79,11 @@ export class IndexedDBSyncAdapter implements ISyncService {
       if (this.config.saveTokens) {
         const client = this.client;
         client.setOnTokenRefresh((at, rt) => {
-          this.config.saveTokens!(at, rt, client.getUserId() ?? "").catch(
-            (e) => console.error("[IndexedDBSyncAdapter] Failed to save refreshed tokens:", e),
+          this.config.saveTokens!(at, rt, client.getUserId() ?? "").catch((e) =>
+            console.error(
+              "[IndexedDBSyncAdapter] Failed to save refreshed tokens:",
+              e,
+            ),
           );
         });
       }
@@ -159,13 +162,50 @@ export class IndexedDBSyncAdapter implements ISyncService {
 
       // Handle push result
       if (response.push) {
+        const pushWithDefaults = response.push as typeof response.push & {
+          conflicts?: Array<{ tableName: string; rowId: string }>;
+          failures?: Array<{ tableName: string; rowId: string }>;
+          syncedRecords?: Array<{
+            tableName: string;
+            rowId: string;
+            version: number;
+          }>;
+        };
+        const pushConflicts = Array.isArray(pushWithDefaults.conflicts)
+          ? pushWithDefaults.conflicts
+          : [];
+        const pushFailures = Array.isArray(pushWithDefaults.failures)
+          ? pushWithDefaults.failures
+          : [];
         pushed = response.push.synced;
-        conflicts = response.push.conflicts.length;
-        if (pushed > 0) {
-          const syncedIds = pendingChanges.map((r) => ({
-            tableName: r.tableName,
-            rowId: r.rowId,
+        conflicts = pushConflicts.length;
+        const rejectedIds = new Set([
+          ...pushConflicts.map(
+            (record) => `${record.tableName}:${record.rowId}`,
+          ),
+          ...pushFailures.map(
+            (record) => `${record.tableName}:${record.rowId}`,
+          ),
+        ]);
+        // Only explicit server acknowledgements may clear local pending
+        // changes. Omitted failures/conflicts are not implicit acceptance.
+        const syncedRecords = Array.isArray(pushWithDefaults.syncedRecords)
+          ? pushWithDefaults.syncedRecords
+          : [];
+        const syncedIds = syncedRecords
+          .filter(
+            (record) =>
+              Number.isSafeInteger(record.version) && record.version >= 0,
+          )
+          .filter(
+            (record) => !rejectedIds.has(`${record.tableName}:${record.rowId}`),
+          )
+          .map((record) => ({
+            tableName: record.tableName,
+            rowId: record.rowId,
+            version: record.version,
           }));
+        if (syncedIds.length > 0) {
           await this.storage.markSynced(syncedIds);
         }
         onProgress({

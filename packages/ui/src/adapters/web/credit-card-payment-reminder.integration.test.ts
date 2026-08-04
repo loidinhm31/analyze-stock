@@ -5,6 +5,10 @@ import {
   deriveNextPaymentDueDate,
   getLocalIsoDate,
 } from "../../lib/credit-card-payment-reminder";
+import {
+  reconcileCreditCardPaymentReminder,
+  reconcileCreditCardPaymentRemindersByAccountNames,
+} from "./credit-card-payment-reminder-repository";
 import { IndexedDBAccountAdapter } from "./IndexedDBAccountAdapter";
 import { IndexedDBTransactionAdapter } from "./IndexedDBTransactionAdapter";
 import { deleteCurrentDb, getDb, initDb } from "./database";
@@ -70,6 +74,85 @@ describe("credit card payment reminder persistence", () => {
     expect(
       afterPurchase.filter((event) => event.sourceRowId === first.id),
     ).toHaveLength(1);
+  });
+
+  it("reconciles retryable reminder rows without duplicating or preserving stale events", async () => {
+    const card = await addCreditCard("Retryable card");
+    const original = (await getDb().notificationEvents.toArray()).find(
+      (event) => event.sourceRowId === card.id,
+    );
+    expect(original).toBeDefined();
+
+    await getDb().notificationEvents.update(original!.id, { status: "failed" });
+    const matched = await reconcileCreditCardPaymentReminder(card);
+    expect(matched?.id).toBe(original!.id);
+    expect(await getDb().notificationEvents.count()).toBe(1);
+
+    await getDb().notificationEvents.update(original!.id, {
+      status: "processing",
+    });
+    await transactionAdapter.addTransaction({
+      note: "Manual card payment",
+      amount: 500,
+      category: "Payment",
+      account: card.name,
+      currency: "VND",
+      date: paymentDate,
+      excludeReport: true,
+      source: "manual",
+    });
+
+    expect(await getDb().notificationEvents.count()).toBe(0);
+  });
+
+  it("reuses current sent rows and replaces superseded or stale-source rows", async () => {
+    const card = await addCreditCard("Lifecycle card");
+    const original = (await getDb().notificationEvents.toArray()).find(
+      (event) => event.sourceRowId === card.id,
+    );
+    expect(original).toBeDefined();
+
+    await getDb().notificationEvents.update(original!.id, { status: "sent" });
+    const sent = await reconcileCreditCardPaymentReminder(card);
+    expect(sent?.id).toBe(original!.id);
+    expect(await getDb().notificationEvents.count()).toBe(1);
+
+    await getDb().notificationEvents.update(original!.id, {
+      status: "failed",
+      terminal: true,
+    });
+    const terminalReplacement = await reconcileCreditCardPaymentReminder(card);
+    expect(terminalReplacement?.id).not.toBe(original!.id);
+    expect(await getDb().notificationEvents.count()).toBe(1);
+
+    await getDb().notificationEvents.update(terminalReplacement!.id, {
+      status: "superseded",
+      terminal: false,
+    });
+    const replacement = await reconcileCreditCardPaymentReminder(card);
+    expect(replacement?.id).not.toBe(terminalReplacement!.id);
+    expect(await getDb().notificationEvents.count()).toBe(1);
+
+    await getDb().notificationEvents.update(replacement!.id, {
+      sourceVersion: card.syncVersion - 1,
+    });
+    const staleReplacement = await reconcileCreditCardPaymentReminder(card);
+    expect(staleReplacement?.id).not.toBe(replacement!.id);
+    expect(await getDb().notificationEvents.count()).toBe(1);
+  });
+
+  it("removes a reminder when a remote account stops being a credit card", async () => {
+    const card = await addCreditCard("Converted card");
+    await getDb().accounts.put({
+      ...card,
+      accountType: "Cash",
+      paymentReminderEnabled: false,
+      syncVersion: card.syncVersion + 1,
+    });
+
+    await reconcileCreditCardPaymentRemindersByAccountNames([card.name]);
+
+    expect(await getDb().notificationEvents.count()).toBe(0);
   });
 
   it("confirms with a paired transfer and does not advance twice", async () => {

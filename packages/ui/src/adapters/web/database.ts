@@ -24,6 +24,7 @@ export interface PendingChange {
   operation: "create" | "update" | "delete";
   data: Record<string, unknown>;
   version: number;
+  serverVersion?: number;
   createdAt: number;
 }
 

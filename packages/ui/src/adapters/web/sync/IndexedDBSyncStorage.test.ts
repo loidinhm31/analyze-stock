@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { IndexedDBSyncStorage } from "./IndexedDBSyncStorage";
 
-const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
+const {
+  mockDb,
+  reconcileDebtFromSettlementsMock,
+  reconcileCreditCardPaymentReminderMock,
+  reconcileCreditCardPaymentRemindersMock,
+  removeCreditCardPaymentRemindersMock,
+} = vi.hoisted(() => ({
   mockDb: {
     transactions: {
       toArray: vi.fn(),
@@ -23,6 +29,7 @@ const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
       get: vi.fn(),
       where: vi.fn(),
       filter: vi.fn(),
+      update: vi.fn(),
       put: vi.fn(),
     },
     debts: {
@@ -60,10 +67,21 @@ const { mockDb, reconcileDebtFromSettlementsMock } = vi.hoisted(() => ({
     },
     _pendingChanges: {
       filter: vi.fn(),
+      where: vi.fn(),
     },
     transaction: vi.fn(),
   },
   reconcileDebtFromSettlementsMock: vi.fn(),
+  reconcileCreditCardPaymentReminderMock: vi.fn(),
+  reconcileCreditCardPaymentRemindersMock: vi.fn(),
+  removeCreditCardPaymentRemindersMock: vi.fn(),
+}));
+
+vi.mock("../credit-card-payment-reminder-repository", () => ({
+  reconcileCreditCardPaymentReminder: reconcileCreditCardPaymentReminderMock,
+  reconcileCreditCardPaymentRemindersByAccountNames:
+    reconcileCreditCardPaymentRemindersMock,
+  removeCreditCardPaymentReminderEvents: removeCreditCardPaymentRemindersMock,
 }));
 
 vi.mock("@money-insight/ui/adapters/web", async () => {
@@ -159,6 +177,11 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
     mockDb._pendingChanges.filter.mockReturnValue({
       toArray: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0),
+    });
+    mockDb._pendingChanges.where.mockReturnValue({
+      filter: vi.fn().mockReturnValue({
+        delete: vi.fn().mockResolvedValue(1),
+      }),
     });
     mockDb.transaction.mockImplementation(
       async (
@@ -565,10 +588,16 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
         sourceTable: "accounts",
         sourceRowId: "card-1",
         sourceVersion: 7,
+        retryChannels: ["email"],
+        processingStartedAt: "2024-01-20T00:00:01.000Z",
+        leaseExpiresAt: "2024-01-20T00:02:00.000Z",
+        leaseId: "lease-1",
+        terminal: false,
         createdAt: "2024-01-20T00:00:00.000Z",
         updatedAt: "2024-01-20T00:00:00.000Z",
         syncVersion: 3,
         syncedAt: null,
+        serverVersion: 12,
       },
     ]);
 
@@ -593,13 +622,13 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
         eventType: "credit_card_payment_due",
         priority: "high",
         payload: { budgetId: "budget-1" },
-        status: "pending",
         deliveryMode: "daily_until_source_change",
         sourceTable: "accounts",
         sourceRowId: "card-1",
         sourceVersion: 7,
       }),
       version: 3,
+      serverVersion: 12,
       deleted: false,
     });
   });
@@ -879,6 +908,70 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
     );
   });
 
+  it("reconciles credit-card reminders after remote account changes", async () => {
+    mockDb.accounts.get.mockResolvedValue({
+      id: "account-card",
+      name: "Old card name",
+      accountType: "Credit Card",
+    });
+
+    const storage = new IndexedDBSyncStorage();
+    await storage.applyRemoteChanges([
+      {
+        tableName: "accounts",
+        rowId: "account-card",
+        data: {
+          name: "New card name",
+          accountType: "Credit Card",
+          initialBalance: -100,
+          currency: "VND",
+        },
+        version: 3,
+        deleted: false,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
+    ]);
+
+    expect(reconcileCreditCardPaymentRemindersMock).toHaveBeenCalledWith(
+      new Set(["Old card name", "New card name"]),
+    );
+  });
+
+  it("reconciles a source account when only its remote notification event changes", async () => {
+    const account = {
+      id: "account-card",
+      name: "Remote card",
+      accountType: "Credit Card",
+      initialBalance: -100,
+      currency: "VND",
+      paymentReminderEnabled: true,
+      nextPaymentDueDate: "2026-08-10",
+      syncVersion: 4,
+    };
+    mockDb.accounts.get.mockResolvedValue(account);
+
+    const storage = new IndexedDBSyncStorage();
+    await storage.applyRemoteChanges([
+      {
+        tableName: "notificationEvents",
+        rowId: "event-card",
+        data: {
+          eventType: "credit_card_payment_due",
+          sourceTable: "accounts",
+          sourceRowId: account.id,
+          payload: { accountId: account.id, paymentDueDate: "2026-08-10" },
+        },
+        version: 5,
+        deleted: false,
+        syncedAt: "2024-01-03T00:00:00.000Z",
+      },
+    ]);
+
+    expect(reconcileCreditCardPaymentReminderMock).toHaveBeenCalledWith(
+      account,
+    );
+  });
+
   it("rejects invalid remote debt types", async () => {
     const storage = new IndexedDBSyncStorage();
 
@@ -992,6 +1085,43 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
 
     await expect(storage.hasPendingChanges()).resolves.toBe(true);
     expect(mockDb.budgets.filter).toHaveBeenCalled();
+  });
+
+  it("does not acknowledge a newer local edit when an older push completes", async () => {
+    mockDb.accounts.get.mockResolvedValue({
+      id: "account-1",
+      syncVersion: 8,
+      syncedAt: null,
+    });
+    const storage = new IndexedDBSyncStorage();
+
+    await storage.markSynced([
+      { tableName: "accounts", rowId: "account-1", version: 7 },
+    ]);
+
+    expect(mockDb._pendingChanges.where).toHaveBeenCalledWith({
+      tableName: "accounts",
+      rowId: "account-1",
+    });
+    expect(mockDb.accounts.update).not.toHaveBeenCalled();
+  });
+
+  it("acknowledges only the matching local mutation version", async () => {
+    mockDb.accounts.get.mockResolvedValue({
+      id: "account-1",
+      syncVersion: 7,
+      syncedAt: null,
+    });
+    const storage = new IndexedDBSyncStorage();
+
+    await storage.markSynced([
+      { tableName: "accounts", rowId: "account-1", version: 7 },
+    ]);
+
+    expect(mockDb.accounts.update).toHaveBeenCalledWith(
+      "account-1",
+      expect.objectContaining({ syncedAt: 123 }),
+    );
   });
 
   it("counts pending changes across new budget and notification event tables", async () => {
