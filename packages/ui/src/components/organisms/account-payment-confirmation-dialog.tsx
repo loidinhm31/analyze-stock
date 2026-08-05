@@ -20,6 +20,7 @@ import {
 import {
   cn,
   formatNumericInput,
+  isCreditCardPaymentReminderComplete,
   parseNumericInput,
 } from "@money-insight/ui/lib";
 import type {
@@ -32,6 +33,7 @@ export interface AccountPaymentConfirmationDialogProps {
   account: Account | null;
   accounts: Account[];
   currentBalance: number;
+  statementTotal?: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (
@@ -43,6 +45,7 @@ export function AccountPaymentConfirmationDialog({
   account,
   accounts,
   currentBalance,
+  statementTotal,
   open,
   onOpenChange,
   onSubmit,
@@ -77,24 +80,34 @@ export function AccountPaymentConfirmationDialog({
   useEffect(() => {
     if (!open) return;
     setFundingAccountId("");
-    setAmount(formatNumericInput(String(Math.max(0, -currentBalance))));
+    setAmount(formatNumericInput(String(Math.max(0, -(statementTotal ?? 0)))));
     setPaymentDate(new Date());
     setNote("");
     setError(null);
-  }, [account?.id, account?.nextPaymentDueDate, currentBalance, open]);
+  }, [account?.id, account?.nextPaymentDueDate, open, statementTotal]);
 
   const parsedAmount = parseNumericInput(amount);
+  const paymentSetupComplete =
+    !!account && isCreditCardPaymentReminderComplete(account);
+  const statementCalculationUnavailable =
+    !!account && paymentSetupComplete && statementTotal === null;
+  const statementDueAmount =
+    typeof statementTotal === "number" && Number.isFinite(statementTotal)
+      ? Math.max(0, -statementTotal)
+      : 0;
   const isClearingAmount =
     Number.isFinite(parsedAmount) &&
-    currentBalance < 0 &&
-    parsedAmount + currentBalance >= 0;
+    statementDueAmount > 0 &&
+    parsedAmount >= statementDueAmount;
   const canSubmit =
     !!account &&
+    paymentSetupComplete &&
     !!account.nextPaymentDueDate &&
     !!fundingAccountId &&
     !!paymentDate &&
     parsedAmount > 0 &&
     isClearingAmount &&
+    !statementCalculationUnavailable &&
     !isSubmitting;
 
   const resetAndClose = () => {
@@ -152,18 +165,48 @@ export function AccountPaymentConfirmationDialog({
           <div className="grid gap-4 py-5">
             <div className="rounded-lg border border-border bg-muted/30 p-3">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Amount needed to clear
+                Current statement amount to clear
               </p>
               <p
                 className={cn(
                   "mt-1 text-lg font-semibold",
-                  currentBalance < 0 ? "text-destructive" : "text-success",
+                  statementCalculationUnavailable
+                    ? "text-warning-foreground"
+                    : statementDueAmount > 0
+                      ? "text-destructive"
+                      : "text-success",
                 )}
               >
-                {formatNumericInput(String(Math.max(0, -currentBalance)))}{" "}
+                {statementCalculationUnavailable
+                  ? "Unavailable"
+                  : formatNumericInput(String(statementDueAmount))}{" "}
                 {account?.currency}
               </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Current account balance:{" "}
+                {formatNumericInput(String(currentBalance))} {account?.currency}
+              </p>
             </div>
+
+            {account && !paymentSetupComplete && (
+              <p
+                className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning-foreground"
+                role="status"
+              >
+                Needs setup: add cycle start date and interest-free days before
+                confirming a payment.
+              </p>
+            )}
+
+            {statementCalculationUnavailable && (
+              <p
+                className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning-foreground"
+                role="alert"
+              >
+                The current statement could not be calculated. Check transaction
+                dates and amounts before confirming payment.
+              </p>
+            )}
 
             <FormField
               label="Pay from"
@@ -227,11 +270,11 @@ export function AccountPaymentConfirmationDialog({
                 id="card-payment-amount-hint"
                 className="mt-1 text-xs text-muted-foreground"
               >
-                Payment must clear the negative card balance.
+                Payment must clear the current negative statement amount.
               </p>
               {!!amount && !isClearingAmount && (
                 <p className="mt-1 text-xs text-destructive" role="alert">
-                  Enter at least the amount needed to clear this card.
+                  Enter at least the amount needed to clear this statement.
                 </p>
               )}
             </FormField>

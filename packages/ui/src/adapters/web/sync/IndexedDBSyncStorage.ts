@@ -103,6 +103,15 @@ export class IndexedDBSyncStorage {
             initialBalance: acc.initialBalance,
             currency: acc.currency,
             paymentDueDay: acc.paymentDueDay,
+            ...(acc.paymentCycleStartDate !== undefined
+              ? { paymentCycleStartDate: acc.paymentCycleStartDate }
+              : {}),
+            ...(acc.paymentCycleStartDay !== undefined
+              ? { paymentCycleStartDay: acc.paymentCycleStartDay }
+              : {}),
+            ...(acc.interestFreeDays !== undefined
+              ? { interestFreeDays: acc.interestFreeDays }
+              : {}),
             paymentReminderEnabled: acc.paymentReminderEnabled,
             nextPaymentDueDate: acc.nextPaymentDueDate,
             lastPaymentConfirmedDueDate: acc.lastPaymentConfirmedDueDate,

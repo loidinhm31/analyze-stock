@@ -41,6 +41,21 @@
         { "name": "currency", "type": "string", "nullable": false },
         { "name": "paymentDueDay", "type": "integer", "nullable": true },
         {
+          "name": "paymentCycleStartDate",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "paymentCycleStartDay",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "interestFreeDays",
+          "type": "integer",
+          "nullable": true
+        },
+        {
           "name": "paymentReminderEnabled",
           "type": "boolean",
           "nullable": true

@@ -111,6 +111,7 @@ flowchart TB
 ```
 
 **Key files:**
+
 - `packages/ui/src/adapters/factory/ServiceFactory.ts` - DI registry
 - `packages/ui/src/adapters/web/` - IndexedDB implementations
 - `packages/ui/src/adapters/shared/QmServerAuthAdapter.ts` - HTTP auth
@@ -202,6 +203,10 @@ erDiagram
         number attemptCount
         string sourceTable
         string sourceRowId
+        number sourceVersion "cancels recurrence when source changes"
+        string deliveryMode "once | daily_until_source_change"
+        string nextAttemptAt "server-managed recurrence cursor"
+        string lastSentAt
         number syncVersion
         number syncedAt
         boolean deleted
@@ -214,6 +219,13 @@ erDiagram
         string currency
         number initialBalance
         string icon
+        number paymentDueDay "1-31; Credit Card only"
+        string paymentCycleStartDate "date-only; Credit Card statement cycle"
+        number paymentCycleStartDay "1-31 anchor for advancing cycles"
+        number interestFreeDays "positive grace period"
+        boolean paymentReminderEnabled
+        string lastPaymentConfirmedDueDate
+        string lastPaymentConfirmedAt
         number syncVersion
         number syncedAt
         boolean deleted
@@ -273,6 +285,12 @@ erDiagram
 
 Budget and notification event rows sync through the same app collection as transactions and accounts. `budgets` stores recurring monthly definitions; `notificationEvents` stores user-owned app events for generic server-side dispatch after sync.
 
+Credit-card reminders also reuse `notificationEvents`; no account-reminder table or server collection exists. A reminder event is bound to the Account row and version that created it. Account edits, reminder disablement, deletion, or payment confirmation increment the Account version, making the old recurring event terminally superseded. Credit-card statement configuration persists `paymentCycleStartDate`, its original `paymentCycleStartDay`, and positive `interestFreeDays`; the derived issue date is the next calendar month minus one day, and the derived due date is cycle start plus `interestFreeDays - 1` calendar days. The cycle anchor is retained when advancing through short months.
+
+The account UI exposes statement/reminder settings only for `Credit Card` accounts. `nextPaymentDueDate` is derived as a date-only ISO value and displayed read-only. `calculateCreditCardStatement()` filters transactions inclusively from the cycle start through the derived issue date, and returns the total alert amount from that window. `getCreditCardPaymentDueStatus()` compares ISO dates against the user-local day and returns `upcoming`, `overdue`, `confirmed`, or `not-configured`; presentation never compares localized strings. Switching away from Credit Card or disabling reminders clears the reminder cycle fields.
+
+`AccountItem` shows the status/date and a per-card **Confirm payment** action. The accessible responsive dialog accepts a funding account, positive amount, payment date, and optional note. Funding choices are restricted to other accounts with the same currency. The amount defaults to the absolute negative card balance and must leave that balance at zero or above (the negative-balance gate); no confirmation is allowed for a non-negative balance or missing due cycle. The operation creates the existing paired transfer atomically, marks both legs `source: "transfer"`/`excludeReport: true`, records confirmation, and advances only that card's cycle. Duplicate submits are blocked per account; a repeated expected cycle is idempotent, while validation or persistence errors leave the dialog open for retry. On success, only the affected account and transfer pair are refreshed in Zustand state.
+
 ### Budget Runtime Flow
 
 1. `getBudgetCycleForDate()` anchors each cycle from `firstCycleStartDate`, then advances monthly with month-end clamping.
@@ -303,6 +321,39 @@ settlement, and budget account references. Each changed row receives a new
 store then reloads transactions and dependent budget/debt state and updates any
 active account filter so the UI follows the renamed account.
 
+### Credit Card Payment Reminder Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User
+    participant App as Money Insight
+    participant DB as IndexedDB
+    participant Sync as Sync API
+    participant Worker as App Notification Dispatcher
+    participant Notify as NotificationService
+
+    User->>App: Save Credit Card with cycle start, grace days, and reminders on
+    App->>DB: Commit Account vN and recurring event(sourceVersion=N)
+    DB->>Sync: Push Account and notificationEvents rows
+    loop Daily from the configured alert window through due date
+        Worker->>Worker: Claim due event and resolve user timezone
+        Worker->>Sync: Read bound Account row and version
+        alt Account version still N
+            Worker->>Notify: Send once for local calendar day
+            Worker->>Sync: Set nextAttemptAt to next local day
+        else Account changed or deleted
+            Worker->>Sync: Mark old event superseded
+        end
+    end
+    User->>App: Confirm payment for this Account
+    App->>DB: Atomically create payment transfer, record confirmation, advance cycle, enqueue next event
+    DB->>Sync: Push Account vN+1 and next event
+    Worker->>Sync: Supersede old event because sourceVersion differs
+```
+
+Recurring delivery uses the user's stored IANA timezone and a per-local-day occurrence dedupe key. The working product rule is one reminder each day beginning D-3, including overdue days, until confirmation. One-shot events keep their existing terminal `sent` behavior.
+
 ## State Management
 
 Two Zustand stores manage all client state.
@@ -332,6 +383,7 @@ flowchart TB
 ```
 
 **Key files:**
+
 - `packages/ui/src/stores/spendingStore.ts` - Transactions + analytics
 - `packages/ui/src/stores/categoryGroupStore.ts` - Category hierarchy
 
@@ -404,15 +456,15 @@ flowchart TB
 
 **Routes** (`packages/ui/src/components/pages/routes.tsx`):
 
-| Path | Page | Description |
-|------|------|-------------|
-| `/dashboard` | DashboardPage | Charts, stats, recent transactions |
-| `/transactions` | TransactionPage | Full transaction list + local transaction/account search and filters |
-| `/add` | AddTransactionPage | Manual entry / transfer |
-| `/reports` | ReportsPage | Analytics + reports |
-| `/settings` | SettingsPage | Accounts, sync, preferences |
-| `/categories` | CategorySetupPage | Category groups + icons |
-| `/setup` | InitialSetupPage | First-run onboarding |
+| Path            | Page               | Description                                                          |
+| --------------- | ------------------ | -------------------------------------------------------------------- |
+| `/dashboard`    | DashboardPage      | Charts, stats, recent transactions                                   |
+| `/transactions` | TransactionPage    | Full transaction list + local transaction/account search and filters |
+| `/add`          | AddTransactionPage | Manual entry / transfer                                              |
+| `/reports`      | ReportsPage        | Analytics + reports                                                  |
+| `/settings`     | SettingsPage       | Accounts, sync, preferences                                          |
+| `/categories`   | CategorySetupPage  | Category groups + icons                                              |
+| `/setup`        | InitialSetupPage   | First-run onboarding                                                 |
 
 ## Data Flows
 
@@ -590,6 +642,7 @@ flowchart TB
 ```
 
 **Key files:**
+
 - `apps/native/src-tauri/src/auth.rs` - Auth IPC commands
 - `apps/native/src-tauri/src/session.rs` - Encryption (ChaCha20Poly1305 + machine-ID key)
 - `apps/native/src-tauri/src/web_server.rs` - Embedded Axum server for browser mode
@@ -598,26 +651,26 @@ flowchart TB
 
 Three themes (light, dark, cyber) applied via CSS class on root element. CSS variables provide theming -- **not** Tailwind's `dark:` prefix.
 
-| Variable | Light | Dark | Cyber |
-|----------|-------|------|-------|
-| `--color-bg-light` | `#f8f9fa` | `#0f172a` | `#0F172A` |
-| `--color-bg-white` | `#ffffff` | `#1e293b` | `#1E293B` |
-| `--color-text-primary` | `#111827` | `#f1f5f9` | `#F1F5F9` |
-| `--color-primary-500` | `#635bff` | `#818cf8` | `#3B82F6` |
-| `--font-family-heading` | Poppins | Poppins | JetBrains Mono |
-| `--font-family-body` | Open Sans | Open Sans | JetBrains Mono |
+| Variable                | Light     | Dark      | Cyber          |
+| ----------------------- | --------- | --------- | -------------- |
+| `--color-bg-light`      | `#f8f9fa` | `#0f172a` | `#0F172A`      |
+| `--color-bg-white`      | `#ffffff` | `#1e293b` | `#1E293B`      |
+| `--color-text-primary`  | `#111827` | `#f1f5f9` | `#F1F5F9`      |
+| `--color-primary-500`   | `#635bff` | `#818cf8` | `#3B82F6`      |
+| `--font-family-heading` | Poppins   | Poppins   | JetBrains Mono |
+| `--font-family-body`    | Open Sans | Open Sans | JetBrains Mono |
 
 **Key file:** `packages/ui/src/styles/global.css`
 
 ## Sync Architecture
 
-| Concept | Implementation |
-|---------|---------------|
-| Local storage | IndexedDB (Dexie.js), per-user DB |
-| Sync protocol | Checkpoint-based pagination |
-| ID generation | Client-generated UUIDs (offline-capable) |
-| Conflict resolution | Server-wins, version numbers |
-| Soft delete | `deleted=true` + 60-day TTL |
-| Concurrency | `_syncInFlight` lock, progress fan-out |
-| Auth | Dual: API key (app identity) + JWT (user) |
-| Metadata | `_syncMeta` (checkpoints) + `_pendingChanges` (outbox) |
+| Concept             | Implementation                                         |
+| ------------------- | ------------------------------------------------------ |
+| Local storage       | IndexedDB (Dexie.js), per-user DB                      |
+| Sync protocol       | Checkpoint-based pagination                            |
+| ID generation       | Client-generated UUIDs (offline-capable)               |
+| Conflict resolution | Server-wins, version numbers                           |
+| Soft delete         | `deleted=true` + 60-day TTL                            |
+| Concurrency         | `_syncInFlight` lock, progress fan-out                 |
+| Auth                | Dual: API key (app identity) + JWT (user)              |
+| Metadata            | `_syncMeta` (checkpoints) + `_pendingChanges` (outbox) |

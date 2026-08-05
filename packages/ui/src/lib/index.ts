@@ -34,14 +34,22 @@ export {
   type TimePeriodGroup,
 } from "./timePeriodGrouping";
 export {
+  advancePaymentCycleStartDate,
   advancePaymentDueDate,
   buildCreditCardPaymentReminderEvent,
   calculateAccountBalance,
+  calculateCreditCardStatement,
+  deriveCreditCardStatementDates,
   deriveNextPaymentDueDate,
   getPaymentReminderTriggerAt,
   getLocalIsoDate,
+  isCreditCardPaymentReminderComplete,
+  normalizeDateOnlyToIso,
   normalizeCreditCardPaymentReminder,
   parseIsoDate,
+  type CreditCardStatementResult,
+  type CreditCardStatementTransactionInput,
+  type DateOnlyInput,
 } from "./credit-card-payment-reminder";
 export {
   getCreditCardPaymentDueStatus,

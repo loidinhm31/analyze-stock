@@ -20,8 +20,9 @@ import { FormField } from "@money-insight/ui/components/molecules";
 import {
   cn,
   formatNumericInput,
-  deriveNextPaymentDueDate,
-  getLocalIsoDate,
+  deriveCreditCardStatementDates,
+  isCreditCardPaymentReminderComplete,
+  normalizeDateOnlyToIso,
   parseNumericInput,
 } from "@money-insight/ui/lib";
 import type { Account, NewAccount } from "@money-insight/ui/types";
@@ -52,6 +53,15 @@ function resolveIcon(iconVal: string | undefined, type: string): string {
     : (ACCOUNT_TYPE_ICON[type] ?? "cash");
 }
 
+function canonicalCycleStartDate(value: string | undefined): string {
+  if (!value) return "";
+  try {
+    return normalizeDateOnlyToIso(value);
+  } catch {
+    return "";
+  }
+}
+
 export function AccountForm(props: AccountFormProps) {
   const { mode, onCancel } = props;
   const account = mode === "edit" ? props.account : undefined;
@@ -75,10 +85,15 @@ export function AccountForm(props: AccountFormProps) {
   const [paymentReminderEnabled, setPaymentReminderEnabled] = useState(
     account?.paymentReminderEnabled === true,
   );
-  const [paymentDueDay, setPaymentDueDay] = useState(
-    account?.paymentDueDay?.toString() ?? "",
+  const [paymentCycleStartDate, setPaymentCycleStartDate] = useState(
+    canonicalCycleStartDate(account?.paymentCycleStartDate),
   );
-  const [paymentDueDayError, setPaymentDueDayError] = useState<string>();
+  const [interestFreeDays, setInterestFreeDays] = useState(
+    account?.interestFreeDays?.toString() ?? "",
+  );
+  const [paymentCycleStartDateError, setPaymentCycleStartDateError] =
+    useState<string>();
+  const [interestFreeDaysError, setInterestFreeDaysError] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -98,8 +113,12 @@ export function AccountForm(props: AccountFormProps) {
       );
       setCurrency(account.currency);
       setPaymentReminderEnabled(account.paymentReminderEnabled === true);
-      setPaymentDueDay(account.paymentDueDay?.toString() ?? "");
-      setPaymentDueDayError(undefined);
+      setPaymentCycleStartDate(
+        canonicalCycleStartDate(account.paymentCycleStartDate),
+      );
+      setInterestFreeDays(account.interestFreeDays?.toString() ?? "");
+      setPaymentCycleStartDateError(undefined);
+      setInterestFreeDaysError(undefined);
       setConfirmDelete(false);
       setSaveError(undefined);
     } else if (mode === "add") {
@@ -109,41 +128,59 @@ export function AccountForm(props: AccountFormProps) {
       setInitialBalance("0");
       setCurrency("VND");
       setPaymentReminderEnabled(false);
-      setPaymentDueDay("");
-      setPaymentDueDayError(undefined);
+      setPaymentCycleStartDate("");
+      setInterestFreeDays("");
+      setPaymentCycleStartDateError(undefined);
+      setInterestFreeDaysError(undefined);
       setConfirmDelete(false);
       setSaveError(undefined);
     }
   }, [mode, account]);
 
   const isCreditCard = accountType === "Credit Card";
-  const parsedPaymentDueDay = Number(paymentDueDay);
-  const nextDueDate = useMemo(() => {
+  const parsedInterestFreeDays = Number(interestFreeDays);
+  const statementPreview = useMemo(() => {
     if (
       !isCreditCard ||
       !paymentReminderEnabled ||
-      !Number.isInteger(parsedPaymentDueDay) ||
-      parsedPaymentDueDay < 1 ||
-      parsedPaymentDueDay > 31
+      !paymentCycleStartDate ||
+      !Number.isSafeInteger(parsedInterestFreeDays) ||
+      parsedInterestFreeDays < 1
     ) {
-      return "";
+      return undefined;
     }
-    if (
-      account?.paymentReminderEnabled &&
-      account.paymentDueDay === parsedPaymentDueDay &&
-      account.nextPaymentDueDate
-    ) {
-      return account.nextPaymentDueDate;
+    try {
+      return deriveCreditCardStatementDates(
+        paymentCycleStartDate,
+        parsedInterestFreeDays,
+      );
+    } catch {
+      return undefined;
     }
-    return deriveNextPaymentDueDate(parsedPaymentDueDay, getLocalIsoDate());
   }, [
-    account?.nextPaymentDueDate,
-    account?.paymentDueDay,
-    account?.paymentReminderEnabled,
     isCreditCard,
-    parsedPaymentDueDay,
+    parsedInterestFreeDays,
+    paymentCycleStartDate,
     paymentReminderEnabled,
   ]);
+  const existingReminderNeedsSetup =
+    isCreditCard &&
+    paymentReminderEnabled &&
+    mode === "edit" &&
+    account?.paymentReminderEnabled === true &&
+    !isCreditCardPaymentReminderComplete(account);
+
+  function getPaymentCycleStartDay(): number | undefined {
+    if (!paymentCycleStartDate) return undefined;
+    if (
+      mode === "edit" &&
+      account?.paymentCycleStartDate === paymentCycleStartDate &&
+      account.paymentCycleStartDay !== undefined
+    ) {
+      return account.paymentCycleStartDay;
+    }
+    return Number(paymentCycleStartDate.slice(8, 10));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -152,14 +189,20 @@ export function AccountForm(props: AccountFormProps) {
       return;
     }
 
-    const dueDay = Number(paymentDueDay);
-    if (
-      isCreditCard &&
-      paymentReminderEnabled &&
-      (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31)
-    ) {
-      setPaymentDueDayError("Enter a due day from 1 to 31.");
-      return;
+    if (isCreditCard && paymentReminderEnabled) {
+      let hasPaymentConfigError = false;
+      if (!paymentCycleStartDate || !statementPreview) {
+        setPaymentCycleStartDateError("Choose a valid cycle start date.");
+        hasPaymentConfigError = true;
+      }
+      if (
+        !Number.isSafeInteger(parsedInterestFreeDays) ||
+        parsedInterestFreeDays < 1
+      ) {
+        setInterestFreeDaysError("Enter a whole number of at least 1.");
+        hasPaymentConfigError = true;
+      }
+      if (hasPaymentConfigError) return;
     }
 
     setLoading(true);
@@ -177,11 +220,29 @@ export function AccountForm(props: AccountFormProps) {
           initialBalance: numericBalance,
           currency,
           paymentReminderEnabled: isCreditCard && paymentReminderEnabled,
-          paymentDueDay:
-            isCreditCard && paymentReminderEnabled ? dueDay : undefined,
+          paymentDueDay: undefined,
+          paymentCycleStartDate:
+            isCreditCard && paymentReminderEnabled
+              ? paymentCycleStartDate
+              : undefined,
+          paymentCycleStartDay:
+            isCreditCard && paymentReminderEnabled
+              ? getPaymentCycleStartDay()
+              : undefined,
+          interestFreeDays:
+            isCreditCard && paymentReminderEnabled
+              ? parsedInterestFreeDays
+              : undefined,
+          nextPaymentDueDate:
+            isCreditCard && paymentReminderEnabled
+              ? statementPreview?.payment_due_date
+              : undefined,
           ...(isCreditCard && paymentReminderEnabled
             ? {}
             : {
+                paymentCycleStartDate: undefined,
+                paymentCycleStartDay: undefined,
+                interestFreeDays: undefined,
                 nextPaymentDueDate: undefined,
                 lastPaymentConfirmedDueDate: undefined,
                 lastPaymentConfirmedAt: undefined,
@@ -198,8 +259,23 @@ export function AccountForm(props: AccountFormProps) {
           initialBalance: numericBalance,
           currency,
           paymentReminderEnabled: isCreditCard && paymentReminderEnabled,
-          paymentDueDay:
-            isCreditCard && paymentReminderEnabled ? dueDay : undefined,
+          paymentDueDay: undefined,
+          paymentCycleStartDate:
+            isCreditCard && paymentReminderEnabled
+              ? paymentCycleStartDate
+              : undefined,
+          paymentCycleStartDay:
+            isCreditCard && paymentReminderEnabled
+              ? getPaymentCycleStartDay()
+              : undefined,
+          interestFreeDays:
+            isCreditCard && paymentReminderEnabled
+              ? parsedInterestFreeDays
+              : undefined,
+          nextPaymentDueDate:
+            isCreditCard && paymentReminderEnabled
+              ? statementPreview?.payment_due_date
+              : undefined,
         };
 
         await props.onSubmit(newAccount);
@@ -291,8 +367,10 @@ export function AccountForm(props: AccountFormProps) {
                   setIcon(ACCOUNT_TYPE_ICON[val] ?? "cash");
                   if (val !== "Credit Card") {
                     setPaymentReminderEnabled(false);
-                    setPaymentDueDay("");
-                    setPaymentDueDayError(undefined);
+                    setPaymentCycleStartDate("");
+                    setInterestFreeDays("");
+                    setPaymentCycleStartDateError(undefined);
+                    setInterestFreeDaysError(undefined);
                   }
                 }}
               >
@@ -335,71 +413,166 @@ export function AccountForm(props: AccountFormProps) {
                     aria-describedby="payment-reminder-hint"
                     onChange={(event) => {
                       setPaymentReminderEnabled(event.target.checked);
-                      setPaymentDueDayError(undefined);
+                      setPaymentCycleStartDateError(undefined);
+                      setInterestFreeDaysError(undefined);
                     }}
                     className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
                   />
                 </div>
 
                 {paymentReminderEnabled && (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <label
-                        htmlFor="payment-due-day"
-                        className="text-sm font-medium"
+                  <div className="space-y-3">
+                    {existingReminderNeedsSetup && (
+                      <p
+                        className="rounded-md border border-warning/30 bg-warning/10 p-3 text-xs text-warning-foreground"
+                        role="status"
                       >
-                        Monthly due day
-                      </label>
-                      <Input
-                        id="payment-due-day"
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        max={31}
-                        value={paymentDueDay}
-                        disabled={loading || deleting}
-                        aria-invalid={!!paymentDueDayError}
-                        aria-describedby={
-                          paymentDueDayError
-                            ? "payment-due-day-error"
-                            : undefined
-                        }
-                        onInvalid={(event) => {
-                          event.preventDefault();
-                          setPaymentDueDayError(
-                            "Enter a due day from 1 to 31.",
-                          );
-                        }}
-                        onChange={(event) => {
-                          setPaymentDueDay(event.target.value);
-                          setPaymentDueDayError(undefined);
-                        }}
-                      />
-                      {paymentDueDayError && (
-                        <p
-                          id="payment-due-day-error"
-                          className="text-xs text-destructive"
-                          role="alert"
+                        Needs setup: choose a cycle start date and interest-free
+                        days before reminders or payment confirmation can run.
+                      </p>
+                    )}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="payment-cycle-start-date"
+                          className="text-sm font-medium"
                         >
-                          {paymentDueDayError}
+                          Cycle start date
+                        </label>
+                        <Input
+                          id="payment-cycle-start-date"
+                          type="date"
+                          value={paymentCycleStartDate}
+                          disabled={loading || deleting}
+                          required={isCreditCard && paymentReminderEnabled}
+                          aria-invalid={!!paymentCycleStartDateError}
+                          aria-describedby={
+                            paymentCycleStartDateError
+                              ? "payment-cycle-start-date-error"
+                              : "payment-cycle-start-date-hint"
+                          }
+                          onInvalid={(event) => {
+                            event.preventDefault();
+                            setPaymentCycleStartDateError(
+                              "Choose a valid cycle start date.",
+                            );
+                          }}
+                          onChange={(event) => {
+                            setPaymentCycleStartDate(event.target.value);
+                            setPaymentCycleStartDateError(undefined);
+                          }}
+                        />
+                        <p
+                          id="payment-cycle-start-date-hint"
+                          className="text-xs text-muted-foreground"
+                        >
+                          This first day is included in each statement cycle.
                         </p>
-                      )}
+                        {paymentCycleStartDateError && (
+                          <p
+                            id="payment-cycle-start-date-error"
+                            className="text-xs text-destructive"
+                            role="alert"
+                          >
+                            {paymentCycleStartDateError}
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="interest-free-days"
+                          className="text-sm font-medium"
+                        >
+                          Interest-free days
+                        </label>
+                        <Input
+                          id="interest-free-days"
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          step={1}
+                          value={interestFreeDays}
+                          disabled={loading || deleting}
+                          required={isCreditCard && paymentReminderEnabled}
+                          aria-invalid={!!interestFreeDaysError}
+                          aria-describedby={
+                            interestFreeDaysError
+                              ? "interest-free-days-error"
+                              : "interest-free-days-hint"
+                          }
+                          onInvalid={(event) => {
+                            event.preventDefault();
+                            setInterestFreeDaysError(
+                              "Enter a whole number of at least 1.",
+                            );
+                          }}
+                          onChange={(event) => {
+                            setInterestFreeDays(event.target.value);
+                            setInterestFreeDaysError(undefined);
+                          }}
+                        />
+                        <p
+                          id="interest-free-days-hint"
+                          className="text-xs text-muted-foreground"
+                        >
+                          Number of days from cycle start until payment is due.
+                        </p>
+                        {interestFreeDaysError && (
+                          <p
+                            id="interest-free-days-error"
+                            className="text-xs text-destructive"
+                            role="alert"
+                          >
+                            {interestFreeDaysError}
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="payment-issue-date"
+                          className="text-sm font-medium"
+                        >
+                          Payment issue date
+                        </label>
+                        <Input
+                          id="payment-issue-date"
+                          value={
+                            statementPreview?.payment_issue_date ??
+                            "Calculated after setup"
+                          }
+                          readOnly
+                          aria-readonly="true"
+                          aria-describedby="calculated-payment-dates-hint"
+                          className="bg-muted text-muted-foreground"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="payment-due-date"
+                          className="text-sm font-medium"
+                        >
+                          Payment due date
+                        </label>
+                        <Input
+                          id="payment-due-date"
+                          value={
+                            statementPreview?.payment_due_date ??
+                            "Calculated after setup"
+                          }
+                          readOnly
+                          aria-readonly="true"
+                          aria-describedby="calculated-payment-dates-hint"
+                          className="bg-muted text-muted-foreground"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <label
-                        htmlFor="next-payment-due-date"
-                        className="text-sm font-medium"
-                      >
-                        Next due date
-                      </label>
-                      <Input
-                        id="next-payment-due-date"
-                        value={nextDueDate || "Enter a valid due day"}
-                        readOnly
-                        aria-readonly="true"
-                        className="bg-muted text-muted-foreground"
-                      />
-                    </div>
+                    <p
+                      id="calculated-payment-dates-hint"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Both dates are calculated; statement date is not entered
+                      manually.
+                    </p>
                   </div>
                 )}
               </div>

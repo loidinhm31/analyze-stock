@@ -261,4 +261,101 @@ describe("IndexedDBAccountAdapter.updateAccount", () => {
     expect(mockDb.transactions.where).not.toHaveBeenCalled();
     expect(mockDb.transactions.bulkPut).not.toHaveBeenCalled();
   });
+
+  it("normalizes complete credit-card statement setup without inferring legacy due day", async () => {
+    const existing = {
+      ...account,
+      accountType: "Credit Card",
+      paymentReminderEnabled: true,
+      paymentDueDay: 31,
+    };
+    mockDb.accounts.get.mockResolvedValue(existing);
+    mockDb.accounts.toArray.mockResolvedValue([existing]);
+
+    const updated = await new IndexedDBAccountAdapter().updateAccount({
+      ...existing,
+      paymentCycleStartDate: "15/06/2026",
+      interestFreeDays: 55,
+    });
+
+    expect(updated).toMatchObject({
+      paymentDueDay: 31,
+      paymentCycleStartDate: "2026-06-15",
+      paymentCycleStartDay: 15,
+      interestFreeDays: 55,
+      nextPaymentDueDate: "2026-08-08",
+      lastPaymentConfirmedDueDate: undefined,
+      lastPaymentConfirmedAt: undefined,
+    });
+    expect(mockDb.accounts.put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentDueDay: 31,
+        paymentCycleStartDate: "2026-06-15",
+        paymentCycleStartDay: 15,
+        interestFreeDays: 55,
+        nextPaymentDueDate: "2026-08-08",
+      }),
+    );
+  });
+
+  it("preserves a fixed month-end anchor when editing an advanced clamped cycle", async () => {
+    const existing = {
+      ...account,
+      accountType: "Credit Card",
+      paymentReminderEnabled: true,
+      paymentCycleStartDate: "2026-02-28",
+      paymentCycleStartDay: 31,
+      interestFreeDays: 29,
+      nextPaymentDueDate: "2026-03-28",
+      lastPaymentConfirmedDueDate: "2026-02-28",
+      lastPaymentConfirmedAt: "2026-02-20T00:00:00.000Z",
+    };
+    mockDb.accounts.get.mockResolvedValue(existing);
+    mockDb.accounts.toArray.mockResolvedValue([existing]);
+
+    const updated = await new IndexedDBAccountAdapter().updateAccount({
+      ...existing,
+      name: " Wallet ",
+    });
+
+    expect(updated).toMatchObject({
+      paymentCycleStartDate: "2026-02-28",
+      paymentCycleStartDay: 31,
+      interestFreeDays: 29,
+      nextPaymentDueDate: "2026-03-28",
+      lastPaymentConfirmedDueDate: "2026-02-28",
+    });
+  });
+
+  it("clears reminder fields when a card reminder is disabled", async () => {
+    const existing = {
+      ...account,
+      accountType: "Credit Card",
+      paymentReminderEnabled: true,
+      paymentCycleStartDate: "2026-06-15",
+      paymentCycleStartDay: 15,
+      interestFreeDays: 55,
+      nextPaymentDueDate: "2026-08-08",
+      lastPaymentConfirmedDueDate: "2026-08-08",
+      lastPaymentConfirmedAt: "2026-08-01T00:00:00.000Z",
+    };
+    mockDb.accounts.get.mockResolvedValue(existing);
+    mockDb.accounts.toArray.mockResolvedValue([existing]);
+
+    const updated = await new IndexedDBAccountAdapter().updateAccount({
+      ...existing,
+      paymentReminderEnabled: false,
+    });
+
+    expect(updated).toMatchObject({
+      paymentDueDay: undefined,
+      paymentCycleStartDate: undefined,
+      paymentCycleStartDay: undefined,
+      interestFreeDays: undefined,
+      paymentReminderEnabled: false,
+      nextPaymentDueDate: undefined,
+      lastPaymentConfirmedDueDate: undefined,
+      lastPaymentConfirmedAt: undefined,
+    });
+  });
 });

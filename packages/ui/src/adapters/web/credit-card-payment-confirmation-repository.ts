@@ -4,8 +4,10 @@ import type {
   CreditCardPaymentConfirmationResult,
 } from "@money-insight/ui/types";
 import {
-  advancePaymentDueDate,
-  calculateAccountBalance,
+  advancePaymentCycleStartDate,
+  calculateCreditCardStatement,
+  deriveCreditCardStatementDates,
+  isCreditCardPaymentReminderComplete,
   parseIsoDate,
 } from "@money-insight/ui/lib";
 import { getDb } from "./database";
@@ -15,13 +17,16 @@ import { reconcileCreditCardPaymentReminder } from "./credit-card-payment-remind
 function assertConfirmableAccount(
   account: Account,
 ): asserts account is Account & {
-  paymentDueDay: number;
+  paymentCycleStartDate: string;
+  paymentCycleStartDay: number;
+  interestFreeDays: number;
   nextPaymentDueDate: string;
 } {
   if (
     account.accountType !== "Credit Card" ||
     account.paymentReminderEnabled !== true ||
-    account.paymentDueDay === undefined ||
+    !isCreditCardPaymentReminderComplete(account) ||
+    account.paymentCycleStartDay === undefined ||
     !account.nextPaymentDueDate
   ) {
     throw new Error("Credit card payment reminder is not active");
@@ -66,12 +71,33 @@ export async function confirmCreditCardPayment(
       const transactions = await db.transactions
         .where("account")
         .equals(account.name)
-        .toArray();
-      const balance = calculateAccountBalance(account, transactions);
-      if (balance >= 0)
-        throw new Error("Credit card balance is already cleared");
-      if (balance + input.amount < 0) {
-        throw new Error("Payment amount must clear the credit card balance");
+        .toArray()
+        .then((rows) =>
+          rows.filter(
+            (transaction) =>
+              (transaction as typeof transaction & { deleted?: boolean })
+                .deleted !== true,
+          ),
+        );
+      const statement = calculateCreditCardStatement(
+        account.paymentCycleStartDate,
+        account.interestFreeDays,
+        transactions.map((transaction) => ({
+          date: transaction.date,
+          amount: transaction.amount,
+        })),
+      );
+      if (
+        account.nextPaymentDueDate !== statement.payment_due_date ||
+        input.expectedDueDate !== statement.payment_due_date
+      ) {
+        throw new Error("Payment due cycle changed; refresh and try again");
+      }
+      if (statement.total_alert_amount >= 0) {
+        throw new Error("Credit card statement is already cleared");
+      }
+      if (statement.total_alert_amount + input.amount < 0) {
+        throw new Error("Payment amount must clear the credit card statement");
       }
 
       const transfer = await new IndexedDBTransactionAdapter().createTransfer({
@@ -84,12 +110,18 @@ export async function confirmCreditCardPayment(
         excludeReport: true,
       });
       const confirmedAt = new Date().toISOString();
+      const nextPaymentCycleStartDate = advancePaymentCycleStartDate(
+        account.paymentCycleStartDate,
+        account.paymentCycleStartDay,
+      );
+      const nextPaymentDueDate = deriveCreditCardStatementDates(
+        nextPaymentCycleStartDate,
+        account.interestFreeDays,
+      ).payment_due_date;
       const updated: Account = {
         ...account,
-        nextPaymentDueDate: advancePaymentDueDate(
-          account.nextPaymentDueDate,
-          account.paymentDueDay,
-        ),
+        paymentCycleStartDate: nextPaymentCycleStartDate,
+        nextPaymentDueDate,
         lastPaymentConfirmedDueDate: input.expectedDueDate,
         lastPaymentConfirmedAt: confirmedAt,
         updatedAt: confirmedAt,

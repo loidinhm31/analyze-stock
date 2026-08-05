@@ -238,6 +238,17 @@ interface Transaction {
 }
 ```
 
+### Credit Card Statement Window
+
+Credit-card statement configuration is stored on the synced `accounts` row. The
+cycle start date and original day are persisted with `interestFreeDays`; issue
+and due dates are derived as date-only ISO values. The issue date is the last
+calendar day before the next month, while the due date is the cycle start plus
+`interestFreeDays - 1` days. Statement transaction filtering includes both the
+cycle start and issue date boundaries. IndexedDB sync therefore persists the
+account configuration and transactions; it does not persist a separate
+statement-window table.
+
 ### Pending Changes Table
 ```typescript
 interface _PendingChange {

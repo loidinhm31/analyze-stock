@@ -357,9 +357,11 @@ describe("spendingStore.confirmCreditCardPayment", () => {
     accountType: "Credit Card",
     initialBalance: 0,
     currency: "VND",
-    paymentDueDay: 15,
+    paymentCycleStartDate: "2026-06-15",
+    paymentCycleStartDay: 15,
+    interestFreeDays: 55,
     paymentReminderEnabled: true,
-    nextPaymentDueDate: "2026-08-15",
+    nextPaymentDueDate: "2026-08-08",
     createdAt: "2026-08-01T00:00:00.000Z",
     updatedAt: "2026-08-01T00:00:00.000Z",
     syncVersion: 1,
@@ -393,8 +395,9 @@ describe("spendingStore.confirmCreditCardPayment", () => {
     );
     const updatedCard: Account = {
       ...card,
-      nextPaymentDueDate: "2026-09-15",
-      lastPaymentConfirmedDueDate: "2026-08-15",
+      paymentCycleStartDate: "2026-07-15",
+      nextPaymentDueDate: "2026-09-07",
+      lastPaymentConfirmedDueDate: "2026-08-08",
       syncVersion: 2,
     };
     const confirmMock = vi.fn().mockResolvedValue({

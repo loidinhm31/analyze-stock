@@ -238,6 +238,35 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
     });
   });
 
+  it("serializes new statement fields and omits issue date for legacy-compatible payloads", async () => {
+    mockDb.accounts.toArray.mockResolvedValue([
+      {
+        id: "new-card",
+        name: "New card",
+        accountType: "Credit Card",
+        initialBalance: 0,
+        currency: "VND",
+        paymentDueDay: 31,
+        paymentCycleStartDate: "2026-06-15",
+        paymentCycleStartDay: 15,
+        interestFreeDays: 55,
+        paymentReminderEnabled: true,
+        nextPaymentDueDate: "2026-08-08",
+        syncVersion: 1,
+        syncedAt: null,
+      },
+    ]);
+
+    const [record] = await new IndexedDBSyncStorage().getPendingChanges();
+    expect(record.data).toMatchObject({
+      paymentDueDay: 31,
+      paymentCycleStartDate: "2026-06-15",
+      paymentCycleStartDay: 15,
+      interestFreeDays: 55,
+    });
+    expect(record.data).not.toHaveProperty("payment_issue_date");
+  });
+
   it("serializes unsynced transfer transactions with transferId", async () => {
     mockDb.transactions.toArray.mockResolvedValue([
       {
@@ -802,6 +831,43 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
         id: "budget-1",
         accountNames: ["Main wallet"],
         syncVersion: 3,
+      }),
+    );
+  });
+
+  it("round-trips statement fields through the generic remote account merge", async () => {
+    const storage = new IndexedDBSyncStorage();
+
+    await storage.applyRemoteChanges([
+      {
+        tableName: "accounts",
+        rowId: "account-card",
+        data: {
+          name: "Remote card",
+          accountType: "Credit Card",
+          initialBalance: 0,
+          currency: "VND",
+          paymentDueDay: 31,
+          paymentCycleStartDate: "2026-06-15",
+          paymentCycleStartDay: 15,
+          interestFreeDays: 55,
+          paymentReminderEnabled: true,
+          nextPaymentDueDate: "2026-08-08",
+        },
+        version: 4,
+        deleted: false,
+        syncedAt: "2026-06-15T00:00:00.000Z",
+      },
+    ]);
+
+    expect(mockDb.accounts.put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "account-card",
+        paymentDueDay: 31,
+        paymentCycleStartDate: "2026-06-15",
+        paymentCycleStartDay: 15,
+        interestFreeDays: 55,
+        nextPaymentDueDate: "2026-08-08",
       }),
     );
   });

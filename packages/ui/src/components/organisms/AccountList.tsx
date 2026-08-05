@@ -7,6 +7,7 @@ import type { Account, NewAccount } from "@money-insight/ui/types";
 export interface AccountListProps {
   accounts: Account[];
   accountBalances?: Map<string, number>; // Map of account name to calculated balance
+  creditCardStatementTotals?: Map<string, number | null>; // Map of account id to current statement total
   onAccountClick?: (account: Account) => void;
   onAccountDelete?: (id: string) => void;
   onAccountAdd: (account: NewAccount) => Promise<Account | void>;
@@ -18,6 +19,7 @@ export interface AccountListProps {
 export function AccountList({
   accounts,
   accountBalances,
+  creditCardStatementTotals,
   onAccountClick,
   onAccountDelete,
   onAccountAdd,
@@ -62,6 +64,7 @@ export function AccountList({
               key={account.id}
               {...account}
               balance={accountBalances?.get(account.name)}
+              statementTotal={creditCardStatementTotals?.get(account.id)}
               onClick={() => onAccountClick?.(account)}
               onDelete={onAccountDelete}
               onAdjustBalance={
@@ -77,7 +80,7 @@ export function AccountList({
       ) : (
         <div className="text-center py-12 text-muted-foreground">
           <p>No accounts found.</p>
-          <p className="text-sm mt-2">Click "Add Account" to get started.</p>
+          <p className="text-sm mt-2">Click Add Account to get started.</p>
         </div>
       )}
     </div>

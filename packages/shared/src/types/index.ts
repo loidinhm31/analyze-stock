@@ -332,6 +332,9 @@ export interface Category {
 // Account definition
 export interface CreditCardPaymentReminderFields {
   paymentDueDay?: number;
+  paymentCycleStartDate?: string;
+  paymentCycleStartDay?: number;
+  interestFreeDays?: number;
   paymentReminderEnabled?: boolean;
   nextPaymentDueDate?: string;
   lastPaymentConfirmedDueDate?: string;

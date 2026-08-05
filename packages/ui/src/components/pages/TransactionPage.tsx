@@ -33,7 +33,9 @@ import {
   SearchInput,
 } from "@money-insight/ui/components/organisms";
 import {
+  calculateCreditCardStatement,
   formatCurrency,
+  isCreditCardPaymentReminderComplete,
   matchesSearch,
   type TimePeriodMode,
 } from "@money-insight/ui/lib";
@@ -158,6 +160,43 @@ export function TransactionPage() {
       balances.set(account.name, balance);
     }
     return balances;
+  }, [accounts, transactions]);
+
+  const creditCardStatementTotals = useMemo(() => {
+    const totals = new Map<string, number | null>();
+    for (const account of accounts) {
+      if (
+        account.accountType !== "Credit Card" ||
+        account.paymentReminderEnabled !== true
+      ) {
+        continue;
+      }
+      if (!isCreditCardPaymentReminderComplete(account)) {
+        totals.set(account.id, null);
+        continue;
+      }
+      try {
+        const statement = calculateCreditCardStatement(
+          account.paymentCycleStartDate!,
+          account.interestFreeDays!,
+          transactions
+            .filter(
+              (transaction) =>
+                transaction.account === account.name &&
+                (transaction as typeof transaction & { deleted?: boolean })
+                  .deleted !== true,
+            )
+            .map((transaction) => ({
+              date: transaction.date,
+              amount: transaction.amount,
+            })),
+        );
+        totals.set(account.id, statement.total_alert_amount);
+      } catch {
+        totals.set(account.id, null);
+      }
+    }
+    return totals;
   }, [accounts, transactions]);
 
   const handleTransactionClick = useCallback((transaction: Transaction) => {
@@ -412,6 +451,7 @@ export function TransactionPage() {
               <AccountList
                 accounts={displayAccounts}
                 accountBalances={accountBalances}
+                creditCardStatementTotals={creditCardStatementTotals}
                 onAccountClick={handleAccountClick}
                 onAccountDelete={handleAccountDelete}
                 onAccountAdd={addAccount}
@@ -476,6 +516,11 @@ export function TransactionPage() {
             ? (accountBalances.get(confirmingPaymentAccount.name) ??
               confirmingPaymentAccount.initialBalance)
             : 0
+        }
+        statementTotal={
+          confirmingPaymentAccount
+            ? creditCardStatementTotals.get(confirmingPaymentAccount.id)
+            : null
         }
         open={!!confirmingPaymentAccount}
         onOpenChange={(open) => !open && setConfirmingPaymentAccount(null)}

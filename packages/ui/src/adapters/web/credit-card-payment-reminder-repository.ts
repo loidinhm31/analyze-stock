@@ -6,7 +6,8 @@ import type {
 } from "@money-insight/ui/types";
 import {
   buildCreditCardPaymentReminderEvent,
-  calculateAccountBalance,
+  calculateCreditCardStatement,
+  isCreditCardPaymentReminderComplete,
 } from "@money-insight/ui/lib";
 import { trackDelete } from "./indexedDbHelpers";
 import { getDb } from "./database";
@@ -47,6 +48,37 @@ function isCurrentCycleEvent(
   );
 }
 
+function calculateCurrentStatementTotal(
+  account: Account,
+  transactions: Array<{ date: string; amount: number }>,
+): number | undefined {
+  if (
+    account.accountType !== "Credit Card" ||
+    account.paymentReminderEnabled !== true ||
+    !isCreditCardPaymentReminderComplete(account)
+  ) {
+    return undefined;
+  }
+
+  try {
+    const statement = calculateCreditCardStatement(
+      account.paymentCycleStartDate!,
+      account.interestFreeDays!,
+      transactions,
+    );
+    if (account.nextPaymentDueDate !== statement.payment_due_date) {
+      return undefined;
+    }
+    return statement.total_alert_amount;
+  } catch (error) {
+    console.warn(
+      "[money-insight] credit card reminder suppressed because statement configuration is invalid",
+      error instanceof Error ? error.message : error,
+    );
+    return undefined;
+  }
+}
+
 async function deleteNotificationEvent(
   event: NotificationEvent,
 ): Promise<void> {
@@ -78,11 +110,25 @@ export async function reconcileCreditCardPaymentReminder(
   const activeCycleIsUnconfirmed =
     !!account.nextPaymentDueDate &&
     account.lastPaymentConfirmedDueDate !== account.nextPaymentDueDate;
+  const statementTotal = calculateCurrentStatementTotal(
+    account,
+    transactions
+      .filter(
+        (transaction) =>
+          (transaction as typeof transaction & { deleted?: boolean })
+            .deleted !== true,
+      )
+      .map((transaction) => ({
+        date: transaction.date,
+        amount: transaction.amount,
+      })),
+  );
   const shouldHaveReminder =
     account.accountType === "Credit Card" &&
     account.paymentReminderEnabled === true &&
+    statementTotal !== undefined &&
     activeCycleIsUnconfirmed &&
-    calculateAccountBalance(account, transactions) < 0;
+    statementTotal < 0;
 
   if (!shouldHaveReminder) {
     for (const event of accountEvents) await deleteNotificationEvent(event);
@@ -125,7 +171,11 @@ export async function removeCreditCardPaymentReminderEvents(
 ): Promise<void> {
   const events = await getDb().notificationEvents.toArray();
   for (const event of events) {
-    if (event.eventType === EVENT_TYPE && event.sourceRowId === accountId) {
+    if (
+      event.eventType === EVENT_TYPE &&
+      event.sourceTable === "accounts" &&
+      event.sourceRowId === accountId
+    ) {
       await deleteNotificationEvent(event);
     }
   }

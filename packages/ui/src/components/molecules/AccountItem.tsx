@@ -10,6 +10,7 @@ import {
   cn,
   getCreditCardPaymentDueStatus,
   getCreditCardPaymentDueStatusLabel,
+  isCreditCardPaymentReminderComplete,
 } from "@money-insight/ui/lib";
 
 export interface AccountItemProps {
@@ -25,10 +26,14 @@ export interface AccountItemProps {
   onAdjustBalance?: (id: string) => void;
   onTransfer?: () => void;
   paymentDueDay?: number;
+  paymentCycleStartDate?: string;
+  paymentCycleStartDay?: number;
+  interestFreeDays?: number;
   paymentReminderEnabled?: boolean;
   nextPaymentDueDate?: string;
   lastPaymentConfirmedDueDate?: string;
   lastPaymentConfirmedAt?: string;
+  statementTotal?: number | null;
   onConfirmPayment?: (id: string) => void;
 }
 
@@ -77,9 +82,13 @@ export function AccountItem({
   onDelete,
   onAdjustBalance,
   onTransfer,
+  paymentCycleStartDate,
+  paymentCycleStartDay,
+  interestFreeDays,
   paymentReminderEnabled,
   nextPaymentDueDate,
   lastPaymentConfirmedDueDate,
+  statementTotal,
   onConfirmPayment,
 }: AccountItemProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -91,11 +100,28 @@ export function AccountItem({
     nextPaymentDueDate,
     lastPaymentConfirmedDueDate,
   });
+  const paymentSetupComplete = isCreditCardPaymentReminderComplete({
+    id,
+    paymentCycleStartDate,
+    paymentCycleStartDay,
+    interestFreeDays,
+    nextPaymentDueDate,
+  });
+  const hasStatementDue =
+    typeof statementTotal === "number" &&
+    Number.isFinite(statementTotal) &&
+    statementTotal < 0;
+  const statementCalculationUnavailable =
+    isCreditCard &&
+    paymentReminderEnabled === true &&
+    paymentSetupComplete &&
+    statementTotal === null;
   const canConfirmPayment =
     isCreditCard &&
     paymentReminderEnabled === true &&
+    paymentSetupComplete &&
     !!nextPaymentDueDate &&
-    displayBalance < 0;
+    hasStatementDue;
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -140,29 +166,54 @@ export function AccountItem({
           <span className="font-medium">{name}</span>
           {accountType && <Badge variant="outline">{accountType}</Badge>}
         </div>
-        {isCreditCard && paymentReminderEnabled && nextPaymentDueDate && (
+        {isCreditCard && paymentReminderEnabled && !paymentSetupComplete && (
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-            <Badge
-              variant={
-                paymentStatus === "overdue"
-                  ? "destructive"
-                  : paymentStatus === "confirmed"
-                    ? "success"
-                    : "warning"
-              }
-            >
-              {getCreditCardPaymentDueStatusLabel(paymentStatus)}
-            </Badge>
+            <Badge variant="warning">Needs setup</Badge>
             <span className="text-muted-foreground">
-              Due {nextPaymentDueDate}
+              Add cycle start date and interest-free days.
             </span>
-            {lastPaymentConfirmedDueDate && (
-              <span className="text-muted-foreground">
-                Last confirmed cycle {lastPaymentConfirmedDueDate}
-              </span>
-            )}
           </div>
         )}
+        {isCreditCard &&
+          paymentReminderEnabled &&
+          paymentSetupComplete &&
+          nextPaymentDueDate && (
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+              <Badge
+                variant={
+                  paymentStatus === "overdue"
+                    ? "destructive"
+                    : paymentStatus === "confirmed"
+                      ? "success"
+                      : "warning"
+                }
+              >
+                {getCreditCardPaymentDueStatusLabel(paymentStatus)}
+              </Badge>
+              <span className="text-muted-foreground">
+                Due {nextPaymentDueDate}
+              </span>
+              {hasStatementDue && (
+                <span className="text-muted-foreground">
+                  Statement due{" "}
+                  {formatCurrencyWithCode(
+                    Math.abs(statementTotal ?? 0),
+                    currency,
+                  )}
+                </span>
+              )}
+              {statementCalculationUnavailable && (
+                <span className="text-warning-foreground" role="status">
+                  Statement unavailable; check transaction dates or amounts.
+                </span>
+              )}
+              {lastPaymentConfirmedDueDate && (
+                <span className="text-muted-foreground">
+                  Last confirmed cycle {lastPaymentConfirmedDueDate}
+                </span>
+              )}
+            </div>
+          )}
       </div>
       <div className="flex w-full shrink-0 items-center justify-between gap-1 sm:w-auto sm:justify-end sm:gap-2">
         <div className="text-right">
