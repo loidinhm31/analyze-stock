@@ -212,6 +212,14 @@ erDiagram
         boolean deleted
     }
 
+    DashboardPreferences {
+        string id PK "fixed: account-type-value-widget"
+        array selectedAccountTypes "canonical types plus __other__"
+        number syncVersion
+        number syncedAt
+        boolean deleted
+    }
+
     Account {
         string id PK
         string name
@@ -284,6 +292,62 @@ erDiagram
 **Database:** Per-user IndexedDB via Dexie.js. DB name derived from hashed userId.
 
 Budget and notification event rows sync through the same app collection as transactions and accounts. `budgets` stores recurring monthly definitions; `notificationEvents` stores user-owned app events for generic server-side dispatch after sync.
+
+### Dashboard Preferences Sync (Phase 1)
+
+The dashboard-preference foundation stores one user-owned, syncable
+`dashboardPreferences` row with fixed ID `account-type-value-widget`. Its
+`selectedAccountTypes` array must be non-empty, unique, and composed of the
+canonical keys `cash`, `bank_account`, `credit_card`, `investment`, `savings`,
+and `__other__`. The client rejects invalid row IDs and malformed selections
+when saving or applying a remote record. Local rows include the normal sync
+version/timestamp metadata; deletion is represented by the sync protocol's
+tombstone flow.
+
+The table uses the standard user-scoped, server-wins/version sync behavior.
+The client sends only `selectedAccountTypes`, `createdAt`, and `updatedAt` as
+table data; sync metadata is protocol-managed. Existing clients can ignore the
+additive table, and saving a preference never changes account or transaction
+rows.
+
+**Release constraint:** deploy the matching `dashboardPreferences` table to
+`glean-oak-server/embed-app/money-insight/money-insight-app-schema.json` and
+verify push, pull, acknowledgement, conflict, and tombstone behavior between
+two authenticated sessions before exposing dashboard configuration. The client
+must not be released against a server that does not allow this table.
+
+The planned account-type value widget remains one fixed widget rather than a
+general layout system. It will map blank or unrecognised free-form account
+types to `__other__`; it will not store account IDs or exchange rates.
+
+```mermaid
+flowchart LR
+    Page[DashboardPage] --> Widget[AccountTypeValueWidget]
+    Widget --> Preferences[DashboardPreferences service]
+    Preferences --> Adapter[IndexedDB dashboard preferences adapter]
+    Adapter --> Local[(dashboardPreferences table)]
+    Local --> Storage[IndexedDBSyncStorage]
+    Storage <--> Server[glean-oak-server sync contract]
+    Store[spendingStore accounts and transactions] --> Balance[shared balance history helper]
+    Balance --> Widget
+```
+
+When implemented, the widget will derive rather than store values: it will
+group selected accounts by currency, calculate current balance as opening
+balance plus signed transaction amounts, and produce the last 12 completed
+calendar month-end balances. It will never aggregate currencies. If a currency
+has no known completed month-end, its secondary value will be explicitly
+labelled current-calendar-month net change; otherwise it will be the mean of
+up to the three latest known completed month-end balances. `valuesHidden` will
+mask all rendered values and chart tooltip values.
+
+The shared account-type balance projection treats `Account.createdAt` as the
+calendar date encoded in the ISO value (`YYYY-MM-DD`); it does not convert the
+timestamp through the runtime timezone. A month-end on the account's creation
+date is therefore included (the local-midnight boundary is inclusive), while
+earlier month-ends have no account balance. Compatible transactions are
+grouped once by account and the grouped data is reused for current balances,
+month-end history, and current-month net change.
 
 Credit-card reminders also reuse `notificationEvents`; no account-reminder table or server collection exists. A reminder event is bound to the Account row and version that created it. Account edits, reminder disablement, deletion, or payment confirmation increment the Account version, making the old recurring event terminally superseded. Credit-card statement configuration persists `paymentCycleStartDate`, its original `paymentCycleStartDay`, and positive `interestFreeDays`; the derived issue date is the next calendar month minus one day, and the derived due date is cycle start plus `interestFreeDays - 1` calendar days. The cycle anchor is retained when advancing through short months.
 

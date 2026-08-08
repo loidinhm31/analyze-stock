@@ -52,6 +52,7 @@ import type {
 } from "@money-insight/ui/types";
 import * as categoryService from "@money-insight/ui/services/categoryService";
 import * as accountService from "@money-insight/ui/services/accountService";
+import { getAccountBalances } from "@money-insight/ui/services/account-type-value-history";
 
 export function TransactionPage() {
   const initialPreferences = loadStoredTransactionPagePreferences();
@@ -147,20 +148,10 @@ export function TransactionPage() {
     }
   }, [accounts, periodMode, selectedAccount]);
 
-  // Calculate current balance for each account
-  const accountBalances = useMemo(() => {
-    const balances = new Map<string, number>();
-    for (const account of accounts) {
-      let balance = account.initialBalance;
-      for (const tx of transactions) {
-        if (tx.account === account.name) {
-          balance += tx.income - tx.expense;
-        }
-      }
-      balances.set(account.name, balance);
-    }
-    return balances;
-  }, [accounts, transactions]);
+  const accountBalances = useMemo(
+    () => getAccountBalances(accounts, transactions),
+    [accounts, transactions],
+  );
 
   const creditCardStatementTotals = useMemo(() => {
     const totals = new Map<string, number | null>();

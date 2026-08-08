@@ -6,6 +6,7 @@ import {
   IndexedDBTransactionAdapter,
   IndexedDBDebtAdapter,
   IndexedDBBudgetAdapter,
+  IndexedDBDashboardPreferencesAdapter,
   IndexedDBNotificationEventAdapter,
   createIndexedDBSyncAdapter,
   setAccountService,
@@ -15,6 +16,7 @@ import {
   setStatisticsService,
   setDebtService,
   setBudgetService,
+  setDashboardPreferencesService,
   setNotificationEventService,
   setSyncService,
   setTransactionService,
@@ -153,6 +155,7 @@ export function MoneyInsightApp({
     const statistics = new IndexedDBStatisticsAdapter();
     const debt = new IndexedDBDebtAdapter();
     const budget = new IndexedDBBudgetAdapter();
+    const dashboardPreferences = new IndexedDBDashboardPreferencesAdapter();
     const notificationEvent = new IndexedDBNotificationEventAdapter();
     setTransactionService(transaction);
     setCategoryService(category);
@@ -161,6 +164,7 @@ export function MoneyInsightApp({
     setStatisticsService(statistics);
     setDebtService(debt);
     setBudgetService(budget);
+    setDashboardPreferencesService(dashboardPreferences);
     setNotificationEventService(notificationEvent);
 
     // Initialize auth service based on platform
@@ -187,6 +191,7 @@ export function MoneyInsightApp({
       statistics,
       debt,
       budget,
+      dashboardPreferences,
       notificationEvent,
       auth,
       sync,

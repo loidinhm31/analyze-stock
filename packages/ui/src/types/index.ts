@@ -10,6 +10,9 @@ export type {
   BudgetStatus,
   NewBudget,
   Budget,
+  DashboardAccountTypeKey,
+  DashboardPreferences,
+  DashboardPreferencesInput,
   NotificationEventPriority,
   NotificationEventStatus,
   NotificationEventDeliveryMode,
@@ -35,6 +38,12 @@ export type {
   AdjustmentNote,
   TransferNote,
   TransferParams,
+} from "@money-insight/shared/types";
+
+export {
+  DASHBOARD_ACCOUNT_TYPE_KEYS,
+  DASHBOARD_PREFERENCES_ID,
+  normalizeDashboardAccountTypeKeys,
 } from "@money-insight/shared/types";
 
 // UI-specific types

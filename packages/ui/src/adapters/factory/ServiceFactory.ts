@@ -9,6 +9,7 @@ import type {
   IStatisticsService,
   IDebtService,
   IBudgetService,
+  IDashboardPreferencesService,
   INotificationEventService,
   ISyncService,
   IAuthService,
@@ -22,6 +23,7 @@ let accountService: IAccountService | null = null;
 let statisticsService: IStatisticsService | null = null;
 let debtService: IDebtService | null = null;
 let budgetService: IBudgetService | null = null;
+let dashboardPreferencesService: IDashboardPreferencesService | null = null;
 let notificationEventService: INotificationEventService | null = null;
 let authService: IAuthService | null = null;
 let syncService: ISyncService | null = null;
@@ -60,6 +62,13 @@ export const setDebtService = (svc: IDebtService): void => {
 export const setBudgetService = (svc: IBudgetService): void => {
   budgetService = svc;
   serviceLogger.factory("Set custom BudgetService");
+};
+
+export const setDashboardPreferencesService = (
+  svc: IDashboardPreferencesService,
+): void => {
+  dashboardPreferencesService = svc;
+  serviceLogger.factory("Set custom DashboardPreferencesService");
 };
 
 export const setNotificationEventService = (
@@ -142,6 +151,15 @@ export const getBudgetService = (): IBudgetService => {
   return budgetService;
 };
 
+export const getDashboardPreferencesService = (): IDashboardPreferencesService => {
+  if (!dashboardPreferencesService) {
+    throw new Error(
+      "DashboardPreferencesService not initialized. Call setDashboardPreferencesService() first.",
+    );
+  }
+  return dashboardPreferencesService;
+};
+
 export const getNotificationEventService = (): INotificationEventService => {
   if (!notificationEventService) {
     throw new Error(
@@ -177,6 +195,7 @@ export const getAllServices = () => ({
   statistics: getStatisticsService(),
   debt: getDebtService(),
   budget: getBudgetService(),
+  dashboardPreferences: getDashboardPreferencesService(),
   notificationEvent: getNotificationEventService(),
   auth: getAuthService(),
   sync: getSyncService(),
@@ -190,6 +209,7 @@ export const resetServices = (): void => {
   statisticsService = null;
   debtService = null;
   budgetService = null;
+  dashboardPreferencesService = null;
   notificationEventService = null;
   authService = null;
   syncService = null;

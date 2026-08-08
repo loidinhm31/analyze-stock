@@ -64,7 +64,7 @@ describe("MoneyInsightDatabase migrations", () => {
     );
   });
 
-  it("upgrades a v3 database to v4 without losing existing data", async () => {
+  it("upgrades a v3 database to v5 without losing existing data", async () => {
     const dbName = `MoneyInsightMigrationTest_${crypto.randomUUID()}`;
     dbNames.push(dbName);
 
@@ -153,11 +153,22 @@ describe("MoneyInsightDatabase migrations", () => {
       id: "budget-1",
       categoryNames: ["Food"],
     });
+    await upgradedDb.dashboardPreferences.add({
+      id: "account-type-value-widget",
+      selectedAccountTypes: ["cash"],
+      createdAt: "2024-01-10T00:00:00.000Z",
+      updatedAt: "2024-01-10T00:00:00.000Z",
+      syncVersion: 1,
+      syncedAt: null,
+    });
     expect(await upgradedDb.notificationEvents.get("event-1")).toMatchObject({
       id: "event-1",
       eventType: "budget_overrun",
       dedupeKey: "budget-1:2024-01",
     });
+    expect(
+      await upgradedDb.dashboardPreferences.get("account-type-value-widget"),
+    ).toMatchObject({ selectedAccountTypes: ["cash"] });
 
     upgradedDb.close();
   });

@@ -190,6 +190,61 @@ export interface Budget extends NewBudget {
   syncedAt: number | null;
 }
 
+export const DASHBOARD_PREFERENCES_ID = "account-type-value-widget";
+
+export const DASHBOARD_ACCOUNT_TYPE_KEYS = [
+  "cash",
+  "bank_account",
+  "credit_card",
+  "investment",
+  "savings",
+  "__other__",
+] as const;
+
+export type DashboardAccountTypeKey =
+  (typeof DASHBOARD_ACCOUNT_TYPE_KEYS)[number];
+
+export interface DashboardPreferences {
+  id: string;
+  selectedAccountTypes: DashboardAccountTypeKey[];
+  createdAt: string;
+  updatedAt: string;
+  syncVersion: number;
+  syncedAt: number | null;
+  /** Last server row version used for optimistic push conflict detection. */
+  serverVersion?: number;
+}
+
+export interface DashboardPreferencesInput {
+  selectedAccountTypes: DashboardAccountTypeKey[];
+}
+
+export function normalizeDashboardAccountTypeKeys(
+  value: unknown,
+): DashboardAccountTypeKey[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error("Select at least one account type");
+  }
+
+  const selectedAccountTypes = value.map((key) => {
+    if (
+      typeof key !== "string" ||
+      !DASHBOARD_ACCOUNT_TYPE_KEYS.includes(
+        key as DashboardAccountTypeKey,
+      )
+    ) {
+      throw new Error("Invalid dashboard account type");
+    }
+    return key as DashboardAccountTypeKey;
+  });
+
+  if (new Set(selectedAccountTypes).size !== selectedAccountTypes.length) {
+    throw new Error("Dashboard account types must be unique");
+  }
+
+  return selectedAccountTypes;
+}
+
 export type NotificationEventPriority = "low" | "normal" | "high" | "critical";
 
 export type NotificationEventStatus =

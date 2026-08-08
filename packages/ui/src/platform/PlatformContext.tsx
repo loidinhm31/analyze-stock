@@ -7,6 +7,7 @@ import type {
   IStatisticsService,
   IDebtService,
   IBudgetService,
+  IDashboardPreferencesService,
   INotificationEventService,
   ISyncService,
   IAuthService,
@@ -24,6 +25,7 @@ export interface IPlatformServices {
   statistics: IStatisticsService;
   debt: IDebtService;
   budget: IBudgetService;
+  dashboardPreferences: IDashboardPreferencesService;
   notificationEvent: INotificationEventService;
   auth: IAuthService;
   sync: ISyncService;

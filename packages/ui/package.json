@@ -32,6 +32,7 @@
     "./services/accountService": "./src/services/accountService.ts",
     "./services/statisticsService": "./src/services/statisticsService.ts",
     "./services/balanceAdjustmentService": "./src/services/balanceAdjustmentService.ts",
+    "./services/account-type-value-history": "./src/services/account-type-value-history.ts",
     "./services/categoryGroupService": "./src/services/categoryGroupService.ts",
     "./services/transferService": "./src/services/transferService.ts",
     "./services/debtService": "./src/services/debtService.ts",

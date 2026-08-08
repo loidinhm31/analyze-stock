@@ -1,6 +1,19 @@
 # Money Insight project roadmap
 
-Last updated: 2026-07-30
+Last updated: 2026-08-08
+
+## Custom account-type value dashboard (2026-08-08)
+
+- **Phase 01 — approved; release-gated**
+  - Synced `dashboardPreferences` foundation, Dexie migration, DI wiring, sync paths, validation, and schema artifact are implemented.
+  - Before release: deploy `dashboardPreferences` through the active server `_schemas` configuration and pass authenticated real two-session delta-sync/stale-conflict validation.
+  - Approved warning: same-device preference delete/save is not transactional; live server integration proof is outstanding.
+- **Phase 02 — complete (2026-08-08 15:45:49 ICT)**
+  - Shared account-value projection implemented with per-currency current balances, 12 completed month-end points, and net-change fallback.
+  - Encoded ISO calendar-date convention documented and enforced; grouped compatible transactions reused across current/history calculations.
+  - Review evidence: January/local-midnight/same-day ordering assertions; focused tests 9/9; repository type-check 4/4 packages.
+
+See [the implementation plan](../plans/260808-1123-custom-account-value-dashboard/plan.md).
 
 ## Credit-card due/payment confirmation UX (2026-08-02)
 

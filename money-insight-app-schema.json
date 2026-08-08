@@ -124,6 +124,18 @@
       ],
       "primaryKey": "rowId"
     },
+    "dashboardPreferences": {
+      "columns": [
+        {
+          "name": "selectedAccountTypes",
+          "type": "array",
+          "nullable": false
+        },
+        { "name": "createdAt", "type": "string", "nullable": false },
+        { "name": "updatedAt", "type": "string", "nullable": false }
+      ],
+      "primaryKey": "rowId"
+    },
     "notificationEvents": {
       "columns": [
         { "name": "eventType", "type": "string", "nullable": false },

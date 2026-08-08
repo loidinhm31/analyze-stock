@@ -5,6 +5,7 @@ export type { IAccountService } from "./IAccountService";
 export type { IStatisticsService } from "./IStatisticsService";
 export type { IDebtService } from "./IDebtService";
 export type { IBudgetService } from "./IBudgetService";
+export type { IDashboardPreferencesService } from "./IDashboardPreferencesService";
 export type {
   INotificationEventService,
   NotificationEventStatusUpdate,

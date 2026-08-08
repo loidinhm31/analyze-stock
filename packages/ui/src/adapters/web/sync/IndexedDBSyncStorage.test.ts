@@ -57,6 +57,14 @@ const {
       delete: vi.fn(),
       put: vi.fn(),
     },
+    dashboardPreferences: {
+      toArray: vi.fn(),
+      get: vi.fn(),
+      where: vi.fn(),
+      filter: vi.fn(),
+      delete: vi.fn(),
+      put: vi.fn(),
+    },
     notificationEvents: {
       toArray: vi.fn(),
       get: vi.fn(),
@@ -135,6 +143,7 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
     mockDb.debts.toArray.mockResolvedValue([]);
     mockDb.debtSettlements.toArray.mockResolvedValue([]);
     mockDb.budgets.toArray.mockResolvedValue([]);
+    mockDb.dashboardPreferences.toArray.mockResolvedValue([]);
     mockDb.notificationEvents.toArray.mockResolvedValue([]);
     mockDb.debts.where.mockReturnValue({
       equals: () => ({
@@ -166,6 +175,9 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
     mockDb.budgets.filter.mockReturnValue({
       count: vi.fn().mockResolvedValue(0),
     });
+    mockDb.dashboardPreferences.filter.mockReturnValue({
+      count: vi.fn().mockResolvedValue(0),
+    });
     mockDb.notificationEvents.filter.mockReturnValue({
       count: vi.fn().mockResolvedValue(0),
     });
@@ -173,6 +185,7 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
     mockDb.categories.get.mockResolvedValue(undefined);
     mockDb.accounts.get.mockResolvedValue(undefined);
     mockDb.budgets.get.mockResolvedValue(undefined);
+    mockDb.dashboardPreferences.get.mockResolvedValue(undefined);
     mockDb.notificationEvents.get.mockResolvedValue(undefined);
     mockDb._pendingChanges.filter.mockReturnValue({
       toArray: vi.fn().mockResolvedValue([]),
@@ -234,6 +247,35 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
         updatedAt: "2024-01-02T00:00:00.000Z",
       },
       version: 7,
+      deleted: false,
+    });
+  });
+
+  it("serializes the dashboard preference singleton", async () => {
+    mockDb.dashboardPreferences.toArray.mockResolvedValue([
+      {
+        id: "account-type-value-widget",
+        selectedAccountTypes: ["cash", "__other__"],
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        syncVersion: 2,
+        syncedAt: null,
+        serverVersion: 4,
+      },
+    ]);
+
+    const pendingChanges = await new IndexedDBSyncStorage().getPendingChanges();
+
+    expect(pendingChanges).toContainEqual({
+      tableName: "dashboardPreferences",
+      rowId: "account-type-value-widget",
+      data: {
+        selectedAccountTypes: ["cash", "__other__"],
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+      version: 2,
+      serverVersion: 4,
       deleted: false,
     });
   });
@@ -1138,6 +1180,33 @@ describe("IndexedDBSyncStorage.getPendingChanges", () => {
         nextAttemptAt: "2026-08-02T02:00:00.000Z",
         lastSentAt: "2026-08-01T02:00:00.000Z",
         syncVersion: 3,
+      }),
+    );
+  });
+
+  it("applies a validated remote dashboard preference", async () => {
+    await new IndexedDBSyncStorage().applyRemoteChanges([
+      {
+        tableName: "dashboardPreferences",
+        rowId: "account-type-value-widget",
+        data: {
+          selectedAccountTypes: ["cash", "__other__"],
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-02T00:00:00.000Z",
+        },
+        version: 3,
+        deleted: false,
+        syncedAt: "2026-01-02T00:00:00.000Z",
+      },
+    ]);
+
+    expect(mockDb.dashboardPreferences.put).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "account-type-value-widget",
+        selectedAccountTypes: ["cash", "__other__"],
+        syncVersion: 3,
+        syncedAt: 123,
+        serverVersion: 3,
       }),
     );
   });

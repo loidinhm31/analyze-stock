@@ -4,6 +4,10 @@ import type {
   SyncRecord,
 } from "@money-insight/shared/types";
 import {
+  DASHBOARD_PREFERENCES_ID,
+  normalizeDashboardAccountTypeKeys,
+} from "@money-insight/ui/types";
+import {
   assertDebtType,
   assertPositiveAmount,
   assertTransactionSource,
@@ -200,6 +204,24 @@ export class IndexedDBSyncStorage {
       }
     }
 
+    const dashboardPreferences = await getDb().dashboardPreferences.toArray();
+    for (const preferences of dashboardPreferences) {
+      if (preferences.syncedAt === undefined || preferences.syncedAt === null) {
+        records.push({
+          tableName: "dashboardPreferences",
+          rowId: preferences.id,
+          data: {
+            selectedAccountTypes: preferences.selectedAccountTypes,
+            createdAt: preferences.createdAt,
+            updatedAt: preferences.updatedAt,
+          },
+          version: preferences.syncVersion || 1,
+          serverVersion: preferences.serverVersion,
+          deleted: false,
+        });
+      }
+    }
+
     const notificationEvents = await getDb().notificationEvents.toArray();
     for (const event of notificationEvents) {
       if (event.syncedAt === undefined || event.syncedAt === null) {
@@ -258,6 +280,7 @@ export class IndexedDBSyncStorage {
       "debts",
       "debtSettlements",
       "budgets",
+      "dashboardPreferences",
       "notificationEvents",
     ];
     for (const tableName of tables) {
@@ -276,6 +299,7 @@ export class IndexedDBSyncStorage {
       "debts",
       "debtSettlements",
       "budgets",
+      "dashboardPreferences",
       "notificationEvents",
     ] as const;
     for (const tableName of tables) {
@@ -304,6 +328,7 @@ export class IndexedDBSyncStorage {
         getDb().debts,
         getDb().debtSettlements,
         getDb().budgets,
+        getDb().dashboardPreferences,
         getDb().notificationEvents,
       ],
       async () => {
@@ -359,6 +384,7 @@ export class IndexedDBSyncStorage {
         getDb().debts,
         getDb().debtSettlements,
         getDb().budgets,
+        getDb().dashboardPreferences,
         getDb().notificationEvents,
       ],
       async () => {
@@ -479,6 +505,16 @@ export class IndexedDBSyncStorage {
       assertPositiveAmount(amount);
     }
 
+    if (record.tableName === "dashboardPreferences") {
+      if (record.rowId !== DASHBOARD_PREFERENCES_ID) {
+        throw new Error("Invalid dashboard preferences record");
+      }
+      normalizeDashboardAccountTypeKeys(
+        (record.data as { selectedAccountTypes?: unknown })
+          .selectedAccountTypes,
+      );
+    }
+
     const data: Record<string, unknown> = {
       ...(record.data as any),
       ...(normalizedTransactionSource
@@ -490,6 +526,10 @@ export class IndexedDBSyncStorage {
     };
 
     if (record.tableName === "notificationEvents") {
+      data.serverVersion = record.version;
+    }
+
+    if (record.tableName === "dashboardPreferences") {
       data.serverVersion = record.version;
     }
 
@@ -596,6 +636,8 @@ export class IndexedDBSyncStorage {
         return getDb().debtSettlements;
       case "budgets":
         return getDb().budgets;
+      case "dashboardPreferences":
+        return getDb().dashboardPreferences;
       case "notificationEvents":
         return getDb().notificationEvents;
       default:
@@ -610,13 +652,15 @@ export class IndexedDBSyncStorage {
         return 0;
       case "budgets":
         return 1;
-      case "debts":
+      case "dashboardPreferences":
         return 2;
+      case "debts":
+        return 3;
       case "transactions":
       case "debtSettlements":
-        return 3;
-      case "notificationEvents":
         return 4;
+      case "notificationEvents":
+        return 5;
       default:
         return 99;
     }
