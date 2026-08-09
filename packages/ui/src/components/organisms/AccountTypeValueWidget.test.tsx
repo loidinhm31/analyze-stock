@@ -58,4 +58,60 @@ describe("AccountTypeValueWidget", () => {
     expect(markup).toContain("No account types selected");
     expect(markup).toContain("Configure this widget");
   });
+
+  it("renders loading, retryable error, and no-matching-account states", () => {
+    const loadingMarkup = renderToStaticMarkup(
+      <AccountTypeValueWidget
+        {...baseProps}
+        isLoading
+        selectedAccountTypes={null}
+        valuesHidden={false}
+      />,
+    );
+    const errorMarkup = renderToStaticMarkup(
+      <AccountTypeValueWidget
+        {...baseProps}
+        error="Unable to load widget preferences"
+        selectedAccountTypes={null}
+        valuesHidden={false}
+      />,
+    );
+    const noMatchingAccountsMarkup = renderToStaticMarkup(
+      <AccountTypeValueWidget
+        {...baseProps}
+        histories={[]}
+        valuesHidden={false}
+      />,
+    );
+
+    expect(loadingMarkup).toContain('aria-busy="true"');
+    expect(loadingMarkup).toContain("Loading widget preferences…");
+    expect(errorMarkup).toContain('role="alert"');
+    expect(errorMarkup).toContain("Unable to load widget preferences");
+    expect(errorMarkup).toContain("Retry");
+    expect(noMatchingAccountsMarkup).toContain("No matching accounts");
+  });
+
+  it("keeps each currency in a distinct card", () => {
+    const markup = renderToStaticMarkup(
+      <AccountTypeValueWidget
+        {...baseProps}
+        histories={[
+          history,
+          {
+            ...history,
+            currency: "VND",
+            currentBalance: 2000000,
+            trailingMetric: { label: "Net change", value: 100000 },
+          },
+        ]}
+        valuesHidden={false}
+      />,
+    );
+
+    expect(markup).toContain("USD");
+    expect(markup).toContain("VND");
+    expect(markup).toContain("$1,234.50");
+    expect(markup).toContain("₫2,000,000");
+  });
 });

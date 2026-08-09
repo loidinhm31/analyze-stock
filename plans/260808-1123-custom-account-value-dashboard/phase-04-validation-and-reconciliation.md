@@ -12,7 +12,7 @@
 
 - **Date:** 2026-08-08
 - **Priority:** P2
-- **Status:** pending
+- **Status:** completed — 2026-08-10 00:33:39 ICT
 - Verify correctness across financial derivation, sync, UI privacy, and final architecture.
 
 ## Key Insights
@@ -49,10 +49,10 @@ Validation proves this flow: preference adapter/outbox → sync server → remot
 
 ## Todo List
 
-- [ ] Unit, DB, sync, and component coverage passes.
-- [ ] Manual two-session and privacy matrix complete.
-- [ ] Typecheck/lint/build gates pass.
-- [ ] Review and Architecture Gate 2 complete.
+- [x] Unit, DB, sync, and component coverage passes.
+- [x] Privacy and UI validation covered by automated component tests; external two-session matrix waived by explicit user approval.
+- [x] Typecheck, lint (0 errors; 29 pre-existing warnings), and build gates pass.
+- [x] Review and Architecture Gate 2 complete; external server/release validation retained as waived follow-up.
 
 ## Success Criteria
 
@@ -70,6 +70,14 @@ Validation proves this flow: preference adapter/outbox → sync server → remot
 - Exercise authorization on pull/push with a second user, not only a second device.
 - Keep test fixtures synthetic; do not capture real financial records or tokens.
 
+## Validation Evidence
+
+- UI tests: 244/244 passed (`TMPDIR=/dev/shm`).
+- Type-check: passed.
+- Lint: passed with 0 errors and 29 pre-existing warnings.
+- Build: passed.
+- External server `_schemas` deployment and authenticated two-session sync/conflict validation: explicitly waived by the user on 2026-08-10 00:33:39 ICT; retained as follow-up, not a blocker.
+
 ## Next Steps
 
-Mark phases complete only after code review and reconciliation. Update project/docs status if the user approves the changes.
+Phase 04 is complete with the approved waiver. External server deployment and authenticated two-session validation remain release follow-ups if production evidence is later required.

@@ -1,6 +1,6 @@
 # Money Insight project roadmap
 
-Last updated: 2026-08-08
+Last updated: 2026-08-10
 
 ## Custom account-type value dashboard (2026-08-08)
 
@@ -17,6 +17,10 @@ Last updated: 2026-08-08
   - Widget derives from the full account/transaction state and remains independent of dashboard report filters.
   - `valuesHidden` masks displayed and accessible values, chart labels, and tooltips; it is a display privacy control, not access control.
   - UI validation and review passed; external two-session sync validation remains outstanding under Phase 01's release constraint.
+- **Phase 04 — complete (2026-08-10); approved with external-validation bypass**
+  - Extended `AccountTypeValueWidget` coverage for loading, error, and no-match states, multi-currency values, and account-type configuration behavior.
+  - Quality gates: 244/244 UI tests, type-check, lint (0 errors), and production build passed.
+  - The user explicitly waived live server schema deployment and authenticated two-session sync/conflict validation for this phase. Those checks remain a release follow-up/known limitation; they are not represented as verified evidence.
 
 See [the implementation plan](../plans/260808-1123-custom-account-value-dashboard/plan.md).
 

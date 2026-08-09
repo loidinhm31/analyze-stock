@@ -320,6 +320,15 @@ The account-type value widget is one fixed widget rather than a general layout
 system. It maps blank or unrecognised free-form account types to `__other__`;
 it does not store account IDs or exchange rates.
 
+Phase 04 validation covers the widget's loading, error, and no-match states,
+alongside multi-currency rendering and account-type selection behavior. The
+implementation is split into `AccountTypeValueWidget` (organism),
+`AccountTypeValueChart` (chart organism), and
+`AccountTypeValueWidgetConfig` (configuration organism), with preference state
+resolved by `useAccountTypeValuePreferences`. The widget's chart/configuration
+components remain presentation concerns; persistence continues through the
+dashboard-preferences service described above.
+
 ```mermaid
 flowchart LR
     Page[DashboardPage] --> Widget[AccountTypeValueWidget]
@@ -478,6 +487,9 @@ flowchart TB
         PieChart["CategoryPieChart"]
         TrendChart["MonthlyTrendChart"]
         Bottleneck["BottleneckAlerts"]
+        AccountValue["AccountTypeValueWidget<br/>(loading/error/no-match,<br/>multi-currency values)"]
+        AccountValueChart["AccountTypeValueChart"]
+        AccountValueConfig["AccountTypeValueWidgetConfig"]
         SyncInit["BrowserSyncInitializer"]
         FileUp["FileUpload"]
     end
@@ -499,6 +511,9 @@ flowchart TB
     Dashboard --> PieChart
     Dashboard --> TrendChart
     Dashboard --> Bottleneck
+    Dashboard --> AccountValue
+    AccountValue --> AccountValueChart
+    AccountValue --> AccountValueConfig
     TxPage --> TxList
     TxList --> TxItem
     TxItem --> CatIcon
@@ -514,7 +529,7 @@ flowchart TB
     classDef atom fill:#f3e5f5,stroke:#6a1b9a
     class AppShell tmpl
     class Dashboard,TxPage,Reports,Settings,CatSetup,AddTx,Login,Setup page
-    class TxList,TxForm,TransferForm,PieChart,TrendChart,Bottleneck,SyncInit,FileUp org
+    class TxList,TxForm,TransferForm,PieChart,TrendChart,Bottleneck,AccountValue,AccountValueChart,AccountValueConfig,SyncInit,FileUp org
     class TxItem,DatePick,IconPick,StatCard,AccItem mol
     class CatIcon,Button atom
 ```

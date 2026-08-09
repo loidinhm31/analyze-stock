@@ -1,7 +1,7 @@
 ---
 title: "Custom account type value dashboard"
 description: "Add one synced dashboard widget that shows selected account-type balances by currency."
-status: in_progress
+status: completed
 priority: P2
 effort: 14h
 branch: main
@@ -40,7 +40,7 @@ Deliver one inline, cross-device-configured `/dashboard` widget. Users select ac
 | 1 | Sync contract and preferences foundation | approved — implementation complete; release gates open | 4h | [phase 01](./phase-01-sync-contract-and-preferences.md) |
 | 2 | Shared account-value derivation | completed — 2026-08-08 15:45:49 ICT | 3h | [phase 02](./phase-02-shared-balance-history.md) |
 | 3 | Configurable dashboard widget | completed — 2026-08-09 23:30:55 ICT; final review approved (8/10, zero criticals) | 4h | [phase 03](./phase-03-dashboard-widget-and-ux.md) |
-| 4 | Validation and architecture reconciliation | pending | 3h | [phase 04](./phase-04-validation-and-reconciliation.md) |
+| 4 | Validation and architecture reconciliation | completed — 2026-08-10 00:33:39 ICT; user-approved server/release-gate bypass | 3h | [phase 04](./phase-04-validation-and-reconciliation.md) |
 
 ## Side-effect Review
 
@@ -62,4 +62,4 @@ Run `/code plans/260808-1123-custom-account-value-dashboard`. The active-plan sc
 - **Approved warnings (2026-08-08 12:13 ICT):** same-device preference delete/save is not yet transactional; live server integration proof remains outstanding.
 - **Phase 02 final review (2026-08-08 15:45:49 ICT):** approved and completed. Encoded ISO calendar dates are compared as date-only values (offsets and `Z` suffixes are not converted to runtime timezone); compatible transactions are grouped once and reused for current/history calculations; January-boundary, local-midnight account creation, and same-day `createdAt` ordering assertions pass.
 - **Phase 03 final review (2026-08-09 23:30:55 ICT):** approved (8/10, zero criticals). Validation: 40 UI test files / 242 tests; type-check, lint, and build passed. Root `pnpm test:run` was unavailable because the host returned `/tmp` error `-122` (disk quota).
-- **Outstanding:** Phase 01 server `_schemas` and authenticated two-session release gates remain open; Phase 04 validation and architecture reconciliation remains pending.
+- **Waived follow-up (2026-08-10 00:33:39 ICT):** User explicitly approved bypassing the external server `_schemas` deployment and authenticated two-session release gate. These remain unverified follow-ups, not blockers for this approved phase completion.
