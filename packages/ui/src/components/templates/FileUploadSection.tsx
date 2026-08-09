@@ -9,6 +9,7 @@ import type {
 } from "@money-insight/ui/types";
 
 export interface FileUploadSectionProps {
+  compact?: boolean;
   isDbReady: boolean;
   onFileProcess: (file: File) => Promise<void>;
   onAddTransaction: (transaction: NewTransaction) => Promise<void>;
@@ -17,6 +18,7 @@ export interface FileUploadSectionProps {
 }
 
 export function FileUploadSection({
+  compact = false,
   isDbReady,
   onFileProcess,
   onAddTransaction,
@@ -24,14 +26,21 @@ export function FileUploadSection({
   getAccounts,
 }: FileUploadSectionProps) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8">
+    <div
+      className={
+        compact
+          ? "flex flex-col items-center px-4 py-6"
+          : "flex min-h-screen flex-col items-center justify-center px-4 py-8"
+      }
+    >
       <div className="space-y-3 sm:space-y-4 text-center mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-foreground">
-          Money Insight
+        <h1 className="text-2xl font-bold font-heading text-foreground sm:text-3xl md:text-4xl">
+          {compact ? "Add your first transaction" : "Money Insight"}
         </h1>
         <p className="text-sm sm:text-base max-w-xl sm:max-w-2xl px-4 text-muted-foreground">
-          Upload your CSV export to analyze spending patterns, track expenses,
-          and discover financial insights.
+          {compact
+            ? "Upload a CSV export or add a transaction manually to unlock financial analysis."
+            : "Upload your CSV export to analyze spending patterns, track expenses, and discover financial insights."}
         </p>
       </div>
 

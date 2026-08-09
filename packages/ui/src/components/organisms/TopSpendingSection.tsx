@@ -141,7 +141,7 @@ export function TopSpendingSection({
                   {valuesHidden ? maskValue(formattedAmount) : formattedAmount}
                 </span>
                 <span className="text-xs block text-muted-foreground">
-                  {item.percentage.toFixed(1)}%
+                  {valuesHidden ? "••••" : `${item.percentage.toFixed(1)}%`}
                 </span>
               </div>
             </div>

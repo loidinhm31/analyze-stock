@@ -103,8 +103,9 @@ export function MonthlyReportSection({
                     : "var(--color-success)",
                 }}
               >
-                {isOverBudget ? "+" : ""}
-                {percentDiff.toFixed(1)}% vs avg
+                {valuesHidden
+                  ? "•••• vs avg"
+                  : `${isOverBudget ? "+" : ""}${percentDiff.toFixed(1)}% vs avg`}
               </span>
             </div>
           </div>
@@ -129,7 +130,7 @@ export function MonthlyReportSection({
           <p className="text-sm font-medium mb-2 text-secondary-foreground">
             Cumulative spending trend
           </p>
-          <TrendingReportChart report={report} />
+          <TrendingReportChart report={report} valuesHidden={valuesHidden} />
         </div>
       </CardContent>
     </Card>

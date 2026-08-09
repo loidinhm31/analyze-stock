@@ -15,6 +15,7 @@ export interface TransactionItemProps {
   expense: number;
   income: number;
   source?: TransactionSource;
+  valuesHidden?: boolean;
   // Needed for transfer display note lookup
   transaction?: Transaction;
   onClick?: () => void;
@@ -106,6 +107,7 @@ export function TransactionItem({
   income,
   source,
   transaction,
+  valuesHidden = false,
   onClick,
 }: TransactionItemProps) {
   const { getIcon } = useCategoryIcon();
@@ -196,11 +198,15 @@ export function TransactionItem({
                     : "text-success",
           )}
         >
-          {isExpense
-            ? `-${formatCurrency(expense)}`
-            : income > 0
-              ? `+${formatCurrency(income)}`
-              : formatCurrency(0)}
+          {valuesHidden
+            ? "*".repeat(
+                formatCurrency(isExpense ? expense : income).length,
+              )
+            : isExpense
+              ? `-${formatCurrency(expense)}`
+              : income > 0
+                ? `+${formatCurrency(income)}`
+                : formatCurrency(0)}
         </p>
       </div>
     </div>

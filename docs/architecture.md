@@ -316,9 +316,9 @@ verify push, pull, acknowledgement, conflict, and tombstone behavior between
 two authenticated sessions before exposing dashboard configuration. The client
 must not be released against a server that does not allow this table.
 
-The planned account-type value widget remains one fixed widget rather than a
-general layout system. It will map blank or unrecognised free-form account
-types to `__other__`; it will not store account IDs or exchange rates.
+The account-type value widget is one fixed widget rather than a general layout
+system. It maps blank or unrecognised free-form account types to `__other__`;
+it does not store account IDs or exchange rates.
 
 ```mermaid
 flowchart LR
@@ -332,14 +332,15 @@ flowchart LR
     Balance --> Widget
 ```
 
-When implemented, the widget will derive rather than store values: it will
-group selected accounts by currency, calculate current balance as opening
-balance plus signed transaction amounts, and produce the last 12 completed
-calendar month-end balances. It will never aggregate currencies. If a currency
-has no known completed month-end, its secondary value will be explicitly
-labelled current-calendar-month net change; otherwise it will be the mean of
-up to the three latest known completed month-end balances. `valuesHidden` will
-mask all rendered values and chart tooltip values.
+The implemented widget derives rather than stores values: it groups selected
+accounts by currency, calculates current balance as opening balance plus signed
+transaction amounts, and produces the last 12 completed calendar month-end
+balances. It never aggregates currencies. If a currency has no known completed
+month-end, its secondary value is explicitly labelled current-calendar-month
+net change; otherwise it is the mean of up to the three latest known completed
+month-end balances. The widget uses the full account/transaction state and is
+unaffected by dashboard report filters. `valuesHidden` masks rendered values,
+accessible value text, and chart tooltip values.
 
 The shared account-type balance projection treats `Account.createdAt` as the
 calendar date encoded in the ISO value (`YYYY-MM-DD`); it does not convert the

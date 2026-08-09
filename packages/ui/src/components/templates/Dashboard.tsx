@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -27,7 +28,9 @@ import {
   MonthlyReportSection,
   TopSpendingSection,
   ReportsSection,
+  AccountTypeValueWidget,
 } from "@money-insight/ui/components/organisms";
+import type { AccountTypeValueWidgetProps } from "@money-insight/ui/components/organisms";
 import { formatCurrency } from "@money-insight/ui/lib";
 import { CircleHelp, Eye, EyeOff, Wallet } from "lucide-react";
 import type {
@@ -73,6 +76,9 @@ export interface DashboardProps {
   onFilterClear: () => void;
   valuesHidden: boolean;
   onToggleValuesHidden: () => void;
+  accountValueWidget: AccountTypeValueWidgetProps;
+  emptyActivityContent?: ReactNode;
+  hasUnfilteredTransactions: boolean;
 }
 
 export function Dashboard({
@@ -89,13 +95,14 @@ export function Dashboard({
   onFilterClear,
   valuesHidden,
   onToggleValuesHidden,
+  accountValueWidget,
+  emptyActivityContent,
+  hasUnfilteredTransactions,
 }: DashboardProps) {
   // Mask value with asterisks matching the original length
   const maskValue = (value: string) => "*".repeat(value.length);
 
-  if (transactions.length === 0) {
-    return null;
-  }
+  const hasVisibleTransactions = transactions.length > 0;
 
   return (
     <div className="container mx-auto px-4 py-4 sm:px-6 sm:py-6 space-y-4 sm:space-y-6">
@@ -106,22 +113,44 @@ export function Dashboard({
             Money Analysis
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            {stats?.transactionCount} transactions • {stats?.categoryCount}{" "}
+            {stats?.transactionCount ?? 0} transactions • {stats?.categoryCount ?? 0}{" "}
             categories
             {filter.search && ` • Searching: "${filter.search}"`}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-          <SearchInput value={filter.search || ""} onChange={onSearchChange} />
-          <DateRangeFilter
-            dateRange={filter.dateRange}
-            onApply={onFilterApply}
-            onClear={onFilterClear}
-          />
+          {hasUnfilteredTransactions ? (
+            <>
+              <SearchInput value={filter.search || ""} onChange={onSearchChange} />
+              <DateRangeFilter
+                dateRange={filter.dateRange}
+                onApply={onFilterApply}
+                onClear={onFilterClear}
+              />
+            </>
+          ) : null}
+          <Button
+            aria-label={valuesHidden ? "Show financial values" : "Hide financial values"}
+            className="h-8 w-8 p-0"
+            onClick={onToggleValuesHidden}
+            size="sm"
+            title={valuesHidden ? "Show values" : "Hide values"}
+            variant="ghost"
+          >
+            {valuesHidden ? (
+              <EyeOff aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Eye aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
         </div>
       </div>
 
-      {/* Quick Stats */}
+      <AccountTypeValueWidget {...accountValueWidget} />
+
+      {hasVisibleTransactions ? (
+        <>
+          {/* Quick Stats */}
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-muted-foreground">
           Financial Summary
@@ -175,7 +204,9 @@ export function Dashboard({
         />
         <StatCard
           title="Savings Rate"
-          value={`${stats?.savingsRate.toFixed(1)}%`}
+          value={
+            valuesHidden ? "••••" : `${(stats?.savingsRate ?? 0).toFixed(1)}%`
+          }
           subtitle={
             (stats?.savingsRate || 0) >= 30 ? "Excellent!" : "Target: 30%"
           }
@@ -357,7 +388,10 @@ export function Dashboard({
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 sm:p-6 pt-0">
-                <MonthlyTrendChart data={monthlyAnalysis} />
+                <MonthlyTrendChart
+                  data={monthlyAnalysis}
+                  valuesHidden={valuesHidden}
+                />
               </CardContent>
             </Card>
           </div>
@@ -371,7 +405,10 @@ export function Dashboard({
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0">
-              <MonthlyTrendChart data={monthlyAnalysis} />
+              <MonthlyTrendChart
+                data={monthlyAnalysis}
+                valuesHidden={valuesHidden}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -400,7 +437,10 @@ export function Dashboard({
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0">
-              <TransactionList transactions={transactions} />
+              <TransactionList
+                transactions={transactions}
+                valuesHidden={valuesHidden}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -412,6 +452,21 @@ export function Dashboard({
           />
         </TabsContent>
       </Tabs>
+        </>
+      ) : (
+        emptyActivityContent ?? (
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <p className="font-medium text-foreground">
+                No transactions match the current filters.
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Clear a filter to return to your financial analysis.
+              </p>
+            </CardContent>
+          </Card>
+        )
+      )}
     </div>
   );
 }

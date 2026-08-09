@@ -8,12 +8,14 @@ import type { Transaction } from "@money-insight/ui/types";
 export interface TransactionListProps {
   transactions: Transaction[];
   itemsPerPage?: number;
+  valuesHidden?: boolean;
   onTransactionClick?: (transaction: Transaction) => void;
 }
 
 export function TransactionList({
   transactions,
   itemsPerPage = 50,
+  valuesHidden = false,
   onTransactionClick,
 }: TransactionListProps) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -48,6 +50,7 @@ export function TransactionList({
             income={transaction.income}
             source={transaction.source}
             transaction={transaction}
+            valuesHidden={valuesHidden}
             onClick={() => onTransactionClick?.(transaction)}
           />
         ))}

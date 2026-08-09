@@ -82,6 +82,14 @@ export function CategoryPieChart({
     setShowTransactionModal(false);
   };
 
+  if (valuesHidden) {
+    return (
+      <p className="text-sm text-muted-foreground" role="status">
+        Category chart hidden while values are protected.
+      </p>
+    );
+  }
+
   return (
     <>
       <ResponsiveContainer width="100%" height={400}>

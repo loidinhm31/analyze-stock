@@ -4,9 +4,12 @@ import {
   Dashboard,
   FileUploadSection,
 } from "@money-insight/ui/components/templates";
+import type { AccountTypeValueWidgetProps } from "@money-insight/ui/components/organisms";
 import { parseCSVForImport } from "@money-insight/ui/lib";
 import * as categoryService from "@money-insight/ui/services/categoryService";
 import * as accountService from "@money-insight/ui/services/accountService";
+import { getAccountTypeValueHistory } from "@money-insight/ui/services/account-type-value-history";
+import { useAccountTypeValuePreferences } from "@money-insight/ui/hooks";
 import type { NewTransaction } from "@money-insight/ui/types";
 
 /**
@@ -16,6 +19,7 @@ import type { NewTransaction } from "@money-insight/ui/types";
 export function DashboardPage() {
   const {
     transactions,
+    accounts,
     filteredTransactions,
     categorySpending,
     monthlyAnalysis,
@@ -32,6 +36,13 @@ export function DashboardPage() {
     clearFilter,
     toggleValuesHidden,
   } = useSpendingStore();
+  const {
+    selectedAccountTypes,
+    isLoading: isPreferencesLoading,
+    error: preferencesError,
+    reload: reloadPreferences,
+    save: savePreferences,
+  } = useAccountTypeValuePreferences();
 
   // Handle CSV file processing
   const handleFileProcess = useCallback(
@@ -87,8 +98,50 @@ export function DashboardPage() {
     [filter.dateRange, filter.search],
   );
 
-  // Show initial upload if no transactions
-  if (transactions.length === 0) {
+  const accountValueHistories = useMemo(() => {
+    if (!selectedAccountTypes || preferencesError) return [];
+    return getAccountTypeValueHistory(
+      accounts,
+      transactions,
+      selectedAccountTypes,
+    );
+  }, [accounts, preferencesError, selectedAccountTypes, transactions]);
+
+  const accountValueWidget = useMemo<AccountTypeValueWidgetProps>(
+    () => ({
+      selectedAccountTypes,
+      histories: accountValueHistories,
+      isLoading: isPreferencesLoading,
+      error: preferencesError,
+      valuesHidden,
+      onSaveSelection: savePreferences,
+      onRetry: reloadPreferences,
+    }),
+    [
+      accountValueHistories,
+      isPreferencesLoading,
+      preferencesError,
+      reloadPreferences,
+      savePreferences,
+      selectedAccountTypes,
+      valuesHidden,
+    ],
+  );
+
+  const emptyActivityContent =
+    transactions.length === 0 && accounts.length > 0 ? (
+      <FileUploadSection
+        compact
+        getAccounts={getAccounts}
+        getCategories={getCategories}
+        isDbReady={isDbReady}
+        onAddTransaction={handleAddTransaction}
+        onFileProcess={handleFileProcess}
+      />
+    ) : undefined;
+
+  // Keep the full onboarding view only until the user has created an account.
+  if (transactions.length === 0 && accounts.length === 0) {
     return (
       <FileUploadSection
         isDbReady={isDbReady}
@@ -118,6 +171,9 @@ export function DashboardPage() {
       walletBalances={walletBalances}
       currentMonthReport={currentMonthReport}
       stats={statistics}
+      accountValueWidget={accountValueWidget}
+      emptyActivityContent={emptyActivityContent}
+      hasUnfilteredTransactions={transactions.length > 0}
       filter={dashboardFilter}
       onSearchChange={handleSearchChange}
       onFilterApply={handleFilterApply}

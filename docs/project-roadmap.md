@@ -12,6 +12,11 @@ Last updated: 2026-08-08
   - Shared account-value projection implemented with per-currency current balances, 12 completed month-end points, and net-change fallback.
   - Encoded ISO calendar-date convention documented and enforced; grouped compatible transactions reused across current/history calculations.
   - Review evidence: January/local-midnight/same-day ordering assertions; focused tests 9/9; repository type-check 4/4 packages.
+- **Phase 03 — complete (2026-08-09 23:30:55 ICT); release-gated**
+  - Responsive, accessible account-value widget with multi-select account-type configuration, synced preference loading/saving, per-currency cards/charts, and empty/error/loading states.
+  - Widget derives from the full account/transaction state and remains independent of dashboard report filters.
+  - `valuesHidden` masks displayed and accessible values, chart labels, and tooltips; it is a display privacy control, not access control.
+  - UI validation and review passed; external two-session sync validation remains outstanding under Phase 01's release constraint.
 
 See [the implementation plan](../plans/260808-1123-custom-account-value-dashboard/plan.md).
 

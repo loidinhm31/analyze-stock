@@ -88,7 +88,9 @@ export function BottleneckAlerts({
                     </Badge>
                   </div>
                   <AlertDescription className="text-sm">
-                    {bottleneck.suggestion}
+                    {valuesHidden
+                      ? "Suggestion hidden while values are protected."
+                      : bottleneck.suggestion}
                   </AlertDescription>
                   <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
                     <span>
@@ -97,7 +99,9 @@ export function BottleneckAlerts({
                         ? "*".repeat(formatCurrency(bottleneck.amount).length)
                         : formatCurrency(bottleneck.amount)}
                     </span>
-                    <span>Share: {bottleneck.percentage.toFixed(1)}%</span>
+                    <span>
+                      Share: {valuesHidden ? "••••" : `${bottleneck.percentage.toFixed(1)}%`}
+                    </span>
                     <span>{bottleneck.transactions.length} transactions</span>
                   </div>
                 </div>

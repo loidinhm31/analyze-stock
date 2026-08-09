@@ -14,9 +14,21 @@ import { formatCurrency } from "@money-insight/ui/lib";
 
 export interface TrendingReportChartProps {
   report: MonthlyReport;
+  valuesHidden?: boolean;
 }
 
-export function TrendingReportChart({ report }: TrendingReportChartProps) {
+export function TrendingReportChart({
+  report,
+  valuesHidden = false,
+}: TrendingReportChartProps) {
+  if (valuesHidden) {
+    return (
+      <p className="text-sm text-muted-foreground" role="status">
+        Cumulative spending trend hidden while values are protected.
+      </p>
+    );
+  }
+
   // Build chart data combining current month and 3-month average
   const today = new Date();
   const isCurrentMonth =

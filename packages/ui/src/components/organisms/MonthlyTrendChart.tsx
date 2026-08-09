@@ -14,9 +14,21 @@ import { formatCurrency } from "@money-insight/ui/lib";
 
 export interface MonthlyTrendChartProps {
   data: MonthlyAnalysis[];
+  valuesHidden?: boolean;
 }
 
-export function MonthlyTrendChart({ data }: MonthlyTrendChartProps) {
+export function MonthlyTrendChart({
+  data,
+  valuesHidden = false,
+}: MonthlyTrendChartProps) {
+  if (valuesHidden) {
+    return (
+      <p className="text-sm text-muted-foreground" role="status">
+        Monthly trend hidden while values are protected.
+      </p>
+    );
+  }
+
   const chartData = data.map((month) => ({
     month: month.yearMonth,
     expense: month.totalExpense,
