@@ -6,7 +6,9 @@ import { BudgetCycleNavigator } from "@money-insight/ui/components/molecules";
 import { BudgetFormDialog, BudgetProgressList } from "@money-insight/ui/components/organisms";
 import { useNav } from "@money-insight/ui/hooks";
 import { moveBudgetHistoryReferenceDate } from "@money-insight/ui/lib";
-import { useBudgetStore, useCategoryGroupStore, useSpendingStore } from "@money-insight/ui/stores";
+import { useBudgetStore } from "@money-insight/ui/stores/budgetStore";
+import { useCategoryGroupStore } from "@money-insight/ui/stores/categoryGroupStore";
+import { useSpendingStore } from "@money-insight/ui/stores/spendingStore";
 import type { Budget, NewBudget } from "@money-insight/ui/types";
 
 function getTodayIsoDate() {

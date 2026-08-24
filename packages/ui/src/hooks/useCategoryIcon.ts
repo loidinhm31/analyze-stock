@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useCategoryGroupStore } from "@money-insight/ui/stores";
+import { useCategoryGroupStore } from "@money-insight/ui/stores/categoryGroupStore";
 
 /**
  * Hook that resolves a category name to its icon name.

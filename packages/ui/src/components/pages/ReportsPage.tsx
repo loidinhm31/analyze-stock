@@ -1,4 +1,4 @@
-import { useSpendingStore } from "@money-insight/ui/stores";
+import { useSpendingStore } from "@money-insight/ui/stores/spendingStore";
 import {
   Card,
   CardContent,

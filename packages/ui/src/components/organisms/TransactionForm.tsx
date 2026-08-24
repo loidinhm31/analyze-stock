@@ -34,11 +34,9 @@ import {
 } from "@money-insight/ui/lib";
 import { SUPPORTED_CURRENCIES } from "@money-insight/shared";
 import { useLastFormValues, useCategoryIcon } from "@money-insight/ui/hooks";
-import {
-  useBudgetStore,
-  useCategoryGroupStore,
-  useSpendingStore,
-} from "@money-insight/ui/stores";
+import { useBudgetStore } from "@money-insight/ui/stores/budgetStore";
+import { useCategoryGroupStore } from "@money-insight/ui/stores/categoryGroupStore";
+import { useSpendingStore } from "@money-insight/ui/stores/spendingStore";
 import type {
   Transaction,
   NewTransaction,

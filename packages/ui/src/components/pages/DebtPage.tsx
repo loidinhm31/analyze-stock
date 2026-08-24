@@ -18,7 +18,8 @@ import {
   DebtList,
 } from "@money-insight/ui/components/organisms";
 import { useNav } from "@money-insight/ui/hooks";
-import { useDebtStore, useSpendingStore } from "@money-insight/ui/stores";
+import { useDebtStore } from "@money-insight/ui/stores/debtStore";
+import { useSpendingStore } from "@money-insight/ui/stores/spendingStore";
 import type { Debt, DebtSettlementInput, NewDebt } from "@money-insight/ui/types";
 
 export function DebtPage() {

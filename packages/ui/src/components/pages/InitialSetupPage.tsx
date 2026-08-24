@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useSpendingStore } from "@money-insight/ui/stores";
+import { useSpendingStore } from "@money-insight/ui/stores/spendingStore";
 import { useNav } from "@money-insight/ui/hooks";
 import { FileUploadSection } from "@money-insight/ui/components/templates";
 import { parseCSVForImport } from "@money-insight/ui/lib";

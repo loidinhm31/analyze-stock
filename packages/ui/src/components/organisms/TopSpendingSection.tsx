@@ -15,7 +15,7 @@ import { TransactionListModal } from "@money-insight/ui/components/organisms";
 import { formatCurrency } from "@money-insight/ui/lib";
 import { TrendingUp } from "lucide-react";
 import type { Transaction } from "@money-insight/ui/types";
-import { useCategoryGroupStore } from "@money-insight/ui/stores";
+import { useCategoryGroupStore } from "@money-insight/ui/stores/categoryGroupStore";
 import {
   startOfWeek,
   endOfWeek,

@@ -28,7 +28,8 @@ import {
 } from "@money-insight/ui/components/atoms";
 import { IconPicker, MobileHeader } from "@money-insight/ui/components/molecules";
 import { formatCurrency } from "@money-insight/ui/lib";
-import { useCategoryGroupStore, useSpendingStore } from "@money-insight/ui/stores";
+import { useCategoryGroupStore } from "@money-insight/ui/stores/categoryGroupStore";
+import { useSpendingStore } from "@money-insight/ui/stores/spendingStore";
 import type { Category, CategoryGroup } from "@money-insight/ui/types";
 import * as categoryService from "@money-insight/ui/services/categoryService";
 import {

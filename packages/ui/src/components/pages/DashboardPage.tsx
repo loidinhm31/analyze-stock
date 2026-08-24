@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { useSpendingStore } from "@money-insight/ui/stores";
+import { useSpendingStore } from "@money-insight/ui/stores/spendingStore";
 import {
   Dashboard,
   FileUploadSection,

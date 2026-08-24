@@ -15,7 +15,7 @@ import {
   Dialog,
   DialogContent,
 } from "@money-insight/ui/components/atoms";
-import { useSpendingStore } from "@money-insight/ui/stores";
+import { useSpendingStore } from "@money-insight/ui/stores/spendingStore";
 import { useNav } from "@money-insight/ui/hooks";
 import {
   TimePeriodSelector,
