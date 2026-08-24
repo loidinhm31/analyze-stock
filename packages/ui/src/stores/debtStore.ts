@@ -6,6 +6,7 @@ import type {
   NewDebt,
 } from "@money-insight/ui/types";
 import * as debtService from "@money-insight/ui/services/debtService";
+import { refreshSpendingStore } from "./store-dependency-bridge";
 
 interface DebtSections {
   active: Debt[];
@@ -73,15 +74,6 @@ function applyDebtState(debts: Debt[]) {
     debts,
     ...buildSections(debts),
   };
-}
-
-async function refreshSpendingStore(): Promise<void> {
-  const { useSpendingStore } =
-    await import("@money-insight/ui/stores/spendingStore");
-  const spendingStore = useSpendingStore.getState();
-  if (spendingStore.isDbReady) {
-    await spendingStore.initFromDatabase();
-  }
 }
 
 export const useDebtStore = create<DebtStore>()((set, get) => ({

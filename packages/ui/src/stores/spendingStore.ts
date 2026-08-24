@@ -30,6 +30,13 @@ import {
   reconstructTransferParams,
 } from "@money-insight/ui/services/transferService";
 import { useCategoryGroupStore } from "./categoryGroupStore";
+import { useBudgetStore } from "./budgetStore";
+import { useDebtStore } from "./debtStore";
+
+// AppShell initializes spendingStore for the initial page, so keep the
+// transaction-dependent budget/debt stores in the same static graph. This
+// removes the dynamic/static import warning without changing store APIs or
+// persisted state keys; further route isolation is deferred to Phase 05.
 
 // Convert Transaction (from DB) to ProcessedTransaction (for analysis)
 function toProcessedTransaction(tx: Transaction): ProcessedTransaction {
@@ -64,7 +71,6 @@ function buildAnalyzerState(transactions: Transaction[]) {
 async function refreshDebtStoreForTransaction(tx?: Transaction): Promise<void> {
   if (!tx || !isDebtManagedTransaction(tx)) return;
 
-  const { useDebtStore } = await import("@money-insight/ui/stores/debtStore");
   const debtStore = useDebtStore.getState();
   if (debtStore.isDbReady) {
     await debtStore.loadDebts();
@@ -75,10 +81,6 @@ async function refreshDebtStoreForTransaction(tx?: Transaction): Promise<void> {
 }
 
 async function refreshAccountDependentStores(): Promise<void> {
-  const [{ useBudgetStore }, { useDebtStore }] = await Promise.all([
-    import("@money-insight/ui/stores/budgetStore"),
-    import("@money-insight/ui/stores/debtStore"),
-  ]);
   const budgetStore = useBudgetStore.getState();
   const debtStore = useDebtStore.getState();
 
@@ -102,8 +104,6 @@ async function refreshBudgetStoreForTransactionChange(
   draftTransaction: Transaction,
   originalTransaction?: Transaction,
 ): Promise<void> {
-  const { useBudgetStore } =
-    await import("@money-insight/ui/stores/budgetStore");
   const budgetStore = useBudgetStore.getState();
 
   if (!budgetStore.isDbReady) {

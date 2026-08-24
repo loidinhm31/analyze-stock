@@ -6,6 +6,7 @@ import type {
 } from "@money-insight/ui/types";
 import * as categoryGroupService from "@money-insight/ui/services/categoryGroupService";
 import * as categoryService from "@money-insight/ui/services/categoryService";
+import { refreshSpendingAnalysis } from "./store-dependency-bridge";
 
 interface CategoryGroupStore {
   // Data
@@ -260,17 +261,12 @@ export const useCategoryGroupStore = create<CategoryGroupStore>()(
 
       // Trigger spending store refresh
       triggerAnalysisRefresh: () => {
-        // Debounced dynamic import: coalesces rapid calls (e.g. batch mapping updates)
-        // and avoids bundler issues from the spendingStore ↔ categoryGroupStore circular import.
+        // Debounced static bridge callback: coalesces rapid calls (e.g. batch
+        // mapping updates) and defers bridge access until after module setup.
         if (_analysisRefreshTimer) clearTimeout(_analysisRefreshTimer);
         _analysisRefreshTimer = setTimeout(() => {
           _analysisRefreshTimer = null;
-          import("@money-insight/ui/stores/spendingStore").then(
-            ({ useSpendingStore }) => {
-              const { refreshAnalysis, isDbReady } = useSpendingStore.getState();
-              if (isDbReady) refreshAnalysis();
-            },
-          );
+          refreshSpendingAnalysis();
         }, 50);
       },
     };

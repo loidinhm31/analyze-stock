@@ -22,13 +22,16 @@ vi.mock("@money-insight/ui/adapters", () => ({
   }),
 }));
 
-vi.mock("@money-insight/ui/stores", () => ({
+vi.mock("@money-insight/ui/stores/spendingStore", () => ({
   useSpendingStore: {
     getState: () => ({
       isDbReady: true,
       initFromDatabase: spendingInitMock,
     }),
   },
+}));
+
+vi.mock("@money-insight/ui/stores/debtStore", () => ({
   useDebtStore: {
     getState: () => ({
       isDbReady: true,

@@ -147,7 +147,7 @@ Uses glean-oak-sync-client for offline-first sync with glean-oak-server:
 All state lives in `packages/ui/src/stores/`:
 
 - **`spendingStore.ts`** — Transactions, accounts, analysis (statistics, monthly/yearly reports, bottlenecks). Transfer actions (createTransfer, updateTransfer, deleteTransfer) use `set((state) => {...})` callback pattern to preserve state reactivity and avoid race conditions when multiple legs are updated atomically.
-- **`categoryGroupStore.ts`** — Category groups, category mappings, lookup map for parent resolution. `triggerAnalysisRefresh()` debounces (50ms, factory-closure scoped) dynamic import to avoid circular dependency with spendingStore and coalesce rapid updates.
+- **`categoryGroupStore.ts`** — Category groups, category mappings, lookup map for parent resolution. `triggerAnalysisRefresh()` debounces (50ms, factory-closure scoped) a static store-dependency bridge callback, preserving coalescing while keeping the warning-free static graph explicit; further route isolation is deferred to Phase 05.
 
 ## Key Conventions
 

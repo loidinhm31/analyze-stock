@@ -14,6 +14,7 @@ import {
 import * as budgetService from "@money-insight/ui/services/budgetService";
 import * as notificationEventService from "@money-insight/ui/services/notification-event-service";
 import { useCategoryGroupStore } from "./categoryGroupStore";
+import { getCurrentTransactions } from "./store-dependency-bridge";
 
 interface BudgetStore {
   budgets: Budget[];
@@ -38,9 +39,7 @@ interface BudgetStore {
 }
 
 async function loadCurrentTransactions(): Promise<Transaction[]> {
-  const { useSpendingStore } =
-    await import("@money-insight/ui/stores/spendingStore");
-  return useSpendingStore.getState().transactions;
+  return getCurrentTransactions();
 }
 
 function buildUsageMap(

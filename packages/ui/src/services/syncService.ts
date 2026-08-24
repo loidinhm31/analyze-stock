@@ -1,4 +1,6 @@
 import { getSyncService } from "@money-insight/ui/adapters";
+import { useSpendingStore } from "@money-insight/ui/stores/spendingStore";
+import { useDebtStore } from "@money-insight/ui/stores/debtStore";
 import type {
   SyncProgress,
   SyncResult,
@@ -17,10 +19,6 @@ export async function refreshLocalStoresAfterSync(
   if (!options?.force && !shouldRefreshLocalStoresAfterSync(result)) return;
 
   try {
-    const { useSpendingStore, useDebtStore } = await import(
-      "@money-insight/ui/stores"
-    );
-
     const spendingStore = useSpendingStore.getState();
     if (spendingStore.isDbReady) {
       await spendingStore.initFromDatabase();
