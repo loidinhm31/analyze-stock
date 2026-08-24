@@ -1,65 +1,47 @@
 import { lazy, Suspense, useState, useEffect, useCallback } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { LoginPage } from "@money-insight/ui/components/pages";
-import { Spinner, ErrorBoundary } from "@money-insight/ui/components/atoms";
-import {
-  BrowserSyncInitializer,
-  Sidebar,
-  BottomNavigation,
-} from "@money-insight/ui/components/organisms";
-import { useAuth, useNav } from "@money-insight/ui/hooks";
-import { useSpendingStore } from "@money-insight/ui/stores";
+import { LoginPage } from "../pages/LoginPage";
+import { Spinner } from "../atoms/spinner";
+import { ErrorBoundary } from "../atoms/ErrorBoundary";
+import { BrowserSyncInitializer } from "../organisms/BrowserSyncInitializer";
+import { Sidebar } from "../organisms/Sidebar";
+import { BottomNavigation } from "../organisms/BottomNavigation";
+import { useAuth } from "../../hooks/useAuth";
+import { useNav } from "../../hooks/useNav";
+import { useSpendingStore } from "../../stores/spendingStore";
 import {
   isOpenedFromDesktop,
   initializeSessionToken,
-} from "@money-insight/ui/utils";
+} from "../../utils/platform";
 
 const SIDEBAR_COLLAPSED_KEY = "money-insight-sidebar-collapsed";
 
 const DashboardPage = lazy(() =>
-  import("@money-insight/ui/components/pages").then((m) => ({
-    default: m.DashboardPage,
-  })),
+  import("../pages/lazy-pages").then((m) => ({ default: m.DashboardPage })),
 );
 const AddTransactionPage = lazy(() =>
-  import("@money-insight/ui/components/pages").then((m) => ({
-    default: m.AddTransactionPage,
-  })),
+  import("../pages/lazy-pages").then((m) => ({ default: m.AddTransactionPage })),
 );
 const SettingsPage = lazy(() =>
-  import("@money-insight/ui/components/pages").then((m) => ({
-    default: m.SettingsPage,
-  })),
+  import("../pages/lazy-pages").then((m) => ({ default: m.SettingsPage })),
 );
 const InitialSetupPage = lazy(() =>
-  import("@money-insight/ui/components/pages").then((m) => ({
-    default: m.InitialSetupPage,
-  })),
+  import("../pages/lazy-pages").then((m) => ({ default: m.InitialSetupPage })),
 );
 const ReportsPage = lazy(() =>
-  import("@money-insight/ui/components/pages").then((m) => ({
-    default: m.ReportsPage,
-  })),
+  import("../pages/lazy-pages").then((m) => ({ default: m.ReportsPage })),
 );
 const TransactionPage = lazy(() =>
-  import("@money-insight/ui/components/pages").then((m) => ({
-    default: m.TransactionPage,
-  })),
+  import("../pages/lazy-pages").then((m) => ({ default: m.TransactionPage })),
 );
 const DebtPage = lazy(() =>
-  import("@money-insight/ui/components/pages").then((m) => ({
-    default: m.DebtPage,
-  })),
+  import("../pages/lazy-pages").then((m) => ({ default: m.DebtPage })),
 );
 const CategorySetupPage = lazy(() =>
-  import("@money-insight/ui/components/pages").then((m) => ({
-    default: m.CategorySetupPage,
-  })),
+  import("../pages/lazy-pages").then((m) => ({ default: m.CategorySetupPage })),
 );
 const BudgetPage = lazy(() =>
-  import("@money-insight/ui/components/pages").then((m) => ({
-    default: m.BudgetPage,
-  })),
+  import("../pages/lazy-pages").then((m) => ({ default: m.BudgetPage })),
 );
 
 export interface AppShellProps {
